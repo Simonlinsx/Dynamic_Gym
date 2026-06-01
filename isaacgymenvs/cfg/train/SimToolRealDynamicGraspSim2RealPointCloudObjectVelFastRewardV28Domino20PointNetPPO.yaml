@@ -1,0 +1,7 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV27PointNetPPO
+  - _self_
+
+params:
+  config:
+    name: ${resolve_default:SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV28Domino20PointNetPPO,${....experiment}}

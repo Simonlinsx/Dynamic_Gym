@@ -1,0 +1,7 @@
+defaults:
+  - SimToolRealDynamicGraspPPO
+  - _self_
+
+params:
+  config:
+    name: ${resolve_default:SimToolRealDynamicGraspPointCloudPPO,${....experiment}}

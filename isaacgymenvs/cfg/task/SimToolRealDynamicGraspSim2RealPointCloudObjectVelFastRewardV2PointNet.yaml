@@ -1,0 +1,3 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFast
+  - _self_

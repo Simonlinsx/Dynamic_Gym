@@ -1,0 +1,24 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloud
+  - _self_
+
+env:
+  # Ablation variant: keep the sim2real-style object pointcloud observation,
+  # but append simulator object velocity relative to the palm to actor obs.
+  # This is useful for measuring the value of privileged object velocity before
+  # replacing it with a real visual tracker / temporal policy.
+  obsList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "fingertip_pos_rel_palm",
+      "object_pointcloud_rel_palm",
+      "object_pointcloud_centroid_rel_palm",
+      "object_pointcloud_vel_rel_palm",
+      "object_pointcloud_tracking_confidence",
+      "object_vel_rel_palm",
+    ]

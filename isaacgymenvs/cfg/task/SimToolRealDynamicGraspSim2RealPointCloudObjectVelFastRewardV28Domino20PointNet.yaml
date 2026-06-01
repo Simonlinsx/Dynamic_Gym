@@ -1,0 +1,42 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV27PointNet
+  - _self_
+
+env:
+  # Multi-object dynamic grasp variant. The 20-object pool is copied from
+  # DOMINO/RoboTwin assets, but kept behind a new config so earlier primitive
+  # experiments are unaffected.
+  objectName: "domino_20"
+  dominoObjectAssetRoot: "/data1/linsixu/DOMINO/assets/objects"
+  dominoObjectCollisionSource: "collision"
+  dominoObjectVisualSource: "visual"
+  dominoObjectNeedVhacd: True
+  dominoObjectTableTopOffset: 0.15
+  dominoObjectSpawnZMargin: 0.006
+  dominoObjectRandomYaw: True
+
+  # Use actual mesh-surface samples for the simulated RGB-D/object-mask point
+  # cloud instead of the old box-surface approximation.
+  objectPointCloudUseMeshSurface: True
+  objectScaleNoiseMultiplierRange: [1.0, 1.0]
+  resetPositionNoiseX: 0.14
+  resetPositionNoiseY: 0.10
+  resetPositionNoiseZ: 0.003
+  randomizeObjectRotation: True
+
+  # Multi-shape learning is harder than the handle/head primitive pool, so keep
+  # the fast-motion curriculum a little gentler for the first run.
+  dynamicGraspWorkspaceX: [-0.30, 0.30]
+  dynamicGraspWorkspaceY: [-0.21, 0.21]
+  dynamicGraspSpeedCurriculumSteps: 900_000
+
+  # Per-object diagnostics are useful for spotting bad assets, but logging them
+  # every sim step is expensive.
+  logDynamicObjectPoolMetrics: True
+  dynamicObjectPoolLogInterval: 64
+
+  # Training still uses all objects in parallel; this only rotates which env is
+  # filmed so saved videos cover the whole object pool instead of env 0 only.
+  cycleVideoObjects: True
+  videoCameraStartIdx: 2
+  videoCameraStride: 7

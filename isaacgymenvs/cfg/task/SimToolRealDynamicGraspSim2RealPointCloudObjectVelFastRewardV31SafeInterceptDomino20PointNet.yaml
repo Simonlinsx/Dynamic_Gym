@@ -1,0 +1,66 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV30Domino20PointNet
+  - _self_
+
+env:
+  # v3.1: safer real-robot style interception. The policy should predict the
+  # object path, settle at a pregrasp pose, then close and lift with low impact.
+  dofSpeedScale: 2.0
+  armMovingAverage: 0.30
+  handMovingAverage: 0.28
+  kukaActionsPenaltyScale: 0.025
+  handActionsPenaltyScale: 0.003
+
+  # Predict farther ahead and make the pregrasp target tighter. The target is
+  # still computed from object velocity in the existing observation pipeline.
+  dynamicGraspInterceptLeadTime: 0.45
+  dynamicGraspInterceptDistanceScale: 0.14
+  dynamicGraspPregraspAheadDistance: 0.10
+  dynamicGraspPregraspDistanceScale: 0.12
+  dynamicGraspVelocityMatchScale: 0.18
+  dynamicGraspInterceptRewScale: 3.0
+  dynamicGraspPregraspAlignmentRewScale: 4.0
+  dynamicGraspVelocityMatchRewScale: 0.25
+
+  # Reward arriving early and slowly at the predicted intercept pose, and
+  # penalize contacting before the arm is in the pregrasp window.
+  dynamicGraspPregraspHoldRewScale: 16.0
+  dynamicGraspPregraspHoldVelScale: 0.12
+  dynamicGraspPregraspReadyDistance: 0.075
+  dynamicGraspEarlyContactPenaltyScale: 32.0
+  dynamicGraspPreContactSlowRewScale: 18.0
+  dynamicGraspPreContactSlowVelScale: 0.12
+  dynamicGraspPreContactRelVelPenaltyScale: 24.0
+  dynamicGraspPreContactRelVelMargin: 0.18
+  dynamicGraspControlledContactRewScale: 36.0
+  dynamicGraspControlledContactVelScale: 0.16
+
+  # Add explicit smoothness penalties in addition to the existing velocity
+  # penalty so the arm cannot win by snapping targets around.
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.18
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 220.0
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 420.0
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 12.0
+
+  # Contact/lift is still allowed, but rushing and knocking the object away is
+  # made more expensive than in v30.
+  liftingRewScale: 34.0
+  liftingBonus: 420.0
+  dynamicGraspLiftProgressRewScale: 24.0
+  dynamicGraspQualityLiftProgressRewScale: 95.0
+  dynamicGraspLiftedTrueGraspRewScale: 280.0
+  dynamicGraspStableObjectPalmVel: 0.26
+  dynamicGraspSuccessSteps: 16
+  dynamicGraspImpactPenaltyScale: 55.0
+  dynamicGraspImpactRelVelMargin: 0.16
+  dynamicGraspPostContactRelVelPenaltyScale: 26.0
+  dynamicGraspPostContactRelVelMargin: 0.22
+  dynamicGraspKickPenaltyScale: 55.0
+  dynamicGraspKickSpeedMargin: 0.04
+  dynamicGraspPushAwayPenaltyScale: 36.0
+  dynamicGraspPushAwaySpeedMargin: 0.16
+
+  # Keep anti-scoop active, but do not make exploration freeze before it learns
+  # the slow intercept phase.
+  dynamicGraspScoopLiftPenaltyScale: 170.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 340.0

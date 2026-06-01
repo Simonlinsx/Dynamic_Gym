@@ -1,0 +1,18 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV2PointNet
+  - _self_
+
+env:
+  # Reward v2.6: keep the working v2 approach/lift shaping and add dense
+  # post-lift guidance so the policy learns to keep the object with the palm
+  # after it has been picked up.
+  dynamicGraspLiftedRelVelRewScale: 40.0
+  dynamicGraspLiftedRelVelScale: 0.25
+  dynamicGraspLiftedCenteringRewScale: 20.0
+  dynamicGraspLiftedCenteringDistanceScale: 0.14
+  dynamicGraspLiftedHeightHoldRewScale: 30.0
+  dynamicGraspLiftedEnclosureVelRewScale: 80.0
+
+  # Stable counter is now leaky for this variant: a brief physics/contact
+  # jitter decays progress instead of wiping it out immediately.
+  dynamicGraspStableCounterDecay: 2

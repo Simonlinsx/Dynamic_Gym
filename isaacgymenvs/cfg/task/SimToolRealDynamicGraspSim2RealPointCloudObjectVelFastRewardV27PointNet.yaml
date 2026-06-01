@@ -1,0 +1,36 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV26PointNet
+  - _self_
+
+env:
+  # Reward v2.7: keep v2.6 post-lift shaping, but make the contact phase
+  # gentler and slow the speed curriculum so success does not collapse when
+  # the object becomes faster.
+  dynamicGraspSpeedCurriculumSteps: 600_000
+
+  # Treat normal grasp contact as useful, but discourage high-impact first
+  # contact and kicking the object faster than its commanded tabletop motion.
+  dynamicGraspImpactPenaltyScale: 30.0
+  dynamicGraspImpactRelVelMargin: 0.22
+  dynamicGraspKickPenaltyScale: 25.0
+  dynamicGraspKickSpeedMargin: 0.08
+
+  # Encourage the hand to arrive near the object with low relative speed and
+  # then make controlled, enclosed contact before lifting.
+  dynamicGraspPreContactSlowRewScale: 8.0
+  dynamicGraspPreContactSlowDistance: 0.18
+  dynamicGraspPreContactSlowVelScale: 0.18
+  dynamicGraspControlledContactRewScale: 20.0
+  dynamicGraspControlledContactVelScale: 0.20
+
+  # Make post-contact stability matter more than merely lifting. The stable
+  # counter still leaks, but loses progress more slowly than v2.6.
+  dynamicGraspPostContactRelVelPenaltyScale: 16.0
+  dynamicGraspPostContactRelVelMargin: 0.25
+  dynamicGraspPushAwayPenaltyScale: 20.0
+  dynamicGraspPushAwaySpeedMargin: 0.25
+  dynamicGraspStableFingertipDistance: 0.16
+  dynamicGraspStableHoldRewScale: 180.0
+  dynamicGraspStableProgressRewScale: 160.0
+  dynamicGraspSuccessBonus: 3500.0
+  dynamicGraspStableCounterDecay: 1

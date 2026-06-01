@@ -16,6 +16,13 @@ This repository contains the official implementation of the SimToolReal framewor
 
 * Deployment: Policy deployment in simulation and the real world.
 
+**Dynamic tabletop grasping extension.** This local fork also contains an
+experimental moving-object dexterous grasping track with RGB-D/object-mask style
+point cloud observations, DOMINO20 object support, W&B/video launch scripts, and
+deterministic evaluation utilities. See
+[README_DYNAMIC_GRASP.md](README_DYNAMIC_GRASP.md) for the archived dynamic-grasp
+versions and recommended baselines.
+
 # Project Structure
 
 ```

@@ -1,0 +1,22 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFast
+  - _self_
+
+env:
+  # Reward v3 shifts learning pressure from chasing/intercept shaping toward
+  # stable post-contact enclosure and penalizes dropped/timeout episodes.
+  dynamicGraspVelocityMatchRewScale: 0.15
+  dynamicGraspInterceptRewScale: 0.25
+  dynamicGraspPregraspAlignmentRewScale: 0.15
+  dynamicGraspEnclosureRewScale: 1.0
+  dynamicGraspLiftedEnclosureRewScale: 28.0
+  dynamicGraspLiftProgressRewScale: 24.0
+  dynamicGraspStableHoldRewScale: 240.0
+  dynamicGraspStableProgressRewScale: 180.0
+  dynamicGraspSuccessBonus: 4500.0
+  dynamicGraspPostContactRelVelPenaltyScale: 24.0
+  dynamicGraspPostContactRelVelMargin: 0.30
+  dynamicGraspPushAwayPenaltyScale: 32.0
+  dynamicGraspPushAwaySpeedMargin: 0.22
+  dynamicGraspDroppedPenaltyScale: 1200.0
+  dynamicGraspTimeoutPenaltyScale: 150.0

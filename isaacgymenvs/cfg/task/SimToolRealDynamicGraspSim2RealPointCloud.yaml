@@ -1,0 +1,28 @@
+defaults:
+  - SimToolRealDynamicGraspPointCloud
+  - _self_
+
+env:
+  # Sim2real-oriented RGB-D + object-mask observation model. This keeps the
+  # actor free of clean simulator object pose/keypoints and makes the simulated
+  # point cloud look more like a partial, noisy, camera-derived object crop.
+  objectPointCloudUsePartialView: True
+  objectPointCloudCandidateMultiplier: 6
+  objectPointCloudVisibleDotThreshold: 0.0
+  objectPointCloudCameraPos: [0.45, -0.75, 0.78]
+  objectPointCloudCameraPosNoiseStd: 0.015
+  objectPointCloudCentroidFromPoints: True
+
+  # RGB-D/mask failure modes.
+  objectPointCloudNoiseStd: 0.004
+  objectPointCloudDepthNoiseStd: 0.006
+  objectPointCloudDropoutProb: 0.25
+  objectPointCloudOutlierProb: 0.03
+  objectPointCloudOutlierScale: 0.08
+  objectPointCloudRandomizeOrder: True
+
+  # Deployable velocity proxy: estimate object velocity from observed pointcloud
+  # centroid differences instead of using simulator object state.
+  objectPointCloudVelocityFromCentroid: True
+  objectPointCloudVelocityNoiseStd: 0.04
+  objectPointCloudVelocityClip: 1.5

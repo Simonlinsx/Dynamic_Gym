@@ -201,7 +201,8 @@ class A2CBuilder(NetworkBuilder):
             self.critic_cnn = nn.Sequential()
             self.actor_mlp = nn.Sequential()
             self.critic_mlp = nn.Sequential()
-            
+            self.pointnet_mlp = nn.Sequential()
+	            
             if self.net_type == 'extra_param':
                 self.param_ids = kwargs['coef_ids']
                 param_size = kwargs.pop('param_size', 32)
@@ -209,6 +210,11 @@ class A2CBuilder(NetworkBuilder):
                 self.extra_params = nn.Parameter(torch.randn((len(self.param_ids), param_size), dtype=torch.float32, requires_grad=True), requires_grad=True)
                 assert len(input_shape) == 1
                 input_shape = (self.pid_idx + param_size,)
+
+            if self.has_pointnet:
+                assert len(input_shape) == 1
+                self._build_pointnet(input_shape[0])
+                input_shape = (self.pointnet_output_size,)
 
             if self.has_cnn:
                 if self.permute_input:
@@ -314,11 +320,84 @@ class A2CBuilder(NetworkBuilder):
                 else:
                     sigma_init(self.sigma.weight)  
 
+        def _build_pointnet(self, input_size):
+            self.pointnet_start_idx = int(self.pointnet_config['start_idx'])
+            self.pointnet_num_points = int(self.pointnet_config['num_points'])
+            self.pointnet_point_dim = int(self.pointnet_config.get('point_dim', 3))
+            self.pointnet_pooling = self.pointnet_config.get('pooling', 'max_mean')
+            self.pointnet_max_batch_size = int(
+                self.pointnet_config.get('max_batch_size', 2048)
+            )
+            pointcloud_size = self.pointnet_num_points * self.pointnet_point_dim
+            self.pointnet_end_idx = self.pointnet_start_idx + pointcloud_size
+            assert self.pointnet_start_idx >= 0
+            assert self.pointnet_end_idx <= input_size, (
+                f"PointNet slice [{self.pointnet_start_idx}, {self.pointnet_end_idx}) "
+                f"is outside input size {input_size}"
+            )
+
+            pointnet_units = self.pointnet_config.get('units', [64, 128, 128])
+            pointnet_activation = self.pointnet_config.get('activation', self.activation)
+            layers = []
+            in_features = self.pointnet_point_dim
+            for out_features in pointnet_units:
+                layers.append(nn.Linear(in_features, out_features))
+                layers.append(self.activations_factory.create(pointnet_activation))
+                in_features = out_features
+            self.pointnet_mlp = nn.Sequential(*layers)
+
+            if self.pointnet_pooling == 'max':
+                pooled_size = in_features
+            elif self.pointnet_pooling == 'mean':
+                pooled_size = in_features
+            elif self.pointnet_pooling == 'max_mean':
+                pooled_size = 2 * in_features
+            else:
+                raise ValueError(f"Unknown PointNet pooling {self.pointnet_pooling}")
+            self.pointnet_output_size = input_size - pointcloud_size + pooled_size
+
+        def _apply_pointnet_chunk(self, obs):
+            before = obs[:, :self.pointnet_start_idx]
+            points = obs[:, self.pointnet_start_idx:self.pointnet_end_idx]
+            after = obs[:, self.pointnet_end_idx:]
+            points = points.reshape(
+                obs.shape[0], self.pointnet_num_points, self.pointnet_point_dim
+            )
+            point_features = self.pointnet_mlp(
+                points.reshape(-1, self.pointnet_point_dim)
+            ).reshape(obs.shape[0], self.pointnet_num_points, -1)
+
+            if self.pointnet_pooling == 'max':
+                pooled = point_features.max(dim=1).values
+            elif self.pointnet_pooling == 'mean':
+                pooled = point_features.mean(dim=1)
+            else:
+                pooled = torch.cat(
+                    [point_features.max(dim=1).values, point_features.mean(dim=1)],
+                    dim=1,
+                )
+            return torch.cat([before, pooled, after], dim=1)
+
+        def _apply_pointnet(self, obs):
+            if not self.has_pointnet:
+                return obs
+            if obs.shape[0] <= self.pointnet_max_batch_size:
+                return self._apply_pointnet_chunk(obs)
+            chunks = []
+            for start_idx in range(0, obs.shape[0], self.pointnet_max_batch_size):
+                chunks.append(
+                    self._apply_pointnet_chunk(
+                        obs[start_idx:start_idx + self.pointnet_max_batch_size]
+                    )
+                )
+            return torch.cat(chunks, dim=0)
+
         def forward(self, obs_dict):
             obs = obs_dict['obs']
             if self.net_type == 'extra_param':
                 idxs = (obs[:,self.pid_idx].reshape(-1,1) == self.param_ids).float().argmax(dim=1)
                 obs = torch.cat([obs[:, :self.pid_idx], self.extra_params[idxs]], dim=1)
+            obs = self._apply_pointnet(obs)
             states = obs_dict.get('rnn_states', None)
             dones = obs_dict.get('dones', None)
             bptt_len = obs_dict.get('bptt_len', 0)
@@ -516,6 +595,8 @@ class A2CBuilder(NetworkBuilder):
             self.has_space = 'space' in params
             self.central_value = params.get('central_value', False)
             self.joint_obs_actions_config = params.get('joint_obs_actions', None)
+            self.has_pointnet = 'pointnet' in params
+            self.pointnet_config = params.get('pointnet', None)
 
             if self.has_space:
                 self.is_multi_discrete = 'multi_discrete'in params['space']
@@ -1003,4 +1084,3 @@ class SACBuilder(NetworkBuilder):
             else:
                 self.is_discrete = False
                 self.is_continuous = False
-

@@ -90,7 +90,12 @@ class BasePlayer(object):
 
         if self.expl_type != 'none':
             if self.expl_type.startswith('mixed_expl'):
-                embedding_genvec = torch.linspace(50.0, 0.0, self.env.num_envs).to(self.device_name)
+                num_expl_blocks = config.get('expl_num_blocks')
+                if num_expl_blocks is None:
+                    embedding_genvec = torch.linspace(50.0, 0.0, self.env.num_envs).to(self.device_name)
+                else:
+                    block_ids = torch.arange(self.env.num_envs, device=self.device_name) * int(num_expl_blocks) // self.env.num_envs
+                    embedding_genvec = torch.linspace(50.0, 0.0, int(num_expl_blocks)).to(self.device_name)[block_ids]
                 if 'disjoint' in self.expl_type or 'learn_param' in self.expl_type:
                     self.intr_reward_coef_embd = embedding_genvec.reshape(-1,1)
                 else:
@@ -331,6 +336,13 @@ class BasePlayer(object):
                 self.env.update_rigid_body_state_dict(rigid_body_state_tracker)
             batch_size = 1
             batch_size = self.get_batch_size(obses, batch_size)
+            num_eval_envs = batch_size // self.num_agents
+            if games_played == 0 and n_games <= num_eval_envs:
+                print(
+                    "Warning: games_num <= num_envs; with variable episode lengths, "
+                    "early completed episodes can bias the reported eval result. "
+                    "Use fewer eval envs or more games for a stable estimate."
+                )
 
             if need_init_rnn:
                 self.init_rnn()
@@ -436,6 +448,13 @@ class BasePlayer(object):
         print(f'steps: {(episode_length_tracker/episode_tracker).numpy()}')
         if 'successes' in info:
             print(f'successes: {(success_tracker/episode_tracker).numpy()}')
+            total_episodes = episode_tracker.sum()
+            if total_episodes > 0:
+                total_successes = success_tracker.sum()
+                print(
+                    f'total_success_rate: {(total_successes / total_episodes).item():.4f} '
+                    f'({total_successes.item():.2f}/{total_episodes.item():.0f})'
+                )
         print(f'num_episodes: {episode_tracker.numpy()}')
 
     

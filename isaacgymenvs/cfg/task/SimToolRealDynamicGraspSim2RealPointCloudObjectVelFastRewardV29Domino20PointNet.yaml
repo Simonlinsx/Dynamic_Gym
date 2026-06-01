@@ -1,0 +1,36 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV28Domino20PointNet
+  - _self_
+
+env:
+  # Reward v2.9: make success depend on a true fingertip grasp instead of
+  # allowing palm-only scooping to satisfy lifted/stable conditions.
+  dynamicGraspRequireTrueGraspForSuccess: True
+  dynamicGraspSurfaceContactDistance: 0.065
+  dynamicGraspMinFingerContacts: 2
+  dynamicGraspMinNonThumbContacts: 1
+  dynamicGraspOpposingDotThreshold: -0.05
+
+  # Keep some lift signal alive early in learning, but strongly discount lift
+  # rewards until the thumb and an opposing finger are on the object surface.
+  dynamicGraspGateLiftRewardByGraspQuality: True
+  dynamicGraspLiftRewardMinGraspQualityMultiplier: 0.15
+  liftingRewScale: 28.0
+  liftingBonus: 350.0
+  dynamicGraspLiftProgressRewScale: 18.0
+
+  # Dense shaping for closing around the object, then holding it after lift.
+  dynamicGraspTrueGraspQualityRewScale: 80.0
+  dynamicGraspLiftedTrueGraspRewScale: 240.0
+  dynamicGraspLiftedEnclosureRewScale: 12.0
+  dynamicGraspStableHoldRewScale: 230.0
+  dynamicGraspStableProgressRewScale: 220.0
+  dynamicGraspSuccessBonus: 4300.0
+
+  # Explicitly make scoop/palm-only lifting unattractive while keeping the
+  # existing impact, kick, push-away, and drop penalties from v2.8/v2.7.
+  dynamicGraspScoopLiftPenaltyScale: 220.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 380.0
+  dynamicGraspPalmOnlyLiftDist: 0.12
+  dynamicGraspPostContactRelVelPenaltyScale: 20.0
+  dynamicGraspPushAwayPenaltyScale: 24.0

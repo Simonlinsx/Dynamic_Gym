@@ -76,9 +76,155 @@ from isaacgymenvs.utils.torch_jit_utils import (
     to_torch,
     torch_rand_float,
     unscale,
+    quat_rotate_inverse,
 )
 
 DATETIME_STR = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+
+DEFAULT_DOMINO_OBJECT_VARIANTS = [
+    {
+        "label": "mug",
+        "asset_modelname": "039_mug",
+        "asset_model_id": 0,
+        "quat": [0.70710678, 0.70710678, 0.0, 0.0],
+        "mass": 0.035,
+    },
+    {
+        "label": "cup",
+        "asset_modelname": "021_cup",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.025,
+    },
+    {
+        "label": "bottle",
+        "asset_modelname": "001_bottle",
+        "asset_model_id": 13,
+        "quat": [0.70710678, 0.0, 0.0, 0.70710678],
+        "mass": 0.025,
+        "random_yaw": False,
+    },
+    {
+        "label": "drill",
+        "asset_modelname": "030_drill",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.035,
+    },
+    {
+        "label": "pill_bottle",
+        "asset_modelname": "080_pillbottle",
+        "asset_model_id": 1,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.025,
+    },
+    {
+        "label": "milk_box",
+        "asset_modelname": "038_milk-box",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.020,
+    },
+    {
+        "label": "can",
+        "asset_modelname": "071_can",
+        "asset_model_id": 0,
+        "quat": [0.707225, 0.706849, -0.0100455, -0.00982061],
+        "mass": 0.020,
+    },
+    {
+        "label": "milk_tea",
+        "asset_modelname": "101_milk-tea",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.025,
+    },
+    {
+        "label": "sauce_can",
+        "asset_modelname": "105_sauce-can",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.025,
+    },
+    {
+        "label": "tea_box",
+        "asset_modelname": "112_tea-box",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.018,
+    },
+    {
+        "label": "bowl",
+        "asset_modelname": "002_bowl",
+        "asset_model_id": 4,
+        "quat": [0.70710678, 0.70710678, 0.0, 0.0],
+        "mass": 0.025,
+    },
+    {
+        "label": "plate",
+        "asset_modelname": "003_plate",
+        "asset_model_id": 0,
+        "quat": [0.70710678, 0.70710678, 0.0, 0.0],
+        "mass": 0.018,
+    },
+    {
+        "label": "hammer",
+        "asset_modelname": "020_hammer",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.035,
+    },
+    {
+        "label": "screwdriver",
+        "asset_modelname": "032_screwdriver",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.018,
+    },
+    {
+        "label": "apple",
+        "asset_modelname": "035_apple",
+        "asset_model_id": 0,
+        "quat": [1.0, 0.0, 0.0, 0.0],
+        "mass": 0.025,
+    },
+    {
+        "label": "book",
+        "asset_modelname": "043_book",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.025,
+    },
+    {
+        "label": "mouse",
+        "asset_modelname": "047_mouse",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.018,
+    },
+    {
+        "label": "stapler",
+        "asset_modelname": "048_stapler",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.025,
+    },
+    {
+        "label": "dumbbell",
+        "asset_modelname": "052_dumbbell",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.035,
+    },
+    {
+        "label": "kettle",
+        "asset_modelname": "091_kettle",
+        "asset_model_id": 0,
+        "quat": [0.5, 0.5, 0.5, 0.5],
+        "mass": 0.035,
+    },
+]
 
 
 def assert_equals(a, b):
@@ -97,6 +243,13 @@ class SimToolReal(VecTask):
         force_render,
     ):
         self.cfg = cfg
+        self.task_mode = cfg["env"].get("taskMode", "goal_pose_reaching")
+        valid_task_modes = {"goal_pose_reaching", "dynamic_tabletop_grasp"}
+        if self.task_mode not in valid_task_modes:
+            raise ValueError(
+                f"Unknown taskMode {self.task_mode}; expected one of {valid_task_modes}"
+            )
+        self.dynamic_tabletop_grasp = self.task_mode == "dynamic_tabletop_grasp"
 
         # Goal related variables
         self.goal_object_indices = []
@@ -145,6 +298,351 @@ class SimToolReal(VecTask):
         self.hand_actions_penalty_scale = self.cfg["env"]["handActionsPenaltyScale"]
         self.object_lin_vel_penalty_scale = self.cfg["env"]["objectLinVelPenaltyScale"]
         self.object_ang_vel_penalty_scale = self.cfg["env"]["objectAngVelPenaltyScale"]
+
+        # Dynamic tabletop grasping parameters. These are only used when
+        # taskMode == "dynamic_tabletop_grasp"; defaults preserve legacy configs.
+        self.dynamic_grasp_initial_speed_range = self.cfg["env"].get(
+            "dynamicGraspInitialSpeedRange", [0.05, 0.25]
+        )
+        self.dynamic_grasp_initial_yaw_rate_range = self.cfg["env"].get(
+            "dynamicGraspInitialYawRateRange", [-2.0, 2.0]
+        )
+        self.dynamic_grasp_speed_curriculum = self.cfg["env"].get(
+            "dynamicGraspSpeedCurriculum", False
+        )
+        self.dynamic_grasp_start_speed_range = self.cfg["env"].get(
+            "dynamicGraspStartSpeedRange", self.dynamic_grasp_initial_speed_range
+        )
+        self.dynamic_grasp_start_yaw_rate_range = self.cfg["env"].get(
+            "dynamicGraspStartYawRateRange",
+            self.dynamic_grasp_initial_yaw_rate_range,
+        )
+        self.dynamic_grasp_speed_curriculum_steps = self.cfg["env"].get(
+            "dynamicGraspSpeedCurriculumSteps", 0
+        )
+        self.dynamic_grasp_persistent_motion = self.cfg["env"].get(
+            "dynamicGraspPersistentMotion", True
+        )
+        self.dynamic_grasp_bounce_at_workspace = self.cfg["env"].get(
+            "dynamicGraspBounceAtWorkspace", True
+        )
+        self.dynamic_grasp_workspace_x = self.cfg["env"].get(
+            "dynamicGraspWorkspaceX", [-0.45, 0.45]
+        )
+        self.dynamic_grasp_workspace_y = self.cfg["env"].get(
+            "dynamicGraspWorkspaceY", [-0.45, 0.45]
+        )
+        self.dynamic_grasp_velocity_match_scale = self.cfg["env"].get(
+            "dynamicGraspVelocityMatchScale", 0.25
+        )
+        self.dynamic_grasp_near_scale = self.cfg["env"].get(
+            "dynamicGraspNearScale", 0.20
+        )
+        self.dynamic_grasp_enclosure_distance_scale = self.cfg["env"].get(
+            "dynamicGraspEnclosureDistanceScale", 0.12
+        )
+        self.dynamic_grasp_intercept_lead_time = self.cfg["env"].get(
+            "dynamicGraspInterceptLeadTime", 0.0
+        )
+        self.dynamic_grasp_intercept_distance_scale = self.cfg["env"].get(
+            "dynamicGraspInterceptDistanceScale", 0.20
+        )
+        self.dynamic_grasp_pregrasp_ahead_distance = self.cfg["env"].get(
+            "dynamicGraspPregraspAheadDistance", 0.0
+        )
+        self.dynamic_grasp_pregrasp_distance_scale = self.cfg["env"].get(
+            "dynamicGraspPregraspDistanceScale", 0.20
+        )
+        self.dynamic_grasp_stable_fingertip_distance = self.cfg["env"].get(
+            "dynamicGraspStableFingertipDistance", 0.12
+        )
+        self.dynamic_grasp_stable_object_palm_vel = self.cfg["env"].get(
+            "dynamicGraspStableObjectPalmVel", 0.20
+        )
+        self.dynamic_grasp_success_steps_required = self.cfg["env"].get(
+            "dynamicGraspSuccessSteps", 30
+        )
+        self.dynamic_grasp_velocity_match_rew_scale = self.cfg["env"].get(
+            "dynamicGraspVelocityMatchRewScale", 2.0
+        )
+        self.dynamic_grasp_intercept_rew_scale = self.cfg["env"].get(
+            "dynamicGraspInterceptRewScale", 0.0
+        )
+        self.dynamic_grasp_pregrasp_alignment_rew_scale = self.cfg["env"].get(
+            "dynamicGraspPregraspAlignmentRewScale", 0.0
+        )
+        self.dynamic_grasp_enclosure_rew_scale = self.cfg["env"].get(
+            "dynamicGraspEnclosureRewScale", 5.0
+        )
+        self.dynamic_grasp_lifted_enclosure_rew_scale = self.cfg["env"].get(
+            "dynamicGraspLiftedEnclosureRewScale",
+            self.dynamic_grasp_enclosure_rew_scale,
+        )
+        self.dynamic_grasp_lift_progress_rew_scale = self.cfg["env"].get(
+            "dynamicGraspLiftProgressRewScale", 0.0
+        )
+        self.dynamic_grasp_stable_hold_rew_scale = self.cfg["env"].get(
+            "dynamicGraspStableHoldRewScale", 20.0
+        )
+        self.dynamic_grasp_success_bonus = self.cfg["env"].get(
+            "dynamicGraspSuccessBonus", self.cfg["env"].get("reachGoalBonus", 1000.0)
+        )
+        self.dynamic_grasp_stable_progress_rew_scale = self.cfg["env"].get(
+            "dynamicGraspStableProgressRewScale", 0.0
+        )
+        self.dynamic_grasp_lifted_rel_vel_rew_scale = self.cfg["env"].get(
+            "dynamicGraspLiftedRelVelRewScale", 0.0
+        )
+        self.dynamic_grasp_lifted_rel_vel_scale = self.cfg["env"].get(
+            "dynamicGraspLiftedRelVelScale",
+            max(self.dynamic_grasp_stable_object_palm_vel, 1e-3),
+        )
+        self.dynamic_grasp_lifted_centering_rew_scale = self.cfg["env"].get(
+            "dynamicGraspLiftedCenteringRewScale", 0.0
+        )
+        self.dynamic_grasp_lifted_centering_distance_scale = self.cfg["env"].get(
+            "dynamicGraspLiftedCenteringDistanceScale", 0.12
+        )
+        self.dynamic_grasp_lifted_height_hold_rew_scale = self.cfg["env"].get(
+            "dynamicGraspLiftedHeightHoldRewScale", 0.0
+        )
+        self.dynamic_grasp_lifted_enclosure_vel_rew_scale = self.cfg["env"].get(
+            "dynamicGraspLiftedEnclosureVelRewScale", 0.0
+        )
+        self.dynamic_grasp_stable_counter_decay = int(
+            self.cfg["env"].get("dynamicGraspStableCounterDecay", 0)
+        )
+        self.dynamic_grasp_post_contact_rel_vel_penalty_scale = self.cfg["env"].get(
+            "dynamicGraspPostContactRelVelPenaltyScale", 0.0
+        )
+        self.dynamic_grasp_post_contact_rel_vel_margin = self.cfg["env"].get(
+            "dynamicGraspPostContactRelVelMargin",
+            self.dynamic_grasp_stable_object_palm_vel,
+        )
+        self.dynamic_grasp_push_away_penalty_scale = self.cfg["env"].get(
+            "dynamicGraspPushAwayPenaltyScale", 0.0
+        )
+        self.dynamic_grasp_push_away_speed_margin = self.cfg["env"].get(
+            "dynamicGraspPushAwaySpeedMargin", 0.35
+        )
+        self.dynamic_grasp_push_away_height_margin = self.cfg["env"].get(
+            "dynamicGraspPushAwayHeightMargin", 0.16
+        )
+        self.dynamic_grasp_pre_contact_slow_rew_scale = self.cfg["env"].get(
+            "dynamicGraspPreContactSlowRewScale", 0.0
+        )
+        self.dynamic_grasp_pre_contact_slow_distance = self.cfg["env"].get(
+            "dynamicGraspPreContactSlowDistance", 0.18
+        )
+        self.dynamic_grasp_pre_contact_slow_vel_scale = self.cfg["env"].get(
+            "dynamicGraspPreContactSlowVelScale", 0.18
+        )
+        self.dynamic_grasp_controlled_contact_rew_scale = self.cfg["env"].get(
+            "dynamicGraspControlledContactRewScale", 0.0
+        )
+        self.dynamic_grasp_controlled_contact_vel_scale = self.cfg["env"].get(
+            "dynamicGraspControlledContactVelScale", 0.20
+        )
+        self.dynamic_grasp_impact_penalty_scale = self.cfg["env"].get(
+            "dynamicGraspImpactPenaltyScale", 0.0
+        )
+        self.dynamic_grasp_impact_rel_vel_margin = self.cfg["env"].get(
+            "dynamicGraspImpactRelVelMargin",
+            self.dynamic_grasp_post_contact_rel_vel_margin,
+        )
+        self.dynamic_grasp_kick_penalty_scale = self.cfg["env"].get(
+            "dynamicGraspKickPenaltyScale", 0.0
+        )
+        self.dynamic_grasp_kick_speed_margin = self.cfg["env"].get(
+            "dynamicGraspKickSpeedMargin", 0.08
+        )
+        self.dynamic_grasp_dropped_penalty_scale = self.cfg["env"].get(
+            "dynamicGraspDroppedPenaltyScale", 0.0
+        )
+        self.dynamic_grasp_timeout_penalty_scale = self.cfg["env"].get(
+            "dynamicGraspTimeoutPenaltyScale", 0.0
+        )
+        self.dynamic_grasp_safe_action_delta_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspSafeActionDeltaPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_safe_arm_target_delta_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspSafeArmTargetDeltaPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_safe_arm_target_accel_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspSafeArmTargetAccelPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_safe_hand_target_delta_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspSafeHandTargetDeltaPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_pregrasp_hold_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspPregraspHoldRewScale", 0.0)
+        )
+        self.dynamic_grasp_pregrasp_hold_vel_scale = float(
+            self.cfg["env"].get("dynamicGraspPregraspHoldVelScale", 0.12)
+        )
+        self.dynamic_grasp_pregrasp_ready_distance = float(
+            self.cfg["env"].get("dynamicGraspPregraspReadyDistance", 0.08)
+        )
+        self.dynamic_grasp_early_contact_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspEarlyContactPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_pre_contact_rel_vel_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspPreContactRelVelPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_pre_contact_rel_vel_margin = float(
+            self.cfg["env"].get("dynamicGraspPreContactRelVelMargin", 0.18)
+        )
+        self.dynamic_grasp_early_contact_grace_distance = float(
+            self.cfg["env"].get("dynamicGraspEarlyContactGraceDistance", 0.0)
+        )
+        self.dynamic_grasp_ready_enclosure_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspReadyEnclosureRewScale", 0.0)
+        )
+        self.dynamic_grasp_ready_grasp_quality_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspReadyGraspQualityRewScale", 0.0)
+        )
+        self.dynamic_grasp_ready_contact_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspReadyContactRewScale", 0.0)
+        )
+        self.dynamic_grasp_ready_contact_vel_scale = float(
+            self.cfg["env"].get(
+                "dynamicGraspReadyContactVelScale",
+                self.dynamic_grasp_controlled_contact_vel_scale,
+            )
+        )
+        self.dynamic_grasp_surface_contact_distance = float(
+            self.cfg["env"].get(
+                "dynamicGraspSurfaceContactDistance",
+                self.dynamic_grasp_stable_fingertip_distance,
+            )
+        )
+        self.dynamic_grasp_min_finger_contacts = int(
+            self.cfg["env"].get("dynamicGraspMinFingerContacts", 2)
+        )
+        self.dynamic_grasp_min_non_thumb_contacts = int(
+            self.cfg["env"].get("dynamicGraspMinNonThumbContacts", 1)
+        )
+        self.dynamic_grasp_opposing_dot_threshold = float(
+            self.cfg["env"].get("dynamicGraspOpposingDotThreshold", 0.0)
+        )
+        self.dynamic_grasp_require_true_grasp_for_success = bool(
+            self.cfg["env"].get("dynamicGraspRequireTrueGraspForSuccess", False)
+        )
+        self.dynamic_grasp_gate_lift_reward_by_grasp_quality = bool(
+            self.cfg["env"].get("dynamicGraspGateLiftRewardByGraspQuality", False)
+        )
+        self.dynamic_grasp_lift_reward_min_grasp_quality_multiplier = float(
+            self.cfg["env"].get(
+                "dynamicGraspLiftRewardMinGraspQualityMultiplier", 1.0
+            )
+        )
+        self.dynamic_grasp_true_grasp_quality_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspTrueGraspQualityRewScale", 0.0)
+        )
+        self.dynamic_grasp_lifted_true_grasp_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspLiftedTrueGraspRewScale", 0.0)
+        )
+        self.dynamic_grasp_quality_lift_progress_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspQualityLiftProgressRewScale", 0.0)
+        )
+        self.dynamic_grasp_opposing_contact_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspOpposingContactRewScale", 0.0)
+        )
+        self.dynamic_grasp_scoop_lift_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspScoopLiftPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_palm_only_lift_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspPalmOnlyLiftPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_palm_only_lift_dist = float(
+            self.cfg["env"].get("dynamicGraspPalmOnlyLiftDist", 0.12)
+        )
+        self.object_pointcloud_num_points = int(
+            self.cfg["env"].get("objectPointCloudNumPoints", 0)
+        )
+        self.object_pointcloud_noise_std = float(
+            self.cfg["env"].get("objectPointCloudNoiseStd", 0.0)
+        )
+        self.object_pointcloud_dropout_prob = float(
+            self.cfg["env"].get("objectPointCloudDropoutProb", 0.0)
+        )
+        self.object_pointcloud_use_partial_view = bool(
+            self.cfg["env"].get("objectPointCloudUsePartialView", False)
+        )
+        self.object_pointcloud_candidate_multiplier = max(
+            1, int(self.cfg["env"].get("objectPointCloudCandidateMultiplier", 1))
+        )
+        self.object_pointcloud_candidate_num_points = self.object_pointcloud_num_points
+        if self.object_pointcloud_use_partial_view:
+            self.object_pointcloud_candidate_num_points *= (
+                self.object_pointcloud_candidate_multiplier
+            )
+        self.object_pointcloud_visible_dot_threshold = float(
+            self.cfg["env"].get("objectPointCloudVisibleDotThreshold", 0.0)
+        )
+        self.object_pointcloud_camera_pos_cfg = self.cfg["env"].get(
+            "objectPointCloudCameraPos", [0.45, -0.75, 0.75]
+        )
+        self.object_pointcloud_camera_pos_noise_std = float(
+            self.cfg["env"].get("objectPointCloudCameraPosNoiseStd", 0.0)
+        )
+        self.object_pointcloud_depth_noise_std = float(
+            self.cfg["env"].get("objectPointCloudDepthNoiseStd", 0.0)
+        )
+        self.object_pointcloud_centroid_from_points = bool(
+            self.cfg["env"].get("objectPointCloudCentroidFromPoints", False)
+        )
+        self.object_pointcloud_outlier_prob = float(
+            self.cfg["env"].get("objectPointCloudOutlierProb", 0.0)
+        )
+        self.object_pointcloud_outlier_scale = float(
+            self.cfg["env"].get("objectPointCloudOutlierScale", 0.0)
+        )
+        self.object_pointcloud_randomize_order = bool(
+            self.cfg["env"].get("objectPointCloudRandomizeOrder", False)
+        )
+        self.object_pointcloud_velocity_from_centroid = bool(
+            self.cfg["env"].get("objectPointCloudVelocityFromCentroid", False)
+        )
+        self.object_pointcloud_velocity_noise_std = float(
+            self.cfg["env"].get("objectPointCloudVelocityNoiseStd", 0.0)
+        )
+        self.object_pointcloud_velocity_clip = float(
+            self.cfg["env"].get("objectPointCloudVelocityClip", 2.0)
+        )
+        self.object_pointcloud_use_mesh_surface = bool(
+            self.cfg["env"].get("objectPointCloudUseMeshSurface", False)
+        )
+        self.domino_object_asset_root = self.cfg["env"].get(
+            "dominoObjectAssetRoot", "/data1/linsixu/DOMINO/assets/objects"
+        )
+        self.domino_object_collision_source = self.cfg["env"].get(
+            "dominoObjectCollisionSource", "collision"
+        )
+        self.domino_object_visual_source = self.cfg["env"].get(
+            "dominoObjectVisualSource", "visual"
+        )
+        self.domino_object_need_vhacd = bool(
+            self.cfg["env"].get("dominoObjectNeedVhacd", True)
+        )
+        self.domino_object_table_top_offset = float(
+            self.cfg["env"].get("dominoObjectTableTopOffset", 0.15)
+        )
+        self.domino_object_spawn_z_margin = float(
+            self.cfg["env"].get("dominoObjectSpawnZMargin", 0.004)
+        )
+        self.domino_object_random_yaw_default = bool(
+            self.cfg["env"].get("dominoObjectRandomYaw", True)
+        )
+        self.domino_object_variants = self.cfg["env"].get(
+            "dominoObjectVariants", DEFAULT_DOMINO_OBJECT_VARIANTS
+        )
+        self.log_dynamic_object_pool_metrics = bool(
+            self.cfg["env"].get("logDynamicObjectPoolMetrics", True)
+        )
+        self.dynamic_object_pool_log_interval = max(
+            1, int(self.cfg["env"].get("dynamicObjectPoolLogInterval", 64))
+        )
 
         self.initial_tolerance = self.cfg["env"]["successTolerance"]
         self.target_tolerance = self.cfg["env"]["targetSuccessTolerance"]
@@ -244,6 +742,12 @@ class SimToolReal(VecTask):
         self.keypoints_offsets = self._object_keypoint_offsets()
 
         self.num_keypoints = len(self.keypoints_offsets)
+        (
+            self.object_pointcloud_unit_points_np,
+            self.object_pointcloud_unit_normals_np,
+        ) = self._object_pointcloud_unit_surface(
+            self.object_pointcloud_candidate_num_points
+        )
 
         self.fingertips = [
             "index_link_3",
@@ -286,6 +790,13 @@ class SimToolReal(VecTask):
                 dtype=np.float32,
                 # [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]], dtype=np.float32
             )
+        self.thumb_fingertip_idx = next(
+            (idx for idx, name in enumerate(self.fingertips) if "thumb" in name),
+            min(3, len(self.fingertips) - 1),
+        )
+        self.non_thumb_fingertip_indices = [
+            idx for idx in range(len(self.fingertips)) if idx != self.thumb_fingertip_idx
+        ]
         self.palm_offset = np.array([-0.00, -0.02, 0.16], dtype=np.float32)
 
         assert self.num_fingertips == len(self.fingertips)
@@ -307,9 +818,15 @@ class SimToolReal(VecTask):
             "palm_vel": 6,
             "object_rot": 4,
             "object_vel": 6,
+            "object_vel_rel_palm": 6,
             "fingertip_pos_rel_palm": 3 * self.num_fingertips,
             "keypoints_rel_palm": 3 * self.num_keypoints,
             "keypoints_rel_goal": 3 * self.num_keypoints,
+            "predicted_keypoints_rel_palm": 3 * self.num_keypoints,
+            "object_pointcloud_rel_palm": 3 * self.object_pointcloud_num_points,
+            "object_pointcloud_centroid_rel_palm": 3,
+            "object_pointcloud_vel_rel_palm": 3,
+            "object_pointcloud_tracking_confidence": 1,
             "object_scales": 3,
             "closest_keypoint_max_dist": 1,
             "closest_fingertip_dist": self.num_fingertips,
@@ -368,6 +885,27 @@ class SimToolReal(VecTask):
             headless=headless,
             virtual_screen_capture=virtual_screen_capture,
             force_render=force_render,
+        )
+        self.object_pointcloud_unit_points = to_torch(
+            self.object_pointcloud_unit_points_np,
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.object_pointcloud_unit_normals = to_torch(
+            self.object_pointcloud_unit_normals_np,
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.object_pointcloud_camera_pos = to_torch(
+            self.object_pointcloud_camera_pos_cfg,
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.prev_object_pointcloud_centroid_rel_palm = torch.zeros(
+            (self.num_envs, 3), dtype=torch.float, device=self.device
+        )
+        self.object_pointcloud_velocity_initialized = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
         )
 
         # Index of environment to view in viewer and camera
@@ -519,6 +1057,25 @@ class SimToolReal(VecTask):
         self.cur_targets = torch.zeros(
             (self.num_envs, self.num_dofs), dtype=torch.float, device=self.device
         )
+        self.prev_actions_for_penalty = torch.zeros(
+            (self.num_envs, self.num_robot_actions),
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.action_delta_for_penalty = torch.zeros_like(
+            self.prev_actions_for_penalty
+        )
+        self.prev_target_delta_for_penalty = torch.zeros(
+            (self.num_envs, self.num_hand_arm_dofs),
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.target_delta_for_penalty = torch.zeros_like(
+            self.prev_target_delta_for_penalty
+        )
+        self.target_accel_for_penalty = torch.zeros_like(
+            self.prev_target_delta_for_penalty
+        )
 
         self.global_indices = torch.arange(
             self.num_envs * 3, dtype=torch.int32, device=self.device
@@ -640,6 +1197,18 @@ class SimToolReal(VecTask):
         self.lifted_object = torch.zeros(
             self.num_envs, dtype=torch.bool, device=self.device
         )
+        self.dynamic_grasp_success_steps = torch.zeros(
+            self.num_envs, dtype=torch.int, device=self.device
+        )
+        self.dynamic_grasp_object_xy_velocity = torch.zeros(
+            (self.num_envs, 2), dtype=torch.float, device=self.device
+        )
+        self.dynamic_grasp_object_yaw_rate = torch.zeros(
+            self.num_envs, dtype=torch.float, device=self.device
+        )
+        self.prev_dynamic_grasp_contact_like = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
+        )
         self.closest_keypoint_max_dist = -torch.ones(
             self.num_envs, dtype=torch.float, device=self.device
         )
@@ -672,11 +1241,83 @@ class SimToolReal(VecTask):
             "raw_hand_delta_penalty",
             "raw_lifting_rew",
             "raw_keypoint_rew",
+            "raw_dynamic_velocity_match_rew",
+            "raw_dynamic_intercept_rew",
+            "raw_dynamic_pregrasp_alignment_rew",
+            "raw_dynamic_enclosure_rew",
+            "raw_dynamic_lift_progress_rew",
+            "raw_dynamic_stable_hold_rew",
+            "raw_dynamic_stable_grasp_progress_rew",
+            "raw_dynamic_lifted_rel_vel_rew",
+            "raw_dynamic_lifted_centering_rew",
+            "raw_dynamic_lifted_height_hold_rew",
+            "raw_dynamic_lifted_enclosure_vel_rew",
+            "raw_dynamic_pre_contact_slow_rew",
+            "raw_dynamic_controlled_contact_rew",
+            "raw_dynamic_impact_penalty",
+            "raw_dynamic_kick_penalty",
+            "raw_dynamic_object_palm_rel_vel_penalty",
+            "raw_dynamic_push_away_penalty",
+            "raw_dynamic_dropped_penalty",
+            "raw_dynamic_timeout_penalty",
+            "raw_dynamic_safe_action_delta_penalty",
+            "raw_dynamic_safe_arm_target_delta_penalty",
+            "raw_dynamic_safe_arm_target_accel_penalty",
+            "raw_dynamic_safe_hand_target_delta_penalty",
+            "raw_dynamic_pregrasp_hold_rew",
+            "raw_dynamic_early_contact_penalty",
+            "raw_dynamic_pre_contact_rel_vel_penalty",
+            "raw_dynamic_ready_enclosure_rew",
+            "raw_dynamic_ready_grasp_quality_rew",
+            "raw_dynamic_ready_contact_rew",
+            "raw_dynamic_true_grasp_quality_rew",
+            "raw_dynamic_lifted_true_grasp_rew",
+            "raw_dynamic_quality_lift_progress_rew",
+            "raw_dynamic_opposing_contact_rew",
+            "raw_dynamic_scoop_lift_penalty",
+            "raw_dynamic_palm_only_lift_penalty",
             "fingertip_delta_rew",
             "hand_delta_penalty",
             "lifting_rew",
             "lift_bonus_rew",
             "keypoint_rew",
+            "dynamic_velocity_match_rew",
+            "dynamic_intercept_rew",
+            "dynamic_pregrasp_alignment_rew",
+            "dynamic_enclosure_rew",
+            "dynamic_lifted_enclosure_rew",
+            "dynamic_lift_progress_rew",
+            "dynamic_stable_hold_rew",
+            "dynamic_stable_grasp_progress_rew",
+            "dynamic_lifted_rel_vel_rew",
+            "dynamic_lifted_centering_rew",
+            "dynamic_lifted_height_hold_rew",
+            "dynamic_lifted_enclosure_vel_rew",
+            "dynamic_pre_contact_slow_rew",
+            "dynamic_controlled_contact_rew",
+            "dynamic_impact_penalty",
+            "dynamic_kick_penalty",
+            "dynamic_object_palm_rel_vel_penalty",
+            "dynamic_push_away_penalty",
+            "dynamic_dropped_penalty",
+            "dynamic_timeout_penalty",
+            "dynamic_safe_action_delta_penalty",
+            "dynamic_safe_arm_target_delta_penalty",
+            "dynamic_safe_arm_target_accel_penalty",
+            "dynamic_safe_hand_target_delta_penalty",
+            "dynamic_pregrasp_hold_rew",
+            "dynamic_early_contact_penalty",
+            "dynamic_pre_contact_rel_vel_penalty",
+            "dynamic_ready_enclosure_rew",
+            "dynamic_ready_grasp_quality_rew",
+            "dynamic_ready_contact_rew",
+            "dynamic_true_grasp_quality_rew",
+            "dynamic_lifted_true_grasp_rew",
+            "dynamic_quality_lift_progress_rew",
+            "dynamic_opposing_contact_rew",
+            "dynamic_scoop_lift_penalty",
+            "dynamic_palm_only_lift_penalty",
+            "dynamic_success_bonus",
             "bonus_rew",
             "kuka_actions_penalty",
             "hand_actions_penalty",
@@ -782,6 +1423,21 @@ class SimToolReal(VecTask):
 
                 shutil.rmtree(self.eval_summary_dir)
             self.eval_summaries = SummaryWriter(self.eval_summary_dir, flush_secs=3)
+            self.eval_stop_after_each_env_once = bool(
+                self.cfg["env"].get("evalStopAfterEachEnvOnce", False)
+            )
+            self.eval_first_episode_recorded = torch.zeros(
+                self.num_envs, dtype=torch.bool, device=self.device
+            )
+            if hasattr(self, "object_asset_labels") and hasattr(
+                self, "object_asset_indices"
+            ):
+                self.eval_object_episode_counts = torch.zeros(
+                    len(self.object_asset_labels), dtype=torch.long, device=self.device
+                )
+                self.eval_object_success_counts = torch.zeros(
+                    len(self.object_asset_labels), dtype=torch.float, device=self.device
+                )
 
         if self.with_table_force_sensor:
             self.table_sensor_forces_raw = torch.zeros(
@@ -1159,6 +1815,685 @@ class SimToolReal(VecTask):
             [-1, -1, -1],
         ]
 
+    def _object_pointcloud_unit_points(self, num_points: int) -> np.ndarray:
+        points, _ = SimToolReal._object_pointcloud_unit_surface(self, num_points)
+        return points
+
+    def _object_pointcloud_unit_surface(
+        self, num_points: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        if num_points <= 0:
+            return (
+                np.zeros((0, 3), dtype=np.float32),
+                np.zeros((0, 3), dtype=np.float32),
+            )
+
+        rng = np.random.default_rng(20260518)
+        faces = rng.integers(0, 6, size=num_points)
+        uv = rng.uniform(-0.5, 0.5, size=(num_points, 2)).astype(np.float32)
+        points = np.zeros((num_points, 3), dtype=np.float32)
+        normals = np.zeros((num_points, 3), dtype=np.float32)
+
+        for point_idx, face in enumerate(faces):
+            axis = face // 2
+            sign = 0.5 if face % 2 == 0 else -0.5
+            free_axes = [idx for idx in range(3) if idx != axis]
+            points[point_idx, axis] = sign
+            points[point_idx, free_axes[0]] = uv[point_idx, 0]
+            points[point_idx, free_axes[1]] = uv[point_idx, 1]
+            normals[point_idx, axis] = 1.0 if sign > 0.0 else -1.0
+
+        points -= points.mean(axis=0, keepdims=True)
+        return points, normals
+
+    def _quat_wxyz_to_xyzw(self, quat: List[float]) -> np.ndarray:
+        quat_np = np.asarray(quat, dtype=np.float32).reshape(4)
+        norm = np.linalg.norm(quat_np)
+        if norm < 1e-8:
+            quat_np = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        else:
+            quat_np = quat_np / norm
+        return np.array(
+            [quat_np[1], quat_np[2], quat_np[3], quat_np[0]], dtype=np.float32
+        )
+
+    def _quat_xyzw_to_matrix_np(self, quat: np.ndarray) -> np.ndarray:
+        x, y, z, w = np.asarray(quat, dtype=np.float64).reshape(4)
+        norm = math.sqrt(x * x + y * y + z * z + w * w)
+        if norm < 1e-8:
+            return np.eye(3, dtype=np.float64)
+        x, y, z, w = x / norm, y / norm, z / norm, w / norm
+        return np.array(
+            [
+                [1.0 - 2.0 * (y * y + z * z), 2.0 * (x * y - z * w), 2.0 * (x * z + y * w)],
+                [2.0 * (x * y + z * w), 1.0 - 2.0 * (x * x + z * z), 2.0 * (y * z - x * w)],
+                [2.0 * (x * z - y * w), 2.0 * (y * z + x * w), 1.0 - 2.0 * (x * x + y * y)],
+            ],
+            dtype=np.float64,
+        )
+
+    def _domino_variant_value(self, variant, names, default=None):
+        if isinstance(names, str):
+            names = [names]
+        for name in names:
+            if name in variant:
+                return variant[name]
+        return default
+
+    def _domino_asset_file(
+        self, asset_root: Path, modelname: str, model_id: int, source: str
+    ) -> Path:
+        modeldir = asset_root / str(modelname)
+        source = str(source or "collision").lower()
+        preferred_dirs = (
+            [modeldir / "collision", modeldir, modeldir / "visual"]
+            if source == "collision"
+            else [modeldir / "visual", modeldir, modeldir / "collision"]
+        )
+        stems = [f"base{model_id}", "base"] if model_id is not None else ["base"]
+        suffixes = [".obj", ".glb", ".gltf", ".stl", ".ply"]
+        for directory in preferred_dirs:
+            if not directory.exists():
+                continue
+            for stem in stems:
+                for suffix in suffixes:
+                    path = directory / f"{stem}{suffix}"
+                    if path.exists():
+                        return path
+        raise FileNotFoundError(f"No DOMINO mesh found for {modelname}/base{model_id}")
+
+    def _domino_asset_scale(
+        self, asset_root: Path, modelname: str, model_id: int
+    ) -> np.ndarray:
+        modeldir = asset_root / str(modelname)
+        json_path = (
+            modeldir / "model_data.json"
+            if model_id is None
+            else modeldir / f"model_data{model_id}.json"
+        )
+        if not json_path.exists():
+            return np.ones(3, dtype=np.float64)
+        with open(json_path, "r") as f:
+            data = json.load(f)
+        scale_np = np.asarray(data.get("scale", [1.0, 1.0, 1.0]), dtype=np.float64)
+        scale_np = scale_np.reshape(-1)
+        if scale_np.size == 1:
+            return np.repeat(scale_np, 3)
+        return scale_np[:3]
+
+    def _load_domino_mesh(
+        self,
+        mesh_path: Path,
+        mesh_scale: np.ndarray,
+        recenter: Optional[np.ndarray] = None,
+    ):
+        import trimesh
+
+        mesh = trimesh.load(str(mesh_path), force="mesh", process=False)
+        if isinstance(mesh, trimesh.Scene):
+            parts = [
+                geom
+                for geom in mesh.geometry.values()
+                if hasattr(geom, "vertices") and len(geom.vertices) > 0
+            ]
+            if not parts:
+                raise RuntimeError(f"DOMINO mesh has no geometry: {mesh_path}")
+            mesh = trimesh.util.concatenate(parts)
+        if not hasattr(mesh, "vertices") or len(mesh.vertices) == 0:
+            raise RuntimeError(f"DOMINO mesh has no vertices: {mesh_path}")
+        mesh = mesh.copy()
+        mesh.apply_scale(mesh_scale)
+        if recenter is not None:
+            mesh.apply_translation(-np.asarray(recenter, dtype=np.float64))
+        return mesh
+
+    def _sample_mesh_surface_points(
+        self, mesh, num_points: int, seed: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        if num_points <= 0:
+            return (
+                np.zeros((0, 3), dtype=np.float32),
+                np.zeros((0, 3), dtype=np.float32),
+            )
+        import trimesh
+
+        np_state = np.random.get_state()
+        np.random.seed(seed)
+        try:
+            points, face_ids = trimesh.sample.sample_surface(mesh, num_points)
+        finally:
+            np.random.set_state(np_state)
+        normals = np.asarray(mesh.face_normals[face_ids], dtype=np.float32)
+        return points.astype(np.float32), normals.astype(np.float32)
+
+    def _write_domino_object_urdf(
+        self,
+        urdf_path: Path,
+        visual_mesh_name: str,
+        collision_mesh_name: str,
+        mass: float,
+        extents: np.ndarray,
+    ) -> None:
+        mass = max(float(mass), 1e-4)
+        extents = np.maximum(np.asarray(extents, dtype=np.float64), 1e-4)
+        ixx = mass * (extents[1] ** 2 + extents[2] ** 2) / 12.0
+        iyy = mass * (extents[0] ** 2 + extents[2] ** 2) / 12.0
+        izz = mass * (extents[0] ** 2 + extents[1] ** 2) / 12.0
+        urdf_path.parent.mkdir(parents=True, exist_ok=True)
+        urdf_text = f"""<?xml version="1.0"?>
+<robot name="{urdf_path.stem}">
+  <link name="object">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="{visual_mesh_name}" scale="1 1 1"/>
+      </geometry>
+      <material name="domino_gray">
+        <color rgba="0.65 0.65 0.65 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="{collision_mesh_name}" scale="1 1 1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="{mass}"/>
+      <inertia ixx="{ixx}" ixy="0" ixz="0" iyy="{iyy}" iyz="0" izz="{izz}"/>
+    </inertial>
+  </link>
+</robot>
+"""
+        with open(urdf_path, "w") as f:
+            f.write(urdf_text)
+
+    def _domino_object_assets(self, tmp_assets_dir: str):
+        asset_root = Path(self.domino_object_asset_root).expanduser().resolve()
+        if not asset_root.exists():
+            raise FileNotFoundError(f"DOMINO object asset root not found: {asset_root}")
+
+        variants = list(self.domino_object_variants or DEFAULT_DOMINO_OBJECT_VARIANTS)
+        if len(variants) == 0:
+            raise ValueError("dominoObjectVariants must contain at least one object")
+
+        generated_dir = Path(tmp_assets_dir) / "domino_20"
+        generated_dir.mkdir(parents=True, exist_ok=True)
+
+        object_asset_files = []
+        object_asset_scales = []
+        need_vhacds = []
+        pointcloud_points = []
+        pointcloud_normals = []
+        default_quats_xyzw = []
+        random_yaw_flags = []
+        table_z_offsets = []
+        labels = []
+
+        candidate_points = self.object_pointcloud_candidate_num_points
+        for asset_idx, variant in enumerate(variants):
+            label = str(
+                self._domino_variant_value(
+                    variant, ["label", "name", "asset_label"], f"object_{asset_idx}"
+                )
+            ).replace(" ", "_")
+            modelname = str(
+                self._domino_variant_value(
+                    variant, ["asset_modelname", "anydex_asset_modelname"]
+                )
+            )
+            model_id = self._domino_variant_value(
+                variant, ["asset_model_id", "anydex_asset_model_id"], 0
+            )
+            model_id = None if model_id is None else int(model_id)
+            mass = float(
+                self._domino_variant_value(
+                    variant, ["mass", "anydex_object_mass"], 0.025
+                )
+            )
+            mesh_scale = self._domino_asset_scale(asset_root, modelname, model_id)
+            collision_src = self._domino_asset_file(
+                asset_root, modelname, model_id, self.domino_object_collision_source
+            )
+            visual_src = self._domino_asset_file(
+                asset_root, modelname, model_id, self.domino_object_visual_source
+            )
+
+            collision_metric = self._load_domino_mesh(collision_src, mesh_scale)
+            center = collision_metric.bounds.mean(axis=0)
+            collision_mesh = self._load_domino_mesh(
+                collision_src, mesh_scale, recenter=center
+            )
+            visual_mesh = self._load_domino_mesh(
+                visual_src, mesh_scale, recenter=center
+            )
+
+            bounds = np.asarray(collision_mesh.bounds, dtype=np.float64)
+            extents = np.maximum(bounds[1] - bounds[0], 1e-4)
+            scale_for_policy = tuple((extents / self.object_base_size).tolist())
+
+            quat_wxyz = self._domino_variant_value(
+                variant,
+                ["quat", "anydex_object_orientation_quat", "dynamic_object_orientation_quat"],
+                [1.0, 0.0, 0.0, 0.0],
+            )
+            quat_xyzw = self._quat_wxyz_to_xyzw(quat_wxyz)
+            rotation = self._quat_xyzw_to_matrix_np(quat_xyzw)
+            corners = np.asarray(
+                [
+                    [x, y, z]
+                    for x in (bounds[0, 0], bounds[1, 0])
+                    for y in (bounds[0, 1], bounds[1, 1])
+                    for z in (bounds[0, 2], bounds[1, 2])
+                ],
+                dtype=np.float64,
+            )
+            rotated_corners = (rotation @ corners.T).T
+            half_height = max(0.0, float(-rotated_corners[:, 2].min()))
+
+            object_dir = generated_dir / f"{asset_idx:02d}_{label}"
+            object_dir.mkdir(parents=True, exist_ok=True)
+            visual_mesh_name = "visual.obj"
+            collision_mesh_name = "collision.obj"
+            visual_mesh.export(object_dir / visual_mesh_name)
+            collision_mesh.export(object_dir / collision_mesh_name)
+            urdf_path = object_dir / f"{label}.urdf"
+            self._write_domino_object_urdf(
+                urdf_path=urdf_path,
+                visual_mesh_name=visual_mesh_name,
+                collision_mesh_name=collision_mesh_name,
+                mass=mass,
+                extents=extents,
+            )
+
+            points, normals = self._sample_mesh_surface_points(
+                visual_mesh, candidate_points, seed=20260525 + asset_idx
+            )
+            object_asset_files.append(urdf_path)
+            object_asset_scales.append(scale_for_policy)
+            need_vhacds.append(self.domino_object_need_vhacd)
+            pointcloud_points.append(points)
+            pointcloud_normals.append(normals)
+            default_quats_xyzw.append(quat_xyzw)
+            random_yaw_flags.append(
+                bool(
+                    self._domino_variant_value(
+                        variant,
+                        ["random_yaw", "anydex_object_random_yaw"],
+                        self.domino_object_random_yaw_default,
+                    )
+                )
+            )
+            table_z_offsets.append(
+                self.domino_object_table_top_offset
+                + half_height
+                + self.domino_object_spawn_z_margin
+            )
+            labels.append(label)
+
+        self.object_asset_pointcloud_points_np = np.stack(pointcloud_points, axis=0)
+        self.object_asset_pointcloud_normals_np = np.stack(pointcloud_normals, axis=0)
+        self.object_asset_default_quats_xyzw_np = np.stack(
+            default_quats_xyzw, axis=0
+        ).astype(np.float32)
+        self.object_asset_random_yaw_np = np.asarray(random_yaw_flags, dtype=np.bool_)
+        self.object_asset_table_z_offsets_np = np.asarray(
+            table_z_offsets, dtype=np.float32
+        )
+        self.object_asset_labels = labels
+
+        print(f"Loaded DOMINO object pool ({len(labels)} objects): {labels}")
+        return object_asset_files, object_asset_scales, need_vhacds
+
+    def _object_pointcloud_observation(
+        self,
+        object_pos: Tensor,
+        object_rot: Tensor,
+        object_vel: Tensor,
+        palm_pos: Tensor,
+        palm_rot: Tensor,
+        palm_vel: Tensor,
+        add_noise: bool,
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        num_points = self.object_pointcloud_num_points
+        if num_points <= 0:
+            empty_cloud = torch.zeros((self.num_envs, 0), device=self.device)
+            empty_vec = torch.zeros((self.num_envs, 3), device=self.device)
+            confidence = torch.ones((self.num_envs, 1), device=self.device)
+            return empty_cloud, empty_vec, empty_vec, confidence
+
+        if self.object_pointcloud_unit_points.dim() == 3:
+            candidate_num_points = self.object_pointcloud_unit_points.shape[1]
+            local_points = self.object_pointcloud_unit_points
+            local_normals_for_env = self.object_pointcloud_unit_normals
+        else:
+            candidate_num_points = self.object_pointcloud_unit_points.shape[0]
+            object_sizes = (
+                self.object_scales
+                * self.object_base_size
+                * self.object_scale_noise_multiplier
+            )
+            local_points = self.object_pointcloud_unit_points[None, :, :] * object_sizes[
+                :, None, :
+            ]
+            local_normals_for_env = self.object_pointcloud_unit_normals[
+                None, :, :
+            ].expand(self.num_envs, -1, -1)
+        flat_local_points = local_points.reshape(-1, 3)
+        repeated_object_rot = object_rot[:, None, :].expand(
+            -1, candidate_num_points, -1
+        )
+        world_points = object_pos[:, None, :] + quat_rotate(
+            repeated_object_rot.reshape(-1, 4), flat_local_points
+        ).reshape(self.num_envs, candidate_num_points, 3)
+
+        tracking_confidence = torch.ones((self.num_envs, 1), device=self.device)
+        if self.object_pointcloud_use_partial_view:
+            flat_local_normals = local_normals_for_env.reshape(-1, 3)
+            world_normals = quat_rotate(
+                object_rot[:, None, :].expand(-1, candidate_num_points, -1).reshape(
+                    -1, 4
+                ),
+                flat_local_normals,
+            ).reshape(self.num_envs, candidate_num_points, 3)
+
+            camera_pos = self.object_pointcloud_camera_pos.unsqueeze(0).expand(
+                self.num_envs, -1
+            )
+            if add_noise and self.object_pointcloud_camera_pos_noise_std > 0.0:
+                camera_pos = camera_pos + (
+                    torch.randn_like(camera_pos)
+                    * self.object_pointcloud_camera_pos_noise_std
+                )
+
+            point_to_camera = camera_pos[:, None, :] - world_points
+            point_to_camera_unit = point_to_camera / torch.clamp(
+                torch.norm(point_to_camera, dim=-1, keepdim=True), min=1e-6
+            )
+            visible_scores = (world_normals * point_to_camera_unit).sum(dim=-1)
+            if add_noise:
+                visible_scores = visible_scores + 0.01 * torch.randn_like(
+                    visible_scores
+                )
+
+            _, selected_point_ids = torch.topk(
+                visible_scores, k=num_points, dim=1, largest=True, sorted=True
+            )
+            gather_ids = selected_point_ids[:, :, None].expand(-1, -1, 3)
+            world_points = torch.gather(world_points, 1, gather_ids)
+            tracking_confidence = (
+                visible_scores > self.object_pointcloud_visible_dot_threshold
+            ).float().mean(dim=1, keepdim=True)
+        else:
+            world_points = world_points[:, :num_points, :]
+
+        if add_noise and self.object_pointcloud_depth_noise_std > 0.0:
+            camera_pos = self.object_pointcloud_camera_pos.unsqueeze(0).expand(
+                self.num_envs, -1
+            )
+            camera_ray = world_points - camera_pos[:, None, :]
+            camera_ray_unit = camera_ray / torch.clamp(
+                torch.norm(camera_ray, dim=-1, keepdim=True), min=1e-6
+            )
+            world_points = world_points + (
+                camera_ray_unit
+                * torch.randn((self.num_envs, num_points, 1), device=self.device)
+                * self.object_pointcloud_depth_noise_std
+            )
+
+        rel_world_points = world_points - palm_pos[:, None, :]
+
+        repeated_palm_rot = palm_rot[:, None, :].expand(-1, num_points, -1)
+        points_rel_palm = quat_rotate_inverse(
+            repeated_palm_rot.reshape(-1, 4), rel_world_points.reshape(-1, 3)
+        ).reshape(self.num_envs, num_points, 3)
+
+        if self.object_pointcloud_centroid_from_points:
+            centroid_rel_palm = points_rel_palm.mean(dim=1)
+        else:
+            centroid_rel_world = object_pos - palm_pos
+            centroid_rel_palm = quat_rotate_inverse(palm_rot, centroid_rel_world)
+        vel_rel_world = object_vel[:, 0:3] - palm_vel[:, 0:3]
+        vel_rel_palm = quat_rotate_inverse(palm_rot, vel_rel_world)
+
+        if add_noise:
+            if self.object_pointcloud_noise_std > 0.0:
+                points_rel_palm = points_rel_palm + (
+                    torch.randn_like(points_rel_palm) * self.object_pointcloud_noise_std
+                )
+
+            if self.object_pointcloud_dropout_prob > 0.0:
+                keep_mask = (
+                    torch.rand(
+                        (self.num_envs, num_points, 1),
+                        dtype=torch.float,
+                        device=self.device,
+                    )
+                    > self.object_pointcloud_dropout_prob
+                )
+                tracking_confidence = tracking_confidence * keep_mask.float().mean(
+                    dim=1
+                )
+                points_rel_palm = torch.where(
+                    keep_mask,
+                    points_rel_palm,
+                    centroid_rel_palm[:, None, :],
+                )
+
+            if self.object_pointcloud_outlier_prob > 0.0:
+                outlier_mask = (
+                    torch.rand(
+                        (self.num_envs, num_points, 1),
+                        dtype=torch.float,
+                        device=self.device,
+                    )
+                    < self.object_pointcloud_outlier_prob
+                )
+                outlier_offsets = (
+                    torch.rand(
+                        (self.num_envs, num_points, 3),
+                        dtype=torch.float,
+                        device=self.device,
+                    )
+                    * 2.0
+                    - 1.0
+                ) * self.object_pointcloud_outlier_scale
+                points_rel_palm = torch.where(
+                    outlier_mask,
+                    centroid_rel_palm[:, None, :] + outlier_offsets,
+                    points_rel_palm,
+                )
+                tracking_confidence = tracking_confidence * (
+                    1.0 - outlier_mask.float().mean(dim=1)
+                )
+
+            if self.object_pointcloud_randomize_order:
+                random_order = torch.argsort(
+                    torch.rand(
+                        (self.num_envs, num_points),
+                        dtype=torch.float,
+                        device=self.device,
+                    ),
+                    dim=1,
+                )
+                points_rel_palm = torch.gather(
+                    points_rel_palm,
+                    1,
+                    random_order[:, :, None].expand(-1, -1, 3),
+                )
+
+        return (
+            points_rel_palm.reshape(self.num_envs, num_points * 3),
+            centroid_rel_palm,
+            vel_rel_palm,
+            tracking_confidence,
+        )
+
+    def _object_surface_points_world(self) -> Tensor:
+        num_points = int(self.object_pointcloud_num_points)
+        if num_points <= 0:
+            return self.object_pos[:, None, :]
+
+        if self.object_pointcloud_unit_points.dim() == 3:
+            local_points = self.object_pointcloud_unit_points[:, :num_points, :]
+            num_points = local_points.shape[1]
+        else:
+            num_points = min(num_points, self.object_pointcloud_unit_points.shape[0])
+            object_sizes = (
+                self.object_scales
+                * self.object_base_size
+                * self.object_scale_noise_multiplier
+            )
+            local_points = (
+                self.object_pointcloud_unit_points[None, :num_points, :]
+                * object_sizes[:, None, :]
+            )
+
+        repeated_object_rot = self.object_rot[:, None, :].expand(
+            -1, num_points, -1
+        )
+        return self.object_pos[:, None, :] + quat_rotate(
+            repeated_object_rot.reshape(-1, 4), local_points.reshape(-1, 3)
+        ).reshape(self.num_envs, num_points, 3)
+
+    def _dynamic_true_grasp_metrics(
+        self, object_palm_dist: Tensor, lifted_object: Tensor
+    ) -> dict:
+        surface_points = self._object_surface_points_world()
+        fingertip_surface_dist = torch.norm(
+            self.fingertip_pos_offset[:, :, None, :]
+            - surface_points[:, None, :, :],
+            dim=-1,
+        ).min(dim=-1).values
+
+        contact_scale = max(float(self.dynamic_grasp_surface_contact_distance), 1e-6)
+        contact_scores = torch.exp(-fingertip_surface_dist / contact_scale)
+        finger_contact = fingertip_surface_dist < contact_scale
+        finger_contact_count = finger_contact.float().sum(dim=-1)
+
+        thumb_idx = self.thumb_fingertip_idx
+        non_thumb_indices = self.non_thumb_fingertip_indices
+        thumb_score = contact_scores[:, thumb_idx]
+        thumb_contact = finger_contact[:, thumb_idx]
+
+        if len(non_thumb_indices) > 0:
+            non_thumb_scores = contact_scores[:, non_thumb_indices]
+            non_thumb_contact = finger_contact[:, non_thumb_indices]
+            non_thumb_contact_count = non_thumb_contact.float().sum(dim=-1)
+
+            fingertip_vectors = self.fingertip_pos_offset - self.object_pos[:, None, :]
+            fingertip_dirs = fingertip_vectors / torch.clamp(
+                torch.norm(fingertip_vectors, dim=-1, keepdim=True), min=1e-6
+            )
+            thumb_dir = fingertip_dirs[:, thumb_idx]
+            non_thumb_dirs = fingertip_dirs[:, non_thumb_indices]
+            thumb_to_finger_dot = (thumb_dir[:, None, :] * non_thumb_dirs).sum(dim=-1)
+
+            threshold = float(self.dynamic_grasp_opposing_dot_threshold)
+            opposition_den = max(threshold + 1.0, 1e-6)
+            opposition_progress = torch.clamp(
+                (threshold - thumb_to_finger_dot) / opposition_den,
+                0.0,
+                1.0,
+            )
+            opposing_score = (
+                opposition_progress * non_thumb_scores * thumb_score[:, None]
+            ).max(dim=1).values
+            opposing_contact = (
+                (thumb_to_finger_dot < threshold)
+                & non_thumb_contact
+                & thumb_contact[:, None]
+            ).any(dim=1)
+            non_thumb_quality = torch.clamp(
+                non_thumb_scores.sum(dim=-1)
+                / max(float(self.dynamic_grasp_min_non_thumb_contacts), 1.0),
+                0.0,
+                1.0,
+            )
+        else:
+            non_thumb_contact_count = torch.zeros_like(finger_contact_count)
+            opposing_score = torch.zeros_like(finger_contact_count)
+            opposing_contact = torch.zeros_like(thumb_contact)
+            non_thumb_quality = torch.zeros_like(finger_contact_count)
+
+        finger_count_quality = torch.clamp(
+            contact_scores.sum(dim=-1)
+            / max(float(self.dynamic_grasp_min_finger_contacts), 1.0),
+            0.0,
+            1.0,
+        )
+        grasp_quality = torch.clamp(
+            0.30 * finger_count_quality
+            + 0.25 * non_thumb_quality
+            + 0.25 * thumb_score
+            + 0.20 * opposing_score,
+            0.0,
+            1.0,
+        )
+        true_grasp = (
+            thumb_contact
+            & (non_thumb_contact_count >= self.dynamic_grasp_min_non_thumb_contacts)
+            & (finger_contact_count >= self.dynamic_grasp_min_finger_contacts)
+            & opposing_contact
+        )
+        scoop_lift = lifted_object & (~true_grasp)
+        palm_only_lift = (
+            lifted_object
+            & (object_palm_dist < self.dynamic_grasp_palm_only_lift_dist)
+            & (
+                (finger_contact_count < self.dynamic_grasp_min_finger_contacts)
+                | (non_thumb_contact_count < self.dynamic_grasp_min_non_thumb_contacts)
+                | (~thumb_contact)
+            )
+        )
+
+        return {
+            "fingertip_surface_dist": fingertip_surface_dist,
+            "finger_contact_count": finger_contact_count,
+            "non_thumb_contact_count": non_thumb_contact_count,
+            "thumb_contact": thumb_contact,
+            "opposing_contact": opposing_contact,
+            "opposing_score": opposing_score,
+            "grasp_quality": grasp_quality,
+            "true_grasp": true_grasp,
+            "scoop_lift": scoop_lift,
+            "palm_only_lift": palm_only_lift,
+        }
+
+    def _object_pointcloud_centroid_velocity_observation(
+        self, centroid_rel_palm: Tensor, add_noise: bool
+    ) -> Tensor:
+        dt = max(float(self.control_dt), 1e-6)
+        velocity_rel_palm = (
+            centroid_rel_palm - self.prev_object_pointcloud_centroid_rel_palm
+        ) / dt
+
+        initialized = self.object_pointcloud_velocity_initialized
+        initialized = initialized & (self.progress_buf > 1)
+        velocity_rel_palm = torch.where(
+            initialized[:, None],
+            velocity_rel_palm,
+            torch.zeros_like(velocity_rel_palm),
+        )
+
+        if add_noise and self.object_pointcloud_velocity_noise_std > 0.0:
+            velocity_rel_palm = velocity_rel_palm + (
+                torch.randn_like(velocity_rel_palm)
+                * self.object_pointcloud_velocity_noise_std
+            )
+
+        if self.object_pointcloud_velocity_clip > 0.0:
+            velocity_rel_palm = torch.clamp(
+                velocity_rel_palm,
+                -self.object_pointcloud_velocity_clip,
+                self.object_pointcloud_velocity_clip,
+            )
+
+        self.prev_object_pointcloud_centroid_rel_palm[:] = centroid_rel_palm.detach()
+        self.object_pointcloud_velocity_initialized[:] = True
+        return velocity_rel_palm
+
     def _object_start_pose(self, robot_pose, table_pose_dy, table_pose_dz):
         object_start_pose = gymapi.Transform()
         object_start_pose.p = gymapi.Vec3()
@@ -1200,6 +2535,11 @@ class SimToolReal(VecTask):
                 self._handle_head_primitives(
                     str(Path(tmp_assets_dir) / "handle_head_primitives"),
                 )
+            )
+
+        elif object_name in {"domino_20", "domino_object_pool"}:
+            object_asset_files, object_asset_scales, need_vhacds = (
+                self._domino_object_assets(tmp_assets_dir)
             )
 
         else:
@@ -1254,12 +2594,14 @@ class SimToolReal(VecTask):
                 self.sim, object_asset_dir, object_asset_fname, object_asset_options
             )
             object_assets.append(object_asset_)
-        object_rb_count = self.gym.get_asset_rigid_body_count(
-            object_assets[0]
-        )  # assuming all of them have the same rb count
-        object_shapes_count = self.gym.get_asset_rigid_shape_count(
-            object_assets[0]
-        )  # assuming all of them have the same rb count
+        object_rb_count = max(
+            self.gym.get_asset_rigid_body_count(object_asset)
+            for object_asset in object_assets
+        )
+        object_shapes_count = max(
+            self.gym.get_asset_rigid_shape_count(object_asset)
+            for object_asset in object_assets
+        )
         return object_assets, object_rb_count, object_shapes_count
 
     def _load_additional_assets(self, object_asset_root, arm_pose):
@@ -1283,16 +2625,20 @@ class SimToolReal(VecTask):
                 self.sim, object_asset_dir, object_asset_fname, object_asset_options
             )
             self.goal_assets.append(goal_asset_)
-        goal_rb_count = self.gym.get_asset_rigid_body_count(
-            self.goal_assets[0]
-        )  # assuming all of them have the same rb count
-        goal_shapes_count = self.gym.get_asset_rigid_shape_count(
-            self.goal_assets[0]
-        )  # assuming all of them have the same rb count
+        goal_rb_count = max(
+            self.gym.get_asset_rigid_body_count(goal_asset)
+            for goal_asset in self.goal_assets
+        )
+        goal_shapes_count = max(
+            self.gym.get_asset_rigid_shape_count(goal_asset)
+            for goal_asset in self.goal_assets
+        )
 
         return goal_rb_count, goal_shapes_count
 
-    def _create_additional_objects(self, env_ptr, env_idx, object_asset_idx):
+    def _create_additional_objects(
+        self, env_ptr, env_idx, object_asset_idx, object_start_pose=None
+    ):
         self.goal_displacement = gymapi.Vec3(-0.35, -0.06, 0.12)
         self.goal_displacement_tensor = to_torch(
             [
@@ -1302,9 +2648,12 @@ class SimToolReal(VecTask):
             ],
             device=self.device,
         )
+        if object_start_pose is None:
+            object_start_pose = self.object_start_pose
         goal_start_pose = gymapi.Transform()
-        goal_start_pose.p = self.object_start_pose.p + self.goal_displacement
+        goal_start_pose.p = object_start_pose.p + self.goal_displacement
         goal_start_pose.p.z -= 0.04
+        goal_start_pose.r = object_start_pose.r
 
         goal_asset = self.goal_assets[object_asset_idx]
         goal_handle = self.gym.create_actor(
@@ -1336,6 +2685,8 @@ class SimToolReal(VecTask):
         )
 
     def _extra_reset_rules(self, resets):
+        if self.dynamic_tabletop_grasp:
+            resets = resets | self._dynamic_tabletop_workspace_resets()
         return resets
 
     def _sample_delta_goal(
@@ -1522,6 +2873,9 @@ class SimToolReal(VecTask):
             true_objective=self.true_objective,
             near_goal_steps=self.near_goal_steps,
             lifted_object=self.lifted_object,
+            dynamic_grasp_success_steps=self.dynamic_grasp_success_steps,
+            dynamic_grasp_object_xy_velocity=self.dynamic_grasp_object_xy_velocity,
+            dynamic_grasp_object_yaw_rate=self.dynamic_grasp_object_yaw_rate,
             closest_keypoint_max_dist=self.closest_keypoint_max_dist,
             closest_keypoint_max_dist_fixed_size=self.closest_keypoint_max_dist_fixed_size,
             closest_fingertip_dist=self.closest_fingertip_dist,
@@ -1556,6 +2910,7 @@ class SimToolReal(VecTask):
         if env_state is None:
             return
 
+        had_shape_mismatch = False
         rewards_episode = env_state.get("rewards_episode", None)
         if rewards_episode is not None:
             for key in rewards_episode.keys():
@@ -1564,7 +2919,15 @@ class SimToolReal(VecTask):
                     and self.rewards_episode[key].shape == rewards_episode[key].shape
                 ):
                     self.rewards_episode[key].copy_(rewards_episode[key])
-        del env_state["rewards_episode"]
+                else:
+                    had_shape_mismatch = True
+                    print(
+                        "Skipping loading rewards_episode value",
+                        key,
+                        "because of shape mismatch",
+                    )
+        if "rewards_episode" in env_state:
+            del env_state["rewards_episode"]
 
         for key in self.get_env_state().keys():
             value = env_state.get(key, None)
@@ -1577,6 +2940,7 @@ class SimToolReal(VecTask):
                 isinstance(value, torch.Tensor)
                 and self.__dict__[key].shape != value.shape
             ):
+                had_shape_mismatch = True
                 print(
                     "Skipping loading env state value", key, "because of shape mismatch"
                 )
@@ -1594,11 +2958,18 @@ class SimToolReal(VecTask):
         self.arm_hand_dof_pos = self.arm_hand_dof_state[..., 0]
         self.arm_hand_dof_vel = self.arm_hand_dof_state[..., 1]
 
-        self.reset_idx(
-            torch.arange(self.num_envs, dtype=torch.long, device=self.device),
-            tensor_reset=False,
-        )
+        all_env_ids = torch.arange(self.num_envs, dtype=torch.long, device=self.device)
+        self.reset_idx(all_env_ids, tensor_reset=had_shape_mismatch)
         self.set_actor_root_state_tensor_indexed()
+        if had_shape_mismatch:
+            self.set_dof_state_tensor_indexed()
+            self.populate_sim_buffers()
+            self.populate_obs_and_states_buffers()
+            self.clamp_obs()
+            print(
+                "Checkpoint env state shape mismatched current env; reset all envs "
+                "instead of reusing partial saved state."
+            )
         print(
             f"Success tolerance value after loading from checkpoint: {self.success_tolerance}"
         )
@@ -1911,6 +3282,7 @@ class SimToolReal(VecTask):
         object_indices = []
         table_indices = []
         object_scales = []
+        object_asset_indices = []
         object_keypoint_offsets = []
         object_keypoint_offsets_fixed_size = []
 
@@ -2048,19 +3420,53 @@ class SimToolReal(VecTask):
             # add object
             object_asset_idx = i % len(object_assets)
             object_asset = object_assets[object_asset_idx]
+            object_asset_indices.append(object_asset_idx)
+
+            object_start_pose_for_env = gymapi.Transform()
+            object_start_pose_for_env.p = gymapi.Vec3(
+                self.object_start_pose.p.x,
+                self.object_start_pose.p.y,
+                self.object_start_pose.p.z,
+            )
+            object_start_pose_for_env.r = gymapi.Quat(
+                self.object_start_pose.r.x,
+                self.object_start_pose.r.y,
+                self.object_start_pose.r.z,
+                self.object_start_pose.r.w,
+            )
+            if hasattr(self, "object_asset_table_z_offsets_np"):
+                object_start_pose_for_env.p.z = table_pose.p.z + float(
+                    self.object_asset_table_z_offsets_np[object_asset_idx]
+                )
+            if hasattr(self, "object_asset_default_quats_xyzw_np"):
+                object_quat_xyzw = self.object_asset_default_quats_xyzw_np[
+                    object_asset_idx
+                ]
+                object_start_pose_for_env.r = gymapi.Quat(
+                    float(object_quat_xyzw[0]),
+                    float(object_quat_xyzw[1]),
+                    float(object_quat_xyzw[2]),
+                    float(object_quat_xyzw[3]),
+                )
 
             object_handle = self.gym.create_actor(
-                env_ptr, object_asset, self.object_start_pose, "object", i, 0, 0
+                env_ptr,
+                object_asset,
+                object_start_pose_for_env,
+                "object",
+                i,
+                0,
+                0,
             )
             object_init_state.append(
                 [
-                    self.object_start_pose.p.x,
-                    self.object_start_pose.p.y,
-                    self.object_start_pose.p.z,
-                    self.object_start_pose.r.x,
-                    self.object_start_pose.r.y,
-                    self.object_start_pose.r.z,
-                    self.object_start_pose.r.w,
+                    object_start_pose_for_env.p.x,
+                    object_start_pose_for_env.p.y,
+                    object_start_pose_for_env.p.z,
+                    object_start_pose_for_env.r.x,
+                    object_start_pose_for_env.r.y,
+                    object_start_pose_for_env.r.z,
+                    object_start_pose_for_env.r.w,
                     0,
                     0,
                     0,
@@ -2144,7 +3550,10 @@ class SimToolReal(VecTask):
 
             # task-specific objects (i.e. goal object for reorientation task)
             self._create_additional_objects(
-                env_ptr, env_idx=i, object_asset_idx=object_asset_idx
+                env_ptr,
+                env_idx=i,
+                object_asset_idx=object_asset_idx,
+                object_start_pose=object_start_pose_for_env,
             )
 
             self.gym.end_aggregate(env_ptr)
@@ -2195,6 +3604,17 @@ class SimToolReal(VecTask):
         self.table_init_state = to_torch(
             table_init_state, device=self.device, dtype=torch.float
         ).view(self.num_envs, 13)
+        object_asset_indices_np = np.asarray(object_asset_indices, dtype=np.int64)
+        if (
+            self.object_pointcloud_use_mesh_surface
+            and hasattr(self, "object_asset_pointcloud_points_np")
+        ):
+            self.object_pointcloud_unit_points_np = self.object_asset_pointcloud_points_np[
+                object_asset_indices_np
+            ].astype(np.float32)
+            self.object_pointcloud_unit_normals_np = self.object_asset_pointcloud_normals_np[
+                object_asset_indices_np
+            ].astype(np.float32)
         self.goal_states = self.object_init_state.clone()
         self.goal_states[:, self.up_axis_idx] -= 0.04
         self.goal_init_state = self.goal_states.clone()
@@ -2218,6 +3638,28 @@ class SimToolReal(VecTask):
         self.table_indices = to_torch(
             table_indices, dtype=torch.long, device=self.device
         )
+        self.object_asset_indices = to_torch(
+            object_asset_indices, dtype=torch.long, device=self.device
+        )
+        if hasattr(self, "object_asset_default_quats_xyzw_np"):
+            self.object_default_rot = to_torch(
+                self.object_asset_default_quats_xyzw_np[object_asset_indices_np],
+                dtype=torch.float,
+                device=self.device,
+            )
+            self.object_random_yaw = to_torch(
+                self.object_asset_random_yaw_np[object_asset_indices_np],
+                dtype=torch.bool,
+                device=self.device,
+            )
+            self.object_table_z_offsets = to_torch(
+                self.object_asset_table_z_offsets_np[object_asset_indices_np],
+                dtype=torch.float,
+                device=self.device,
+            )
+            self.object_asset_labels_for_env = [
+                self.object_asset_labels[asset_idx] for asset_idx in object_asset_indices
+            ]
         if self.VISUALIZE_PD_TARGET_AS_BLUE_ROBOT:
             self.blue_robot_indices = to_torch(
                 self.blue_robot_indices, dtype=torch.long, device=self.device
@@ -2394,6 +3836,1054 @@ class SimToolReal(VecTask):
 
         return -1 * kuka_actions_penalty, -1 * hand_actions_penalty
 
+    def _dynamic_grasp_speed_curriculum_alpha(self) -> float:
+        if (
+            not self.dynamic_grasp_speed_curriculum
+            or self.dynamic_grasp_speed_curriculum_steps <= 0
+        ):
+            return 1.0
+
+        return min(
+            float(self.frame_since_restart)
+            / float(self.dynamic_grasp_speed_curriculum_steps),
+            1.0,
+        )
+
+    def _dynamic_grasp_current_motion_ranges(self):
+        alpha = self._dynamic_grasp_speed_curriculum_alpha()
+
+        def lerp_range(start_range, target_range):
+            start_min, start_max = start_range
+            target_min, target_max = target_range
+            return (
+                start_min + (target_min - start_min) * alpha,
+                start_max + (target_max - start_max) * alpha,
+            )
+
+        speed_range = lerp_range(
+            self.dynamic_grasp_start_speed_range,
+            self.dynamic_grasp_initial_speed_range,
+        )
+        yaw_rate_range = lerp_range(
+            self.dynamic_grasp_start_yaw_rate_range,
+            self.dynamic_grasp_initial_yaw_rate_range,
+        )
+        return speed_range, yaw_rate_range, alpha
+
+    def _set_dynamic_object_initial_velocity(
+        self, env_ids: Tensor, obj_indices: Tensor
+    ) -> None:
+        """Give reset objects a planar tabletop velocity for dynamic grasping."""
+        if len(env_ids) == 0:
+            return
+
+        speed_range, yaw_rate_range, _ = self._dynamic_grasp_current_motion_ranges()
+        min_speed, max_speed = speed_range
+        min_yaw_rate, max_yaw_rate = yaw_rate_range
+        speeds = torch_rand_float(
+            min_speed, max_speed, (len(env_ids), 1), device=self.device
+        )
+        headings = torch_rand_float(
+            -math.pi, math.pi, (len(env_ids), 1), device=self.device
+        )
+        planar_vel = torch.cat(
+            [torch.cos(headings) * speeds, torch.sin(headings) * speeds], dim=-1
+        )
+        yaw_rates = torch_rand_float(
+            min_yaw_rate, max_yaw_rate, (len(env_ids), 1), device=self.device
+        )
+
+        self.root_state_tensor[obj_indices, 7:13] = 0.0
+        self.root_state_tensor[obj_indices, 7:9] = planar_vel
+        self.root_state_tensor[obj_indices, 12:13] = yaw_rates
+        self.dynamic_grasp_object_xy_velocity[env_ids] = planar_vel
+        self.dynamic_grasp_object_yaw_rate[env_ids] = yaw_rates.squeeze(-1)
+
+    def _apply_dynamic_tabletop_motion(self) -> None:
+        """Keep unlifted dynamic-grasp objects sliding despite tabletop friction."""
+        if not self.dynamic_tabletop_grasp or not self.dynamic_grasp_persistent_motion:
+            return
+
+        active_env_ids = (~self.lifted_object).nonzero(as_tuple=False).squeeze(-1)
+        if len(active_env_ids) == 0:
+            return
+
+        obj_indices = self.object_indices[active_env_ids]
+        desired_xy_vel = self.dynamic_grasp_object_xy_velocity[active_env_ids].clone()
+
+        if self.dynamic_grasp_bounce_at_workspace:
+            x_min, x_max = self.dynamic_grasp_workspace_x
+            y_min, y_max = self.dynamic_grasp_workspace_y
+            object_xy = self.root_state_tensor[obj_indices, 0:2]
+            hit_x = (
+                ((object_xy[:, 0] <= x_min) & (desired_xy_vel[:, 0] < 0.0))
+                | ((object_xy[:, 0] >= x_max) & (desired_xy_vel[:, 0] > 0.0))
+            )
+            hit_y = (
+                ((object_xy[:, 1] <= y_min) & (desired_xy_vel[:, 1] < 0.0))
+                | ((object_xy[:, 1] >= y_max) & (desired_xy_vel[:, 1] > 0.0))
+            )
+            desired_xy_vel[hit_x, 0] *= -1.0
+            desired_xy_vel[hit_y, 1] *= -1.0
+            self.dynamic_grasp_object_xy_velocity[active_env_ids] = desired_xy_vel
+
+        self.root_state_tensor[obj_indices, 7:9] = desired_xy_vel
+        self.root_state_tensor[obj_indices, 12] = self.dynamic_grasp_object_yaw_rate[
+            active_env_ids
+        ]
+        self.deferred_set_actor_root_state_tensor_indexed([obj_indices])
+
+    def _dynamic_tabletop_workspace_resets(self) -> Tensor:
+        """Reset dynamic-grasp episodes when the moving object leaves the table area."""
+        x_min, x_max = self.dynamic_grasp_workspace_x
+        y_min, y_max = self.dynamic_grasp_workspace_y
+        object_out_of_workspace = (
+            (self.object_pos[:, 0] < x_min)
+            | (self.object_pos[:, 0] > x_max)
+            | (self.object_pos[:, 1] < y_min)
+            | (self.object_pos[:, 1] > y_max)
+        )
+        self.extras["reset/dynamic_object_out_of_workspace"] = (
+            object_out_of_workspace.float().mean().item()
+        )
+        return object_out_of_workspace.to(dtype=self.reset_buf.dtype)
+
+    def _log_dynamic_object_pool_metrics(
+        self,
+        is_success: Tensor,
+        lifted_object: Tensor,
+        stable_grasp: Tensor,
+        lift_progress: Tensor,
+        object_palm_rel_speed: Tensor,
+        true_grasp: Optional[Tensor] = None,
+        grasp_quality: Optional[Tensor] = None,
+        scoop_lift: Optional[Tensor] = None,
+        palm_only_lift: Optional[Tensor] = None,
+    ) -> None:
+        if (
+            not self.log_dynamic_object_pool_metrics
+            or not hasattr(self, "object_asset_indices")
+            or not hasattr(self, "object_asset_labels")
+        ):
+            return
+        if self.frame_since_restart % self.dynamic_object_pool_log_interval != 0:
+            return
+
+        mask_values = self.object_asset_indices
+        metrics = {
+            "success": is_success.float(),
+            "lifted": lifted_object.float(),
+            "stable_grasp": stable_grasp.float(),
+            "lift_progress": lift_progress.float(),
+            "object_palm_rel_speed": object_palm_rel_speed.float(),
+        }
+        if true_grasp is not None:
+            metrics["true_grasp"] = true_grasp.float()
+        if grasp_quality is not None:
+            metrics["grasp_quality"] = grasp_quality.float()
+        if scoop_lift is not None:
+            metrics["scoop_lift"] = scoop_lift.float()
+        if palm_only_lift is not None:
+            metrics["palm_only_lift"] = palm_only_lift.float()
+        for asset_idx, label in enumerate(self.object_asset_labels):
+            env_mask = mask_values == asset_idx
+            env_mask_float = env_mask.float()
+            count = env_mask_float.sum().clamp(min=1.0)
+            for metric_name, metric_value in metrics.items():
+                self.extras[f"dynamic_object/{label}/{metric_name}"] = (
+                    (metric_value * env_mask_float).sum() / count
+                ).item()
+
+    def _compute_dynamic_tabletop_grasp_reward(self) -> Tuple[Tensor, Tensor]:
+        lifting_rew, lift_bonus_rew, lifted_object = self._lifting_reward()
+        fingertip_delta_rew, hand_delta_penalty = self._distance_delta_rewards(
+            lifted_object
+        )
+
+        kuka_actions_penalty, hand_actions_penalty = self._action_penalties()
+
+        closest_fingertip_dist = self.curr_fingertip_distances.min(dim=-1).values
+        mean_fingertip_dist = self.curr_fingertip_distances.mean(dim=-1)
+        near_object_weight = torch.exp(
+            -closest_fingertip_dist / self.dynamic_grasp_near_scale
+        )
+
+        object_xy_vel = self.object_linvel[:, 0:2]
+        palm_xy_vel = self._palm_state[:, 7:9]
+        rel_xy_speed = torch.norm(palm_xy_vel - object_xy_vel, dim=-1)
+        dynamic_velocity_match_rew = (
+            torch.exp(-rel_xy_speed / self.dynamic_grasp_velocity_match_scale)
+            * near_object_weight
+            * (~lifted_object)
+        )
+
+        predicted_object_xy = (
+            self.object_pos[:, 0:2]
+            + object_xy_vel * self.dynamic_grasp_intercept_lead_time
+        )
+        palm_intercept_xy_dist = torch.norm(
+            self.palm_center_pos[:, 0:2] - predicted_object_xy, dim=-1
+        )
+        dynamic_intercept_rew = (
+            torch.exp(
+                -palm_intercept_xy_dist
+                / self.dynamic_grasp_intercept_distance_scale
+            )
+            * (~lifted_object)
+        )
+
+        object_xy_speed = torch.norm(object_xy_vel, dim=-1, keepdim=True)
+        object_xy_dir = object_xy_vel / torch.clamp(object_xy_speed, min=1e-4)
+        pregrasp_target_xy = (
+            predicted_object_xy
+            + object_xy_dir * self.dynamic_grasp_pregrasp_ahead_distance
+        )
+        palm_pregrasp_xy_dist = torch.norm(
+            self.palm_center_pos[:, 0:2] - pregrasp_target_xy, dim=-1
+        )
+        dynamic_pregrasp_alignment_rew = (
+            torch.exp(
+                -palm_pregrasp_xy_dist
+                / self.dynamic_grasp_pregrasp_distance_scale
+            )
+            * (~lifted_object)
+        )
+
+        dynamic_enclosure_base_rew = torch.exp(
+            -mean_fingertip_dist / self.dynamic_grasp_enclosure_distance_scale
+        )
+        dynamic_enclosure_rew = dynamic_enclosure_base_rew * (~lifted_object)
+        dynamic_lifted_enclosure_rew = dynamic_enclosure_base_rew * lifted_object
+
+        lift_target_height = max(self.lifting_bonus_threshold - 0.05, 1e-3)
+        lift_progress = torch.clamp(
+            (self.object_pos[:, 2] - self.object_init_state[:, 2])
+            / lift_target_height,
+            0.0,
+            1.0,
+        )
+        dynamic_lift_progress_rew = (
+            lift_progress * dynamic_enclosure_base_rew * (~lifted_object)
+        )
+        dynamic_safe_action_delta_penalty = torch.sum(
+            torch.square(self.action_delta_for_penalty), dim=-1
+        )
+        dynamic_safe_arm_target_delta_penalty = torch.sum(
+            torch.square(self.target_delta_for_penalty[:, : self.num_arm_dofs]),
+            dim=-1,
+        )
+        dynamic_safe_arm_target_accel_penalty = torch.sum(
+            torch.square(self.target_accel_for_penalty[:, : self.num_arm_dofs]),
+            dim=-1,
+        )
+        dynamic_safe_hand_target_delta_penalty = torch.sum(
+            torch.square(
+                self.target_delta_for_penalty[
+                    :, self.num_arm_dofs : self.num_hand_arm_dofs
+                ]
+            ),
+            dim=-1,
+        )
+
+        object_palm_rel_speed = torch.norm(
+            self.object_linvel - self._palm_state[:, 7:10], dim=-1
+        )
+        lifted_object_float = lifted_object.float()
+        object_palm_dist = torch.norm(
+            self.object_pos - self.palm_center_pos, dim=-1
+        )
+        true_grasp_metrics = self._dynamic_true_grasp_metrics(
+            object_palm_dist, lifted_object
+        )
+        grasp_quality = true_grasp_metrics["grasp_quality"]
+        true_grasp = true_grasp_metrics["true_grasp"]
+        dynamic_true_grasp_quality_rew = grasp_quality * (~lifted_object).float()
+        dynamic_lifted_true_grasp_rew = true_grasp.float() * lifted_object_float
+        dynamic_quality_lift_progress_rew = (
+            grasp_quality
+            * lift_progress
+            * dynamic_enclosure_base_rew
+            * (~lifted_object).float()
+        )
+        dynamic_opposing_contact_rew = (
+            true_grasp_metrics["opposing_score"] * (~lifted_object).float()
+        )
+        dynamic_scoop_lift_penalty = (
+            true_grasp_metrics["scoop_lift"].float() * (1.0 - grasp_quality)
+        )
+        dynamic_palm_only_lift_penalty = true_grasp_metrics[
+            "palm_only_lift"
+        ].float()
+
+        if self.dynamic_grasp_gate_lift_reward_by_grasp_quality:
+            min_multiplier = float(
+                self.dynamic_grasp_lift_reward_min_grasp_quality_multiplier
+            )
+            lift_reward_gate = min_multiplier + (1.0 - min_multiplier) * grasp_quality
+            lifting_rew *= lift_reward_gate
+            lift_bonus_rew *= lift_reward_gate
+            dynamic_lift_progress_rew *= lift_reward_gate
+
+        stable_grasp_base = (
+            lifted_object
+            & (mean_fingertip_dist < self.dynamic_grasp_stable_fingertip_distance)
+            & (object_palm_rel_speed < self.dynamic_grasp_stable_object_palm_vel)
+        )
+        if self.dynamic_grasp_require_true_grasp_for_success:
+            stable_grasp = stable_grasp_base & true_grasp
+        else:
+            stable_grasp = stable_grasp_base
+        if self.dynamic_grasp_stable_counter_decay > 0:
+            stable_grasp_int = stable_grasp.to(
+                dtype=self.dynamic_grasp_success_steps.dtype
+            )
+            counter_decay = torch.full_like(
+                self.dynamic_grasp_success_steps,
+                self.dynamic_grasp_stable_counter_decay,
+            )
+            counter_delta = torch.where(
+                stable_grasp,
+                stable_grasp_int,
+                -counter_decay,
+            )
+            self.dynamic_grasp_success_steps = torch.clamp(
+                self.dynamic_grasp_success_steps + counter_delta,
+                min=0,
+                max=self.dynamic_grasp_success_steps_required,
+            )
+        else:
+            stable_grasp_int = stable_grasp.to(
+                dtype=self.dynamic_grasp_success_steps.dtype
+            )
+            self.dynamic_grasp_success_steps = (
+                self.dynamic_grasp_success_steps + stable_grasp_int
+            ) * stable_grasp_int
+
+        stable_grasp_progress = torch.clamp(
+            self.dynamic_grasp_success_steps.float()
+            / max(float(self.dynamic_grasp_success_steps_required), 1.0),
+            0.0,
+            1.0,
+        )
+        dynamic_lifted_rel_vel_rew = (
+            torch.exp(
+                -object_palm_rel_speed
+                / max(float(self.dynamic_grasp_lifted_rel_vel_scale), 1e-6)
+            )
+            * lifted_object_float
+        )
+        dynamic_lifted_centering_rew = (
+            torch.exp(
+                -object_palm_dist
+                / max(
+                    float(self.dynamic_grasp_lifted_centering_distance_scale),
+                    1e-6,
+                )
+            )
+            * lifted_object_float
+        )
+        dynamic_lifted_height_hold_rew = lift_progress * lifted_object_float
+        dynamic_lifted_enclosure_vel_rew = (
+            dynamic_enclosure_base_rew * dynamic_lifted_rel_vel_rew
+        )
+        contact_like = (
+            (closest_fingertip_dist < self.dynamic_grasp_stable_fingertip_distance)
+            | lifted_object
+        )
+        pregrasp_ready = (
+            palm_pregrasp_xy_dist < self.dynamic_grasp_pregrasp_ready_distance
+        )
+        palm_xy_speed = torch.norm(palm_xy_vel, dim=-1)
+        dynamic_pregrasp_hold_rew = (
+            torch.exp(
+                -palm_pregrasp_xy_dist
+                / max(float(self.dynamic_grasp_pregrasp_distance_scale), 1e-6)
+            )
+            * torch.exp(
+                -palm_xy_speed
+                / max(float(self.dynamic_grasp_pregrasp_hold_vel_scale), 1e-6)
+            )
+            * (~contact_like).float()
+            * (~lifted_object).float()
+        )
+        if self.dynamic_grasp_early_contact_grace_distance > 0.0:
+            early_contact_not_ready_weight = torch.clamp(
+                (
+                    palm_pregrasp_xy_dist
+                    - self.dynamic_grasp_pregrasp_ready_distance
+                )
+                / self.dynamic_grasp_early_contact_grace_distance,
+                min=0.0,
+                max=1.0,
+            )
+        else:
+            early_contact_not_ready_weight = (~pregrasp_ready).float()
+        dynamic_early_contact_penalty = (
+            contact_like.float()
+            * early_contact_not_ready_weight
+            * (~lifted_object).float()
+        )
+        pre_contact_rel_vel_mask = (
+            (object_palm_dist < self.dynamic_grasp_pre_contact_slow_distance)
+            & (~contact_like)
+            & (~lifted_object)
+        )
+        dynamic_pre_contact_rel_vel_penalty = (
+            torch.square(
+                torch.clamp(
+                    object_palm_rel_speed
+                    - self.dynamic_grasp_pre_contact_rel_vel_margin,
+                    min=0.0,
+                )
+            )
+            * pre_contact_rel_vel_mask.float()
+        )
+        contact_onset = contact_like & (~self.prev_dynamic_grasp_contact_like)
+        pre_contact_slow_mask = (
+            (object_palm_dist < self.dynamic_grasp_pre_contact_slow_distance)
+            & (~contact_like)
+            & (~lifted_object)
+        )
+        dynamic_pre_contact_slow_rew = (
+            torch.exp(
+                -object_palm_rel_speed
+                / max(float(self.dynamic_grasp_pre_contact_slow_vel_scale), 1e-6)
+            )
+            * pre_contact_slow_mask.float()
+        )
+        dynamic_controlled_contact_rew = (
+            contact_like.float()
+            * (~lifted_object).float()
+            * dynamic_enclosure_base_rew
+            * torch.exp(
+                -object_palm_rel_speed
+                / max(
+                    float(self.dynamic_grasp_controlled_contact_vel_scale), 1e-6
+                )
+            )
+        )
+        pregrasp_ready_not_lifted = pregrasp_ready.float() * (~lifted_object).float()
+        dynamic_ready_enclosure_rew = (
+            dynamic_enclosure_base_rew * pregrasp_ready_not_lifted
+        )
+        dynamic_ready_grasp_quality_rew = (
+            grasp_quality * pregrasp_ready_not_lifted
+        )
+        dynamic_ready_contact_rew = (
+            contact_like.float()
+            * pregrasp_ready_not_lifted
+            * dynamic_enclosure_base_rew
+            * torch.exp(
+                -object_palm_rel_speed
+                / max(float(self.dynamic_grasp_ready_contact_vel_scale), 1e-6)
+            )
+        )
+        dynamic_impact_penalty = (
+            torch.square(
+                torch.clamp(
+                    object_palm_rel_speed - self.dynamic_grasp_impact_rel_vel_margin,
+                    min=0.0,
+                )
+            )
+            * contact_onset.float()
+            * (~lifted_object).float()
+        )
+        dynamic_object_palm_rel_vel_penalty = (
+            torch.clamp(
+                object_palm_rel_speed
+                - self.dynamic_grasp_post_contact_rel_vel_margin,
+                min=0.0,
+            )
+            * contact_like.float()
+        )
+
+        commanded_xy_speed = torch.norm(
+            self.dynamic_grasp_object_xy_velocity, dim=-1
+        )
+        current_object_xy_speed = torch.norm(object_xy_vel, dim=-1)
+        dynamic_kick_penalty = (
+            torch.square(
+                torch.clamp(
+                    current_object_xy_speed
+                    - commanded_xy_speed
+                    - self.dynamic_grasp_kick_speed_margin,
+                    min=0.0,
+                )
+            )
+            * contact_like.float()
+            * (~lifted_object).float()
+            * (~stable_grasp).float()
+        )
+        excess_xy_speed = torch.clamp(
+            current_object_xy_speed
+            - commanded_xy_speed
+            - self.dynamic_grasp_push_away_speed_margin,
+            min=0.0,
+        )
+        excess_uncontrolled_height = (
+            torch.clamp(
+                self.object_pos[:, 2]
+                - self.object_init_state[:, 2]
+                - self.dynamic_grasp_push_away_height_margin,
+                min=0.0,
+            )
+            * (object_palm_rel_speed > self.dynamic_grasp_post_contact_rel_vel_margin)
+        )
+        dynamic_push_away_penalty = (
+            (excess_xy_speed + 2.0 * excess_uncontrolled_height)
+            * contact_like.float()
+            * (~stable_grasp).float()
+        )
+        dynamic_dropped_penalty = (
+            (self.object_pos[:, 2] < self.object_init_state[:, 2])
+            & lifted_object
+            & (~stable_grasp)
+        ).float()
+
+        is_success = (
+            self.dynamic_grasp_success_steps
+            >= self.dynamic_grasp_success_steps_required
+        )
+        dynamic_timeout_penalty = (
+            (self.progress_buf >= self.max_episode_length - 1) & (~is_success)
+        ).float()
+        self.successes += is_success
+        self.reset_goal_buf[:] = 0
+
+        self.rewards_episode["raw_fingertip_delta_rew"] += fingertip_delta_rew
+        self.rewards_episode["raw_hand_delta_penalty"] += hand_delta_penalty
+        self.rewards_episode["raw_lifting_rew"] += lifting_rew
+        self.rewards_episode[
+            "raw_dynamic_velocity_match_rew"
+        ] += dynamic_velocity_match_rew
+        self.rewards_episode["raw_dynamic_intercept_rew"] += dynamic_intercept_rew
+        self.rewards_episode[
+            "raw_dynamic_pregrasp_alignment_rew"
+        ] += dynamic_pregrasp_alignment_rew
+        self.rewards_episode[
+            "raw_dynamic_enclosure_rew"
+        ] += dynamic_enclosure_base_rew
+        self.rewards_episode[
+            "raw_dynamic_lift_progress_rew"
+        ] += dynamic_lift_progress_rew
+        self.rewards_episode[
+            "raw_dynamic_stable_hold_rew"
+        ] += stable_grasp.float()
+        self.rewards_episode[
+            "raw_dynamic_stable_grasp_progress_rew"
+        ] += stable_grasp_progress
+        self.rewards_episode[
+            "raw_dynamic_lifted_rel_vel_rew"
+        ] += dynamic_lifted_rel_vel_rew
+        self.rewards_episode[
+            "raw_dynamic_lifted_centering_rew"
+        ] += dynamic_lifted_centering_rew
+        self.rewards_episode[
+            "raw_dynamic_lifted_height_hold_rew"
+        ] += dynamic_lifted_height_hold_rew
+        self.rewards_episode[
+            "raw_dynamic_lifted_enclosure_vel_rew"
+        ] += dynamic_lifted_enclosure_vel_rew
+        self.rewards_episode[
+            "raw_dynamic_pre_contact_slow_rew"
+        ] += dynamic_pre_contact_slow_rew
+        self.rewards_episode[
+            "raw_dynamic_controlled_contact_rew"
+        ] += dynamic_controlled_contact_rew
+        self.rewards_episode["raw_dynamic_impact_penalty"] += dynamic_impact_penalty
+        self.rewards_episode["raw_dynamic_kick_penalty"] += dynamic_kick_penalty
+        self.rewards_episode[
+            "raw_dynamic_object_palm_rel_vel_penalty"
+        ] += dynamic_object_palm_rel_vel_penalty
+        self.rewards_episode[
+            "raw_dynamic_push_away_penalty"
+        ] += dynamic_push_away_penalty
+        self.rewards_episode[
+            "raw_dynamic_dropped_penalty"
+        ] += dynamic_dropped_penalty
+        self.rewards_episode[
+            "raw_dynamic_timeout_penalty"
+        ] += dynamic_timeout_penalty
+        self.rewards_episode[
+            "raw_dynamic_safe_action_delta_penalty"
+        ] += dynamic_safe_action_delta_penalty
+        self.rewards_episode[
+            "raw_dynamic_safe_arm_target_delta_penalty"
+        ] += dynamic_safe_arm_target_delta_penalty
+        self.rewards_episode[
+            "raw_dynamic_safe_arm_target_accel_penalty"
+        ] += dynamic_safe_arm_target_accel_penalty
+        self.rewards_episode[
+            "raw_dynamic_safe_hand_target_delta_penalty"
+        ] += dynamic_safe_hand_target_delta_penalty
+        self.rewards_episode[
+            "raw_dynamic_pregrasp_hold_rew"
+        ] += dynamic_pregrasp_hold_rew
+        self.rewards_episode[
+            "raw_dynamic_early_contact_penalty"
+        ] += dynamic_early_contact_penalty
+        self.rewards_episode[
+            "raw_dynamic_pre_contact_rel_vel_penalty"
+        ] += dynamic_pre_contact_rel_vel_penalty
+        self.rewards_episode[
+            "raw_dynamic_ready_enclosure_rew"
+        ] += dynamic_ready_enclosure_rew
+        self.rewards_episode[
+            "raw_dynamic_ready_grasp_quality_rew"
+        ] += dynamic_ready_grasp_quality_rew
+        self.rewards_episode[
+            "raw_dynamic_ready_contact_rew"
+        ] += dynamic_ready_contact_rew
+        self.rewards_episode[
+            "raw_dynamic_true_grasp_quality_rew"
+        ] += dynamic_true_grasp_quality_rew
+        self.rewards_episode[
+            "raw_dynamic_lifted_true_grasp_rew"
+        ] += dynamic_lifted_true_grasp_rew
+        self.rewards_episode[
+            "raw_dynamic_quality_lift_progress_rew"
+        ] += dynamic_quality_lift_progress_rew
+        self.rewards_episode[
+            "raw_dynamic_opposing_contact_rew"
+        ] += dynamic_opposing_contact_rew
+        self.rewards_episode[
+            "raw_dynamic_scoop_lift_penalty"
+        ] += dynamic_scoop_lift_penalty
+        self.rewards_episode[
+            "raw_dynamic_palm_only_lift_penalty"
+        ] += dynamic_palm_only_lift_penalty
+
+        fingertip_delta_rew *= self.distance_delta_rew_scale
+        hand_delta_penalty *= self.distance_delta_rew_scale * 0  # currently disabled
+        lifting_rew *= self.lifting_rew_scale
+        dynamic_velocity_match_rew *= self.dynamic_grasp_velocity_match_rew_scale
+        dynamic_intercept_rew *= self.dynamic_grasp_intercept_rew_scale
+        dynamic_pregrasp_alignment_rew *= (
+            self.dynamic_grasp_pregrasp_alignment_rew_scale
+        )
+        dynamic_enclosure_rew *= self.dynamic_grasp_enclosure_rew_scale
+        dynamic_lifted_enclosure_rew *= (
+            self.dynamic_grasp_lifted_enclosure_rew_scale
+        )
+        dynamic_lift_progress_rew *= self.dynamic_grasp_lift_progress_rew_scale
+        dynamic_stable_hold_rew = (
+            stable_grasp.float() * self.dynamic_grasp_stable_hold_rew_scale
+        )
+        dynamic_stable_grasp_progress_rew = (
+            stable_grasp_progress * self.dynamic_grasp_stable_progress_rew_scale
+        )
+        dynamic_lifted_rel_vel_rew *= self.dynamic_grasp_lifted_rel_vel_rew_scale
+        dynamic_lifted_centering_rew *= self.dynamic_grasp_lifted_centering_rew_scale
+        dynamic_lifted_height_hold_rew *= (
+            self.dynamic_grasp_lifted_height_hold_rew_scale
+        )
+        dynamic_lifted_enclosure_vel_rew *= (
+            self.dynamic_grasp_lifted_enclosure_vel_rew_scale
+        )
+        dynamic_pre_contact_slow_rew *= self.dynamic_grasp_pre_contact_slow_rew_scale
+        dynamic_controlled_contact_rew *= (
+            self.dynamic_grasp_controlled_contact_rew_scale
+        )
+        dynamic_impact_penalty = (
+            -dynamic_impact_penalty * self.dynamic_grasp_impact_penalty_scale
+        )
+        dynamic_kick_penalty = (
+            -dynamic_kick_penalty * self.dynamic_grasp_kick_penalty_scale
+        )
+        dynamic_object_palm_rel_vel_penalty = (
+            -dynamic_object_palm_rel_vel_penalty
+            * self.dynamic_grasp_post_contact_rel_vel_penalty_scale
+        )
+        dynamic_push_away_penalty = (
+            -dynamic_push_away_penalty * self.dynamic_grasp_push_away_penalty_scale
+        )
+        dynamic_dropped_penalty = (
+            -dynamic_dropped_penalty * self.dynamic_grasp_dropped_penalty_scale
+        )
+        dynamic_timeout_penalty = (
+            -dynamic_timeout_penalty * self.dynamic_grasp_timeout_penalty_scale
+        )
+        dynamic_safe_action_delta_penalty = (
+            -dynamic_safe_action_delta_penalty
+            * self.dynamic_grasp_safe_action_delta_penalty_scale
+        )
+        dynamic_safe_arm_target_delta_penalty = (
+            -dynamic_safe_arm_target_delta_penalty
+            * self.dynamic_grasp_safe_arm_target_delta_penalty_scale
+        )
+        dynamic_safe_arm_target_accel_penalty = (
+            -dynamic_safe_arm_target_accel_penalty
+            * self.dynamic_grasp_safe_arm_target_accel_penalty_scale
+        )
+        dynamic_safe_hand_target_delta_penalty = (
+            -dynamic_safe_hand_target_delta_penalty
+            * self.dynamic_grasp_safe_hand_target_delta_penalty_scale
+        )
+        dynamic_pregrasp_hold_rew *= self.dynamic_grasp_pregrasp_hold_rew_scale
+        dynamic_early_contact_penalty = (
+            -dynamic_early_contact_penalty
+            * self.dynamic_grasp_early_contact_penalty_scale
+        )
+        dynamic_pre_contact_rel_vel_penalty = (
+            -dynamic_pre_contact_rel_vel_penalty
+            * self.dynamic_grasp_pre_contact_rel_vel_penalty_scale
+        )
+        dynamic_ready_enclosure_rew *= self.dynamic_grasp_ready_enclosure_rew_scale
+        dynamic_ready_grasp_quality_rew *= (
+            self.dynamic_grasp_ready_grasp_quality_rew_scale
+        )
+        dynamic_ready_contact_rew *= self.dynamic_grasp_ready_contact_rew_scale
+        dynamic_true_grasp_quality_rew *= (
+            self.dynamic_grasp_true_grasp_quality_rew_scale
+        )
+        dynamic_lifted_true_grasp_rew *= (
+            self.dynamic_grasp_lifted_true_grasp_rew_scale
+        )
+        dynamic_quality_lift_progress_rew *= (
+            self.dynamic_grasp_quality_lift_progress_rew_scale
+        )
+        dynamic_opposing_contact_rew *= (
+            self.dynamic_grasp_opposing_contact_rew_scale
+        )
+        dynamic_scoop_lift_penalty = (
+            -dynamic_scoop_lift_penalty * self.dynamic_grasp_scoop_lift_penalty_scale
+        )
+        dynamic_palm_only_lift_penalty = (
+            -dynamic_palm_only_lift_penalty
+            * self.dynamic_grasp_palm_only_lift_penalty_scale
+        )
+        dynamic_success_bonus = is_success.float() * self.dynamic_grasp_success_bonus
+
+        reward = (
+            fingertip_delta_rew
+            + hand_delta_penalty
+            + lifting_rew
+            + lift_bonus_rew
+            + dynamic_velocity_match_rew
+            + dynamic_intercept_rew
+            + dynamic_pregrasp_alignment_rew
+            + dynamic_enclosure_rew
+            + dynamic_lifted_enclosure_rew
+            + dynamic_lift_progress_rew
+            + dynamic_stable_hold_rew
+            + dynamic_stable_grasp_progress_rew
+            + dynamic_lifted_rel_vel_rew
+            + dynamic_lifted_centering_rew
+            + dynamic_lifted_height_hold_rew
+            + dynamic_lifted_enclosure_vel_rew
+            + dynamic_pre_contact_slow_rew
+            + dynamic_controlled_contact_rew
+            + dynamic_impact_penalty
+            + dynamic_kick_penalty
+            + dynamic_object_palm_rel_vel_penalty
+            + dynamic_push_away_penalty
+            + dynamic_dropped_penalty
+            + dynamic_timeout_penalty
+            + dynamic_safe_action_delta_penalty
+            + dynamic_safe_arm_target_delta_penalty
+            + dynamic_safe_arm_target_accel_penalty
+            + dynamic_safe_hand_target_delta_penalty
+            + dynamic_pregrasp_hold_rew
+            + dynamic_early_contact_penalty
+            + dynamic_pre_contact_rel_vel_penalty
+            + dynamic_ready_enclosure_rew
+            + dynamic_ready_grasp_quality_rew
+            + dynamic_ready_contact_rew
+            + dynamic_true_grasp_quality_rew
+            + dynamic_lifted_true_grasp_rew
+            + dynamic_quality_lift_progress_rew
+            + dynamic_opposing_contact_rew
+            + dynamic_scoop_lift_penalty
+            + dynamic_palm_only_lift_penalty
+            + dynamic_success_bonus
+            + kuka_actions_penalty
+            + hand_actions_penalty
+        )
+        self.rew_buf[:] = reward
+
+        resets = self._compute_resets(is_success)
+        self.reset_buf[:] = resets
+
+        if self.cfg["env"]["forceNoReset"]:
+            self.reset_buf[:] = False
+
+        info_successes = self._successes_for_info()
+        self.extras["successes"] = info_successes
+        self.extras["success_ratio"] = (
+            info_successes.mean().item()
+            / max(self.max_consecutive_successes, 1)
+        )
+        self.extras["dynamic_grasp_success_steps"] = (
+            self.dynamic_grasp_success_steps.float().mean().item()
+        )
+        self.extras["dynamic_object_xy_speed"] = (
+            torch.norm(self.object_linvel[:, 0:2], dim=-1).mean().item()
+        )
+        self.extras["dynamic_commanded_xy_speed"] = (
+            torch.norm(self.dynamic_grasp_object_xy_velocity, dim=-1).mean().item()
+        )
+        self.extras["dynamic_object_palm_rel_speed"] = (
+            object_palm_rel_speed.mean().item()
+        )
+        self.extras["dynamic_object_palm_dist"] = object_palm_dist.mean().item()
+        self.extras["dynamic_stable_grasp_progress"] = (
+            stable_grasp_progress.mean().item()
+        )
+        self.extras["dynamic_contact_fraction"] = contact_like.float().mean().item()
+        self.extras["dynamic_lifted_fraction"] = lifted_object.float().mean().item()
+        self.extras["dynamic_stable_grasp_fraction"] = (
+            stable_grasp.float().mean().item()
+        )
+        self.extras["dynamic_stable_grasp_base_fraction"] = (
+            stable_grasp_base.float().mean().item()
+        )
+        self.extras["dynamic_true_grasp_fraction"] = (
+            true_grasp.float().mean().item()
+        )
+        self.extras["dynamic_grasp_quality"] = grasp_quality.mean().item()
+        self.extras["dynamic_finger_contact_count"] = (
+            true_grasp_metrics["finger_contact_count"].mean().item()
+        )
+        self.extras["dynamic_non_thumb_contact_count"] = (
+            true_grasp_metrics["non_thumb_contact_count"].mean().item()
+        )
+        self.extras["dynamic_thumb_contact_fraction"] = (
+            true_grasp_metrics["thumb_contact"].float().mean().item()
+        )
+        self.extras["dynamic_opposing_contact_fraction"] = (
+            true_grasp_metrics["opposing_contact"].float().mean().item()
+        )
+        self.extras["dynamic_opposing_score"] = (
+            true_grasp_metrics["opposing_score"].mean().item()
+        )
+        self.extras["dynamic_scoop_lift_fraction"] = (
+            true_grasp_metrics["scoop_lift"].float().mean().item()
+        )
+        self.extras["dynamic_palm_only_lift_fraction"] = (
+            true_grasp_metrics["palm_only_lift"].float().mean().item()
+        )
+        self.extras["dynamic_dropped_fraction"] = (
+            (dynamic_dropped_penalty < 0.0).float().mean().item()
+            if self.dynamic_grasp_dropped_penalty_scale > 0.0
+            else torch.zeros_like(dynamic_dropped_penalty).mean().item()
+        )
+        self.extras["dynamic_timeout_fraction"] = (
+            (dynamic_timeout_penalty < 0.0).float().mean().item()
+            if self.dynamic_grasp_timeout_penalty_scale > 0.0
+            else torch.zeros_like(dynamic_timeout_penalty).mean().item()
+        )
+        self.extras["dynamic_closest_fingertip_dist"] = (
+            closest_fingertip_dist.mean().item()
+        )
+        self.extras["dynamic_mean_fingertip_dist"] = mean_fingertip_dist.mean().item()
+        self.extras["dynamic_lift_progress"] = lift_progress.mean().item()
+        contact_count = contact_like.float().sum().clamp(min=1.0)
+        self.extras["dynamic_object_palm_rel_speed_contact"] = (
+            (object_palm_rel_speed * contact_like.float()).sum() / contact_count
+        ).item()
+        self.extras["dynamic_post_contact_rel_vel_penalty"] = (
+            dynamic_object_palm_rel_vel_penalty.mean().item()
+        )
+        self.extras["dynamic_push_away_penalty"] = (
+            dynamic_push_away_penalty.mean().item()
+        )
+        self.extras["dynamic_pregrasp_xy_dist"] = (
+            palm_pregrasp_xy_dist.mean().item()
+        )
+        self.extras["dynamic_pregrasp_ready_fraction"] = (
+            pregrasp_ready.float().mean().item()
+        )
+        self.extras["dynamic_palm_xy_speed"] = palm_xy_speed.mean().item()
+        lifted_count = lifted_object_float.sum().clamp(min=1.0)
+        self.extras["dynamic_lifted_object_palm_rel_speed"] = (
+            (object_palm_rel_speed * lifted_object_float).sum() / lifted_count
+        ).item()
+        self.extras["dynamic_lifted_object_palm_dist"] = (
+            (object_palm_dist * lifted_object_float).sum() / lifted_count
+        ).item()
+        self.extras["dynamic_contact_onset_fraction"] = (
+            contact_onset.float().mean().item()
+        )
+        self.extras["dynamic_pre_contact_slow_fraction"] = (
+            pre_contact_slow_mask.float().mean().item()
+        )
+        self.extras["dynamic_pre_contact_slow_rew"] = (
+            dynamic_pre_contact_slow_rew.mean().item()
+        )
+        self.extras["dynamic_controlled_contact_rew"] = (
+            dynamic_controlled_contact_rew.mean().item()
+        )
+        self.extras["dynamic_impact_penalty"] = (
+            dynamic_impact_penalty.mean().item()
+        )
+        self.extras["dynamic_kick_penalty"] = dynamic_kick_penalty.mean().item()
+        self.extras["dynamic_safe_action_delta_penalty"] = (
+            dynamic_safe_action_delta_penalty.mean().item()
+        )
+        self.extras["dynamic_safe_arm_target_delta_penalty"] = (
+            dynamic_safe_arm_target_delta_penalty.mean().item()
+        )
+        self.extras["dynamic_safe_arm_target_accel_penalty"] = (
+            dynamic_safe_arm_target_accel_penalty.mean().item()
+        )
+        self.extras["dynamic_safe_hand_target_delta_penalty"] = (
+            dynamic_safe_hand_target_delta_penalty.mean().item()
+        )
+        self.extras["dynamic_pregrasp_hold_rew"] = (
+            dynamic_pregrasp_hold_rew.mean().item()
+        )
+        self.extras["dynamic_early_contact_penalty"] = (
+            dynamic_early_contact_penalty.mean().item()
+        )
+        self.extras["dynamic_early_contact_not_ready_weight"] = (
+            early_contact_not_ready_weight.mean().item()
+        )
+        self.extras["dynamic_pre_contact_rel_vel_penalty"] = (
+            dynamic_pre_contact_rel_vel_penalty.mean().item()
+        )
+        self.extras["dynamic_ready_enclosure_rew"] = (
+            dynamic_ready_enclosure_rew.mean().item()
+        )
+        self.extras["dynamic_ready_grasp_quality_rew"] = (
+            dynamic_ready_grasp_quality_rew.mean().item()
+        )
+        self.extras["dynamic_ready_contact_rew"] = (
+            dynamic_ready_contact_rew.mean().item()
+        )
+        self.extras["dynamic_true_grasp_quality_rew"] = (
+            dynamic_true_grasp_quality_rew.mean().item()
+        )
+        self.extras["dynamic_lifted_true_grasp_rew"] = (
+            dynamic_lifted_true_grasp_rew.mean().item()
+        )
+        self.extras["dynamic_quality_lift_progress_rew"] = (
+            dynamic_quality_lift_progress_rew.mean().item()
+        )
+        self.extras["dynamic_opposing_contact_rew"] = (
+            dynamic_opposing_contact_rew.mean().item()
+        )
+        self.extras["dynamic_scoop_lift_penalty"] = (
+            dynamic_scoop_lift_penalty.mean().item()
+        )
+        self.extras["dynamic_palm_only_lift_penalty"] = (
+            dynamic_palm_only_lift_penalty.mean().item()
+        )
+        self.extras[
+            "dynamic_grasp_speed_curriculum_alpha"
+        ] = self._dynamic_grasp_speed_curriculum_alpha()
+        self._log_dynamic_object_pool_metrics(
+            is_success=is_success,
+            lifted_object=lifted_object,
+            stable_grasp=stable_grasp,
+            lift_progress=lift_progress,
+            object_palm_rel_speed=object_palm_rel_speed,
+            true_grasp=true_grasp,
+            grasp_quality=grasp_quality,
+            scoop_lift=true_grasp_metrics["scoop_lift"],
+            palm_only_lift=true_grasp_metrics["palm_only_lift"],
+        )
+        self.prev_dynamic_grasp_contact_like[:] = contact_like
+        self.true_objective = self._true_objective()
+        self.extras["true_objective"] = self.true_objective
+
+        rewards = [
+            (fingertip_delta_rew, "fingertip_delta_rew"),
+            (hand_delta_penalty, "hand_delta_penalty"),
+            (lifting_rew, "lifting_rew"),
+            (lift_bonus_rew, "lift_bonus_rew"),
+            (dynamic_velocity_match_rew, "dynamic_velocity_match_rew"),
+            (dynamic_intercept_rew, "dynamic_intercept_rew"),
+            (
+                dynamic_pregrasp_alignment_rew,
+                "dynamic_pregrasp_alignment_rew",
+            ),
+            (dynamic_enclosure_rew, "dynamic_enclosure_rew"),
+            (dynamic_lifted_enclosure_rew, "dynamic_lifted_enclosure_rew"),
+            (dynamic_lift_progress_rew, "dynamic_lift_progress_rew"),
+            (dynamic_stable_hold_rew, "dynamic_stable_hold_rew"),
+            (
+                dynamic_stable_grasp_progress_rew,
+                "dynamic_stable_grasp_progress_rew",
+            ),
+            (dynamic_lifted_rel_vel_rew, "dynamic_lifted_rel_vel_rew"),
+            (dynamic_lifted_centering_rew, "dynamic_lifted_centering_rew"),
+            (
+                dynamic_lifted_height_hold_rew,
+                "dynamic_lifted_height_hold_rew",
+            ),
+            (
+                dynamic_lifted_enclosure_vel_rew,
+                "dynamic_lifted_enclosure_vel_rew",
+            ),
+            (dynamic_pre_contact_slow_rew, "dynamic_pre_contact_slow_rew"),
+            (dynamic_controlled_contact_rew, "dynamic_controlled_contact_rew"),
+            (dynamic_impact_penalty, "dynamic_impact_penalty"),
+            (dynamic_kick_penalty, "dynamic_kick_penalty"),
+            (
+                dynamic_object_palm_rel_vel_penalty,
+                "dynamic_object_palm_rel_vel_penalty",
+            ),
+            (dynamic_push_away_penalty, "dynamic_push_away_penalty"),
+            (dynamic_dropped_penalty, "dynamic_dropped_penalty"),
+            (dynamic_timeout_penalty, "dynamic_timeout_penalty"),
+            (
+                dynamic_safe_action_delta_penalty,
+                "dynamic_safe_action_delta_penalty",
+            ),
+            (
+                dynamic_safe_arm_target_delta_penalty,
+                "dynamic_safe_arm_target_delta_penalty",
+            ),
+            (
+                dynamic_safe_arm_target_accel_penalty,
+                "dynamic_safe_arm_target_accel_penalty",
+            ),
+            (
+                dynamic_safe_hand_target_delta_penalty,
+                "dynamic_safe_hand_target_delta_penalty",
+            ),
+            (dynamic_pregrasp_hold_rew, "dynamic_pregrasp_hold_rew"),
+            (dynamic_early_contact_penalty, "dynamic_early_contact_penalty"),
+            (
+                dynamic_pre_contact_rel_vel_penalty,
+                "dynamic_pre_contact_rel_vel_penalty",
+            ),
+            (dynamic_ready_enclosure_rew, "dynamic_ready_enclosure_rew"),
+            (
+                dynamic_ready_grasp_quality_rew,
+                "dynamic_ready_grasp_quality_rew",
+            ),
+            (dynamic_ready_contact_rew, "dynamic_ready_contact_rew"),
+            (dynamic_true_grasp_quality_rew, "dynamic_true_grasp_quality_rew"),
+            (dynamic_lifted_true_grasp_rew, "dynamic_lifted_true_grasp_rew"),
+            (
+                dynamic_quality_lift_progress_rew,
+                "dynamic_quality_lift_progress_rew",
+            ),
+            (dynamic_opposing_contact_rew, "dynamic_opposing_contact_rew"),
+            (dynamic_scoop_lift_penalty, "dynamic_scoop_lift_penalty"),
+            (
+                dynamic_palm_only_lift_penalty,
+                "dynamic_palm_only_lift_penalty",
+            ),
+            (dynamic_success_bonus, "dynamic_success_bonus"),
+            (kuka_actions_penalty, "kuka_actions_penalty"),
+            (hand_actions_penalty, "hand_actions_penalty"),
+            (reward, "total_reward"),
+        ]
+        episode_cumulative = dict()
+        for rew_value, rew_name in rewards:
+            self.rewards_episode[rew_name] += rew_value
+            episode_cumulative[rew_name] = rew_value
+        self.extras["rewards_episode"] = self.rewards_episode
+        self.extras["episode_cumulative"] = episode_cumulative
+
+        return self.rew_buf, is_success
+
+    def _successes_for_info(self) -> Tensor:
+        done_mask = self.reset_buf.to(dtype=torch.bool)
+        return torch.where(done_mask, self.successes, self.prev_episode_successes)
+
     def _compute_resets(self, is_success):
         ones = torch.ones_like(self.reset_buf)
         zeros = torch.zeros_like(self.reset_buf)
@@ -2562,6 +5052,9 @@ class SimToolReal(VecTask):
         return true_objective
 
     def compute_kuka_reward(self) -> Tuple[Tensor, Tensor]:
+        if self.dynamic_tabletop_grasp:
+            return self._compute_dynamic_tabletop_grasp_reward()
+
         lifting_rew, lift_bonus_rew, lifted_object = self._lifting_reward()
         fingertip_delta_rew, hand_delta_penalty = self._distance_delta_rewards(
             lifted_object
@@ -2647,9 +5140,10 @@ class SimToolReal(VecTask):
         if self.cfg["env"]["forceNoReset"]:
             self.reset_buf[:] = False
 
-        self.extras["successes"] = self.prev_episode_successes
+        info_successes = self._successes_for_info()
+        self.extras["successes"] = info_successes
         self.extras["success_ratio"] = (
-            self.prev_episode_successes.mean().item() / self.max_consecutive_successes
+            info_successes.mean().item() / self.max_consecutive_successes
         )
         self.extras["closest_keypoint_max_dist"] = (
             self.prev_episode_closest_keypoint_max_dist
@@ -2709,14 +5203,19 @@ class SimToolReal(VecTask):
             )
             self.total_num_resets += self.reset_buf
 
-            reset_ids = self.reset_buf.nonzero().squeeze()
-            last_successes = self.successes[reset_ids].long()
-            self.successes_count[last_successes] += 1
+            reset_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+            if reset_ids.numel() > 0:
+                last_successes = self.successes[reset_ids].long()
+                self.successes_count[last_successes] += 1
+                self._record_eval_object_first_episodes(reset_ids, last_successes)
 
             if frame % 100 == 0:
                 # The direct average shows the overall result more quickly, but slightly undershoots long term
                 # policy performance.
+                total_resets = self.total_resets.clamp(min=1.0)
+                total_success_rate = self.total_successes / total_resets
                 print(f"Max num successes: {self.successes.max().item()}")
+                print(f"Total success rate: {total_success_rate.item():.2f}")
                 print(
                     f"Average consecutive successes: {self.prev_episode_successes.mean().item():.2f}"
                 )
@@ -2736,6 +5235,11 @@ class SimToolReal(VecTask):
                 self.eval_summaries.add_scalar(
                     "last_ep_successes",
                     self.prev_episode_successes.mean().item(),
+                    frame,
+                )
+                self.eval_summaries.add_scalar(
+                    "total_success_rate",
+                    total_success_rate.item(),
                     frame,
                 )
                 self.eval_summaries.add_scalar(
@@ -2784,6 +5288,98 @@ class SimToolReal(VecTask):
                 plt.ylabel("Frequency")
                 plt.savefig(f"{self.eval_summary_dir}/successes_histogram.png")
                 plt.clf()
+
+            if (
+                getattr(self, "eval_stop_after_each_env_once", False)
+                and self.eval_first_episode_recorded.all().item()
+            ):
+                self._write_eval_object_stats(frame=frame, final=True)
+                raise SystemExit(0)
+
+    def _record_eval_object_first_episodes(
+        self, reset_ids: Tensor, last_successes: Tensor
+    ) -> None:
+        if not (
+            hasattr(self, "eval_object_episode_counts")
+            and hasattr(self, "eval_object_success_counts")
+        ):
+            return
+
+        new_mask = ~self.eval_first_episode_recorded[reset_ids]
+        if not new_mask.any().item():
+            return
+
+        new_reset_ids = reset_ids[new_mask]
+        new_successes = (last_successes[new_mask] > 0).float()
+        object_asset_indices = self.object_asset_indices[new_reset_ids]
+        self.eval_first_episode_recorded[new_reset_ids] = True
+        self.eval_object_episode_counts.scatter_add_(
+            0,
+            object_asset_indices,
+            torch.ones_like(object_asset_indices, dtype=torch.long),
+        )
+        self.eval_object_success_counts.scatter_add_(
+            0, object_asset_indices, new_successes
+        )
+
+    def _eval_object_stats_dict(self) -> dict:
+        if not (
+            hasattr(self, "eval_object_episode_counts")
+            and hasattr(self, "eval_object_success_counts")
+        ):
+            return {}
+
+        counts = self.eval_object_episode_counts.detach().cpu().numpy()
+        successes = self.eval_object_success_counts.detach().cpu().numpy()
+        per_object = {}
+        for idx, label in enumerate(self.object_asset_labels):
+            count = int(counts[idx])
+            success = float(successes[idx])
+            per_object[str(label)] = {
+                "episodes": count,
+                "successes": success,
+                "success_rate": success / count if count > 0 else float("nan"),
+            }
+
+        total_episodes = int(counts.sum())
+        total_successes = float(successes.sum())
+        return {
+            "total_episodes": total_episodes,
+            "total_successes": total_successes,
+            "total_success_rate": (
+                total_successes / total_episodes if total_episodes > 0 else float("nan")
+            ),
+            "per_object": per_object,
+        }
+
+    def _write_eval_object_stats(self, frame: int, final: bool = False) -> None:
+        stats = self._eval_object_stats_dict()
+        if not stats:
+            return
+
+        stats["frame"] = int(frame)
+        stats["completed_envs"] = int(self.eval_first_episode_recorded.sum().item())
+        stats["num_envs"] = int(self.num_envs)
+        stats["final"] = bool(final)
+        os.makedirs(self.eval_summary_dir, exist_ok=True)
+        stats_path = os.path.join(self.eval_summary_dir, "per_object_eval_stats.json")
+        with open(stats_path, "w") as f:
+            json.dump(stats, f, indent=2)
+
+        print("=" * 80)
+        print("Per-object deterministic eval summary")
+        print(
+            f"Total: {stats['total_successes']:.0f}/{stats['total_episodes']} "
+            f"({stats['total_success_rate']:.3f})"
+        )
+        for label, object_stats in stats["per_object"].items():
+            print(
+                f"  {label}: {object_stats['successes']:.0f}/"
+                f"{object_stats['episodes']} "
+                f"({object_stats['success_rate']:.3f})"
+            )
+        print(f"Wrote {stats_path}")
+        print("=" * 80)
 
     def populate_sim_buffers(self) -> Tuple[Tensor, int]:
         self.gym.refresh_dof_state_tensor(self.sim)
@@ -3087,6 +5683,28 @@ class SimToolReal(VecTask):
         obs_dict["palm_vel"] = self._palm_state[:, 7:13]
         # object vel
         obs_dict["object_vel"] = self.object_state[:, 7:13]
+        # object velocity relative to palm, plus a short-horizon object-centric
+        # prediction that helps dynamic-grasp policies learn interception.
+        obs_dict["object_vel_rel_palm"] = obs_dict["object_vel"] - obs_dict["palm_vel"]
+        obs_dict["predicted_keypoints_rel_palm"] = (
+            self.keypoints_rel_palm
+            + obs_dict["object_vel_rel_palm"][:, None, 0:3]
+            * self.dynamic_grasp_intercept_lead_time
+        ).reshape(self.num_envs, keypoint_rel_pos_size)
+        (
+            obs_dict["object_pointcloud_rel_palm"],
+            obs_dict["object_pointcloud_centroid_rel_palm"],
+            obs_dict["object_pointcloud_vel_rel_palm"],
+            obs_dict["object_pointcloud_tracking_confidence"],
+        ) = self._object_pointcloud_observation(
+            object_pos=self.object_pos,
+            object_rot=self.object_rot,
+            object_vel=obs_dict["object_vel"],
+            palm_pos=self.palm_center_pos,
+            palm_rot=obs_dict["palm_rot"],
+            palm_vel=obs_dict["palm_vel"],
+            add_noise=False,
+        )
         # closest distance to the furthest keypoint, achieved so far in this episode
         obs_dict["closest_keypoint_max_dist"] = (
             self.closest_keypoint_max_dist.unsqueeze(-1)
@@ -3145,6 +5763,41 @@ class SimToolReal(VecTask):
         obs_dict["object_vel"] = (
             self.object_state[:, 7:13] * self.turn_off_object_vel_obs_scale
         )
+        obs_dict["object_vel_rel_palm"] = (
+            obs_dict["object_vel"] - obs_dict["palm_vel"]
+        )
+        keypoints_rel_palm_for_policy = obs_dict["keypoints_rel_palm"].reshape(
+            self.num_envs, self.num_keypoints, 3
+        )
+        obs_dict["predicted_keypoints_rel_palm"] = (
+            keypoints_rel_palm_for_policy
+            + obs_dict["object_vel_rel_palm"][:, None, 0:3]
+            * self.dynamic_grasp_intercept_lead_time
+        ).reshape(self.num_envs, keypoint_rel_pos_size)
+        observed_object_vel = (
+            self.observed_object_state[:, 7:13] * self.turn_off_object_vel_obs_scale
+        )
+        (
+            obs_dict["object_pointcloud_rel_palm"],
+            obs_dict["object_pointcloud_centroid_rel_palm"],
+            obs_dict["object_pointcloud_vel_rel_palm"],
+            obs_dict["object_pointcloud_tracking_confidence"],
+        ) = self._object_pointcloud_observation(
+            object_pos=self.observed_object_pos,
+            object_rot=self.observed_object_rot,
+            object_vel=observed_object_vel,
+            palm_pos=self.palm_center_pos,
+            palm_rot=obs_dict["palm_rot"],
+            palm_vel=obs_dict["palm_vel"],
+            add_noise=True,
+        )
+        if self.object_pointcloud_velocity_from_centroid:
+            obs_dict["object_pointcloud_vel_rel_palm"] = (
+                self._object_pointcloud_centroid_velocity_observation(
+                    obs_dict["object_pointcloud_centroid_rel_palm"],
+                    add_noise=True,
+                )
+            )
         # closest distance to the furthest keypoint, achieved so far in this episode
         obs_dict["closest_keypoint_max_dist"] = (
             self.closest_keypoint_max_dist.unsqueeze(-1) * self.turn_off_extra_obs_scale
@@ -3341,6 +5994,34 @@ class SimToolReal(VecTask):
 
         return new_rot
 
+    def _quat_mul_xyzw_torch(self, quat_l: Tensor, quat_r: Tensor) -> Tensor:
+        x_l, y_l, z_l, w_l = quat_l.unbind(dim=-1)
+        x_r, y_r, z_r, w_r = quat_r.unbind(dim=-1)
+        quat = torch.stack(
+            (
+                w_l * x_r + x_l * w_r + y_l * z_r - z_l * y_r,
+                w_l * y_r - x_l * z_r + y_l * w_r + z_l * x_r,
+                w_l * z_r + x_l * y_r - y_l * x_r + z_l * w_r,
+                w_l * w_r - x_l * x_r - y_l * y_r - z_l * z_r,
+            ),
+            dim=-1,
+        )
+        return quat / torch.clamp(torch.norm(quat, dim=-1, keepdim=True), min=1e-8)
+
+    def _sample_object_asset_reset_quat(self, env_ids: Tensor) -> Tensor:
+        base_quat = self.object_default_rot[env_ids]
+        yaw_enabled = self.object_random_yaw[env_ids]
+        yaw = torch_rand_float(
+            -math.pi, math.pi, (len(env_ids), 1), device=self.device
+        ).squeeze(-1)
+        yaw = torch.where(yaw_enabled, yaw, torch.zeros_like(yaw))
+        zeros = torch.zeros_like(yaw)
+        yaw_quat = torch.stack(
+            (zeros, zeros, torch.sin(0.5 * yaw), torch.cos(0.5 * yaw)),
+            dim=-1,
+        )
+        return self._quat_mul_xyzw_torch(yaw_quat, base_quat)
+
     def reset_target_pose(
         self,
         env_ids: Tensor,
@@ -3387,9 +6068,14 @@ class SimToolReal(VecTask):
                 + self.cfg["env"]["tableResetZ"]
             )
             self.table_init_state[env_ids, 2:3] = table_reset_z
-            self.object_init_state[env_ids, 2:3] = (
-                table_reset_z + self.cfg["env"]["tableObjectZOffset"]
-            )
+            if hasattr(self, "object_table_z_offsets"):
+                self.object_init_state[env_ids, 2:3] = (
+                    table_reset_z + self.object_table_z_offsets[env_ids, None]
+                )
+            else:
+                self.object_init_state[env_ids, 2:3] = (
+                    table_reset_z + self.cfg["env"]["tableObjectZOffset"]
+                )
 
             # reset object
             rand_pos_floats = torch_rand_float(
@@ -3420,19 +6106,26 @@ class SimToolReal(VecTask):
             )
 
             if self.randomize_object_rotation:
-                new_object_rot = self.get_random_quat(env_ids)
-                if USE_FIXED_INIT_OBJECT_POSE:
-                    new_object_rot[:] = 0.0
-                    new_object_rot[:, -1] = 1.0  # xyzw
+                if hasattr(self, "object_default_rot"):
+                    new_object_rot = self._sample_object_asset_reset_quat(env_ids)
+                    if USE_FIXED_INIT_OBJECT_POSE:
+                        new_object_rot = self.object_default_rot[env_ids].clone()
+                else:
+                    new_object_rot = self.get_random_quat(env_ids)
+                    if USE_FIXED_INIT_OBJECT_POSE:
+                        new_object_rot[:] = 0.0
+                        new_object_rot[:, -1] = 1.0  # xyzw
 
-                    # HACK: Rotate the object by 180 degrees around the z-axis to go from right handed to left handed robot
-                    from scipy.spatial.transform import Rotation as R
+                        # HACK: Rotate the object by 180 degrees around the z-axis to go from right handed to left handed robot
+                        from scipy.spatial.transform import Rotation as R
 
-                    new_object_rot[:] = (
-                        torch.from_numpy(R.from_euler("z", 180, degrees=True).as_quat())
-                        .float()
-                        .to(self.device)[None]
-                    )
+                        new_object_rot[:] = (
+                            torch.from_numpy(
+                                R.from_euler("z", 180, degrees=True).as_quat()
+                            )
+                            .float()
+                            .to(self.device)[None]
+                        )
 
                 # indices 3,4,5,6 correspond to the rotation quaternion
                 self.root_state_tensor[obj_indices, 3:7] = new_object_rot
@@ -3440,6 +6133,8 @@ class SimToolReal(VecTask):
             self.root_state_tensor[obj_indices, 7:13] = torch.zeros_like(
                 self.root_state_tensor[obj_indices, 7:13]
             )
+            if self.dynamic_tabletop_grasp:
+                self._set_dynamic_object_initial_velocity(env_ids, obj_indices)
 
             noise_min, noise_max = self.cfg["env"]["objectScaleNoiseMultiplierRange"]
             self.object_scale_noise_multiplier[env_ids] = torch_rand_float(
@@ -3459,6 +6154,15 @@ class SimToolReal(VecTask):
             self.closest_fingertip_dist[env_ids] = -1
             self.furthest_hand_dist[env_ids] = -1
             self.lifted_object[env_ids] = False
+            self.dynamic_grasp_success_steps[env_ids] = 0
+            self.prev_dynamic_grasp_contact_like[env_ids] = False
+            if self.dynamic_tabletop_grasp and reset_buf_idxs is not None:
+                self.dynamic_grasp_object_xy_velocity[env_ids] = self.root_state_tensor[
+                    self.object_indices[env_ids], 7:9
+                ]
+                self.dynamic_grasp_object_yaw_rate[env_ids] = self.root_state_tensor[
+                    self.object_indices[env_ids], 12
+                ]
         self.deferred_set_actor_root_state_tensor_indexed(
             [self.object_indices[env_ids]]
         )
@@ -3529,6 +6233,9 @@ class SimToolReal(VecTask):
 
             self.prev_episode_true_objective[env_ids] = self.true_objective[env_ids]
             self.true_objective[env_ids] = 0
+            if hasattr(self, "object_pointcloud_velocity_initialized"):
+                self.object_pointcloud_velocity_initialized[env_ids] = False
+                self.prev_object_pointcloud_centroid_rel_palm[env_ids] = 0.0
 
             self.prev_episode_closest_keypoint_max_dist[env_ids] = torch.where(
                 self.prev_episode_successes[env_ids] > 0,
@@ -3748,6 +6455,17 @@ class SimToolReal(VecTask):
             ].clone()
 
         self.actions = actions.clone()
+        action_penalty_dim = min(
+            self.actions.shape[1], self.prev_actions_for_penalty.shape[1]
+        )
+        self.action_delta_for_penalty.zero_()
+        self.action_delta_for_penalty[:, :action_penalty_dim] = (
+            self.actions[:, :action_penalty_dim]
+            - self.prev_actions_for_penalty[:, :action_penalty_dim]
+        )
+        self.prev_actions_for_penalty[:, :action_penalty_dim] = self.actions[
+            :, :action_penalty_dim
+        ]
 
         if self.privileged_actions:
             torque_actions = actions[:, :3]
@@ -3764,6 +6482,13 @@ class SimToolReal(VecTask):
         self.reset_target_pose(reset_goal_env_ids, None, is_first_goal=False)
         if len(reset_env_ids) > 0:
             self.reset_idx(reset_env_ids, None)
+            self.prev_actions_for_penalty[
+                reset_env_ids, :action_penalty_dim
+            ] = self.actions[reset_env_ids, :action_penalty_dim]
+            self.action_delta_for_penalty[reset_env_ids, :] = 0.0
+            self.prev_target_delta_for_penalty[reset_env_ids, :] = 0.0
+            self.target_delta_for_penalty[reset_env_ids, :] = 0.0
+            self.target_accel_for_penalty[reset_env_ids, :] = 0.0
 
         if self.use_relative_control:
             # arm relative to current position
@@ -3870,6 +6595,19 @@ class SimToolReal(VecTask):
 
         if self._DO_NOT_MOVE:
             self.cur_targets[:, :] = self.prev_targets[:, :]
+
+        target_delta = (
+            self.cur_targets[:, : self.num_hand_arm_dofs]
+            - self.prev_targets[:, : self.num_hand_arm_dofs]
+        )
+        self.target_delta_for_penalty[:, :] = target_delta
+        self.target_accel_for_penalty[:, :] = (
+            target_delta - self.prev_target_delta_for_penalty
+        )
+        if len(reset_env_ids) > 0:
+            self.target_delta_for_penalty[reset_env_ids, :] = 0.0
+            self.target_accel_for_penalty[reset_env_ids, :] = 0.0
+        self.prev_target_delta_for_penalty[:, :] = self.target_delta_for_penalty
 
         self.prev_targets[:, :] = self.cur_targets[:, :]
 
@@ -4040,6 +6778,8 @@ class SimToolReal(VecTask):
             )
             self.deferred_set_actor_root_state_tensor_indexed([self.object_indices])
             self.need_teleport_object_from_keyboard = False
+
+        self._apply_dynamic_tabletop_motion()
 
         self.set_actor_root_state_tensor_indexed()
 
@@ -4837,10 +7577,46 @@ class SimToolReal(VecTask):
         self.camera_properties.height = int(
             self.camera_properties.height / RESOLUTION_REDUCTION_FACTOR_TO_SAVE_SPACE
         )
-        self.camera_handle = self.gym.create_camera_sensor(
-            self.envs[self.index_to_view],
-            self.camera_properties,
+
+        self.camera_handles = []
+        self.camera_env_indices = []
+        self.camera_object_labels = []
+        cycle_video_objects = bool(self.cfg["env"].get("cycleVideoObjects", False))
+        if (
+            cycle_video_objects
+            and hasattr(self, "object_asset_indices")
+            and hasattr(self, "object_asset_labels")
+        ):
+            for asset_idx, label in enumerate(self.object_asset_labels):
+                env_ids = (self.object_asset_indices == asset_idx).nonzero(
+                    as_tuple=False
+                )
+                if len(env_ids) == 0:
+                    continue
+                self.camera_env_indices.append(int(env_ids[0].item()))
+                self.camera_object_labels.append(str(label))
+
+        if len(self.camera_env_indices) == 0:
+            self.camera_env_indices = [self.index_to_view]
+            self.camera_object_labels = ["env_0"]
+
+        for camera_env_idx in self.camera_env_indices:
+            camera_handle = self.gym.create_camera_sensor(
+                self.envs[camera_env_idx],
+                self.camera_properties,
+            )
+            self.gym.set_camera_location(
+                camera_handle, self.envs[camera_env_idx], cam_pos, cam_target
+            )
+            self.camera_handles.append(camera_handle)
+
+        self.video_camera_idx = int(self.cfg["env"].get("videoCameraStartIdx", 0))
+        self.video_camera_stride = max(
+            1, int(self.cfg["env"].get("videoCameraStride", 1))
         )
+        self.camera_handle = self.camera_handles[0]
+        self.index_to_view = self.camera_env_indices[0]
+        self.current_video_object_label = self.camera_object_labels[0]
 
         # self.video_frames is important for understanding the state of video recording
         #   Case 1: self.video_frames is None:
@@ -4852,9 +7628,15 @@ class SimToolReal(VecTask):
         #   Case 3: self.video_frames = [np.array(frame) for frame in ...]
         #     * These are image frames that will be assembled into a video when enough frames are capture
         self.video_frames: Optional[List[np.ndarray]] = None
-        self.gym.set_camera_location(
-            self.camera_handle, self.envs[self.index_to_view], cam_pos, cam_target
-        )
+
+    def _select_next_video_camera(self) -> None:
+        if not hasattr(self, "camera_handles") or len(self.camera_handles) == 0:
+            return
+        camera_idx = self.video_camera_idx % len(self.camera_handles)
+        self.camera_handle = self.camera_handles[camera_idx]
+        self.index_to_view = self.camera_env_indices[camera_idx]
+        self.current_video_object_label = self.camera_object_labels[camera_idx]
+        self.video_camera_idx += self.video_camera_stride
 
     def _modify_render_settings_if_headless(self) -> None:
         # If not headless, leave things as they are
@@ -4880,9 +7662,11 @@ class SimToolReal(VecTask):
             # and (self.control_steps > 0)  # Don't record video on first step
         )
         if should_start_video_capture_at_start_of_next_episode:
+            self._select_next_video_camera()
             print("-" * 80)
             print(
-                f"At self.control_steps = {self.control_steps}, should start video capture at start of next episode"
+                f"At self.control_steps = {self.control_steps}, should start video capture at start of next episode "
+                f"for env {self.index_to_view} ({self.current_video_object_label})"
             )
             print("-" * 80)
             self.video_frames = []
@@ -4906,7 +7690,10 @@ class SimToolReal(VecTask):
         assert self.video_frames is not None
         if not video_capture_in_progress:
             print("-" * 80)
-            print("Starting to capture video frames...")
+            print(
+                f"Starting to capture video frames for env {self.index_to_view} "
+                f"({self.current_video_object_label})..."
+            )
             print("-" * 80)
             # Video capture requires that self.enable_viewer_sync=True
             # If there is a viewer, we need to save the previous value of self.enable_viewer_sync so we can restore it later
@@ -4940,7 +7727,14 @@ class SimToolReal(VecTask):
         self.video_frames.append(color_image)
 
         if len(self.video_frames) == self.cfg["env"]["capture_video_len"]:
-            video_filename = f"{DATETIME_STR}_video_{self.control_steps}.mp4"
+            object_label = str(getattr(self, "current_video_object_label", "env_0"))
+            object_label = "".join(
+                char if char.isalnum() or char in {"_", "-"} else "_"
+                for char in object_label
+            )
+            video_filename = (
+                f"{DATETIME_STR}_video_{self.control_steps}_{object_label}.mp4"
+            )
             videos_dir = Path("videos")
             videos_dir.mkdir(parents=True, exist_ok=True)
             video_path = videos_dir / video_filename

@@ -1,0 +1,27 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastPPO
+  - _self_
+
+params:
+  network:
+    pointnet:
+      start_idx: 115
+      num_points: 128
+      point_dim: 3
+      units: [32, 64, 64]
+      activation: elu
+      pooling: max_mean
+      max_batch_size: 2048
+
+  config:
+    name: ${resolve_default:SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV25PointNetPPO,${....experiment}}
+    central_value_config:
+      network:
+        pointnet:
+          start_idx: 115
+          num_points: 128
+          point_dim: 3
+          units: [32, 64, 64]
+          activation: elu
+          pooling: max_mean
+          max_batch_size: 2048

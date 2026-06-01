@@ -1,0 +1,116 @@
+defaults:
+  - SimToolReal
+  - _self_
+
+env:
+  taskMode: "dynamic_tabletop_grasp"
+
+  # Dynamic tabletop grasping is a shorter capture-and-lift episode rather
+  # than a long sequence of object pose goals.
+  episodeLength: 360
+  maxConsecutiveSuccesses: 1
+  resetWhenDropped: True
+  capture_video: True
+  capture_video_freq: 3_000
+  capture_video_len: 240
+
+  # Keep the first version focused on a sliding object on the table.
+  asset:
+    table: "urdf/table_dynamic_grasp.urdf"
+  resetPositionNoiseX: 0.18
+  resetPositionNoiseY: 0.14
+  resetPositionNoiseZ: 0.01
+  randomizeObjectRotation: True
+  objectFriction: 0.2
+  tableFriction: 0.2
+  forceScale: 0.0
+  torqueScale: 0.0
+  useActionDelay: False
+  dofSpeedScale: 4.0
+  armMovingAverage: 0.55
+  handMovingAverage: 0.35
+  kukaActionsPenaltyScale: 0.01
+  handActionsPenaltyScale: 0.0015
+
+  # Initial planar motion of the manipulated object.
+  dynamicGraspInitialSpeedRange: [0.10, 0.24]
+  dynamicGraspInitialYawRateRange: [-1.5, 1.5]
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspStartSpeedRange: [0.03, 0.10]
+  dynamicGraspStartYawRateRange: [-0.5, 0.5]
+  dynamicGraspSpeedCurriculumSteps: 300_000
+  dynamicGraspPersistentMotion: True
+  dynamicGraspBounceAtWorkspace: True
+  dynamicGraspWorkspaceX: [-0.34, 0.34]
+  dynamicGraspWorkspaceY: [-0.24, 0.24]
+
+  # Dynamic-grasp reward shaping.
+  dynamicGraspVelocityMatchScale: 0.25
+  dynamicGraspNearScale: 0.20
+  dynamicGraspEnclosureDistanceScale: 0.12
+  dynamicGraspInterceptLeadTime: 0.25
+  dynamicGraspInterceptDistanceScale: 0.20
+  dynamicGraspPregraspAheadDistance: 0.07
+  dynamicGraspPregraspDistanceScale: 0.18
+  dynamicGraspStableFingertipDistance: 0.14
+  dynamicGraspStableObjectPalmVel: 0.25
+  dynamicGraspSuccessSteps: 20
+  dynamicGraspVelocityMatchRewScale: 0.4
+  dynamicGraspInterceptRewScale: 0.8
+  dynamicGraspPregraspAlignmentRewScale: 0.6
+  dynamicGraspEnclosureRewScale: 1.5
+  dynamicGraspLiftedEnclosureRewScale: 16.0
+  dynamicGraspLiftProgressRewScale: 40.0
+  dynamicGraspStableHoldRewScale: 140.0
+  dynamicGraspStableProgressRewScale: 80.0
+  dynamicGraspSuccessBonus: 2500.0
+  dynamicGraspPostContactRelVelPenaltyScale: 8.0
+  dynamicGraspPostContactRelVelMargin: 0.35
+  dynamicGraspPushAwayPenaltyScale: 12.0
+  dynamicGraspPushAwaySpeedMargin: 0.35
+  dynamicGraspPushAwayHeightMargin: 0.16
+  liftingRewScale: 60.0
+  liftingBonus: 600.0
+
+  # Drop goal-pose observations for this capture-and-lift task. The actor sees
+  # object velocity in the first dynamic version; the critic keeps progress and
+  # reward features for value estimation.
+  stateList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "object_rot",
+      "object_vel",
+      "object_vel_rel_palm",
+      "fingertip_pos_rel_palm",
+      "keypoints_rel_palm",
+      "predicted_keypoints_rel_palm",
+      "object_scales",
+      "closest_fingertip_dist",
+      "lifted_object",
+      "progress",
+      "successes",
+      "reward",
+    ]
+  obsList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "object_rot",
+      "object_vel",
+      "object_vel_rel_palm",
+      "fingertip_pos_rel_palm",
+      "keypoints_rel_palm",
+      "predicted_keypoints_rel_palm",
+      "object_scales",
+      "closest_fingertip_dist",
+      "lifted_object",
+    ]

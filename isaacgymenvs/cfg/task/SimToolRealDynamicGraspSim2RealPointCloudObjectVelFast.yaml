@@ -1,0 +1,8 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVel
+  - _self_
+
+env:
+  # Faster tabletop motion variant for the privileged object-velocity ablation.
+  dynamicGraspStartSpeedRange: [0.06, 0.14]
+  dynamicGraspInitialSpeedRange: [0.18, 0.36]

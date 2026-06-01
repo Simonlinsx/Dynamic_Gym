@@ -1,0 +1,61 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV31SafeInterceptDomino20PointNet
+  - _self_
+
+env:
+  # v31.1: keep the safer intercept style from v31, but add a reward bridge
+  # from pregrasp readiness into controlled contact, finger enclosure, and lift.
+  dofSpeedScale: 2.4
+  armMovingAverage: 0.34
+  handMovingAverage: 0.34
+  kukaActionsPenaltyScale: 0.018
+  handActionsPenaltyScale: 0.0025
+
+  dynamicGraspInterceptRewScale: 2.6
+  dynamicGraspPregraspAlignmentRewScale: 3.4
+  dynamicGraspVelocityMatchRewScale: 0.18
+  dynamicGraspPregraspHoldRewScale: 9.0
+  dynamicGraspPregraspReadyDistance: 0.11
+
+  # Soften the hard early-contact wall. Contacts just outside the ready window
+  # are penalized partially instead of being treated like full-speed bumps.
+  dynamicGraspEarlyContactPenaltyScale: 16.0
+  dynamicGraspEarlyContactGraceDistance: 0.06
+  dynamicGraspPreContactSlowRewScale: 12.0
+  dynamicGraspPreContactSlowVelScale: 0.14
+  dynamicGraspPreContactRelVelPenaltyScale: 14.0
+  dynamicGraspPreContactRelVelMargin: 0.20
+
+  # Stage transition: once the palm is at the predicted pregrasp pose, make
+  # controlled contact and real finger enclosure more valuable than hovering.
+  dynamicGraspControlledContactRewScale: 44.0
+  dynamicGraspControlledContactVelScale: 0.18
+  dynamicGraspReadyEnclosureRewScale: 30.0
+  dynamicGraspReadyGraspQualityRewScale: 75.0
+  dynamicGraspReadyContactRewScale: 55.0
+  dynamicGraspReadyContactVelScale: 0.18
+
+  # Keep motion smooth, but do not let the smoothness terms dominate hand
+  # closure exploration.
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.08
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 150.0
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 260.0
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 4.5
+
+  # Restore enough lift pressure to escape the v31 hover solution while keeping
+  # impact/kick penalties above the older v30 setting.
+  liftingRewScale: 42.0
+  liftingBonus: 500.0
+  dynamicGraspLiftProgressRewScale: 34.0
+  dynamicGraspQualityLiftProgressRewScale: 125.0
+  dynamicGraspLiftedTrueGraspRewScale: 310.0
+  dynamicGraspStableObjectPalmVel: 0.30
+  dynamicGraspSuccessSteps: 14
+  dynamicGraspImpactPenaltyScale: 42.0
+  dynamicGraspImpactRelVelMargin: 0.18
+  dynamicGraspPostContactRelVelPenaltyScale: 18.0
+  dynamicGraspPostContactRelVelMargin: 0.24
+  dynamicGraspKickPenaltyScale: 42.0
+  dynamicGraspKickSpeedMargin: 0.055
+  dynamicGraspPushAwayPenaltyScale: 28.0
+  dynamicGraspPushAwaySpeedMargin: 0.18

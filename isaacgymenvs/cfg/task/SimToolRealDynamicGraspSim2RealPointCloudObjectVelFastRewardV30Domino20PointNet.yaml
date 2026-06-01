@@ -1,0 +1,38 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV29Domino20PointNet
+  - _self_
+
+env:
+  # Reward v3.0: keep the anti-scoop objective from v2.9, but make the path
+  # from contact -> opposing fingers -> lift less brittle.
+  dynamicGraspSurfaceContactDistance: 0.075
+  dynamicGraspOpposingDotThreshold: 0.20
+  dynamicGraspStableFingertipDistance: 0.17
+  dynamicGraspStableObjectPalmVel: 0.32
+  dynamicGraspSuccessSteps: 12
+
+  # v2.9 discounted lift too strongly, so the policy learned to touch without
+  # lifting. Restore enough lift pressure while still preferring good contact.
+  dynamicGraspGateLiftRewardByGraspQuality: True
+  dynamicGraspLiftRewardMinGraspQualityMultiplier: 0.45
+  liftingRewScale: 45.0
+  liftingBonus: 520.0
+  dynamicGraspLiftProgressRewScale: 36.0
+  dynamicGraspQualityLiftProgressRewScale: 120.0
+
+  # Directly shape opposing contacts; otherwise the policy can get high generic
+  # fingertip contact quality while all fingers stay on the same side.
+  dynamicGraspOpposingContactRewScale: 140.0
+  dynamicGraspTrueGraspQualityRewScale: 45.0
+  dynamicGraspLiftedTrueGraspRewScale: 300.0
+  dynamicGraspLiftedEnclosureRewScale: 16.0
+  dynamicGraspStableHoldRewScale: 240.0
+  dynamicGraspStableProgressRewScale: 240.0
+  dynamicGraspSuccessBonus: 4300.0
+
+  # Keep discouraging scoop/palm lifts, but make the penalties less dominant so
+  # early exploration can still discover useful lift attempts.
+  dynamicGraspScoopLiftPenaltyScale: 150.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 300.0
+  dynamicGraspPostContactRelVelPenaltyScale: 14.0
+  dynamicGraspPushAwayPenaltyScale: 18.0

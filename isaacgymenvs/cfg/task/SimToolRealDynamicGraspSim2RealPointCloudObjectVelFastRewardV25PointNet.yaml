@@ -1,0 +1,23 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFast
+  - _self_
+
+env:
+  # Reward v2.5: start from the working v2 reward, keep dense approach/lift
+  # shaping, and add only mild safety/stability pressure.
+  dynamicGraspVelocityMatchRewScale: 0.4
+  dynamicGraspInterceptRewScale: 0.8
+  dynamicGraspPregraspAlignmentRewScale: 0.6
+  dynamicGraspEnclosureRewScale: 1.5
+  dynamicGraspLiftedEnclosureRewScale: 18.0
+  dynamicGraspLiftProgressRewScale: 42.0
+  dynamicGraspStableHoldRewScale: 160.0
+  dynamicGraspStableProgressRewScale: 100.0
+  dynamicGraspSuccessBonus: 3000.0
+  dynamicGraspPostContactRelVelPenaltyScale: 10.0
+  dynamicGraspPostContactRelVelMargin: 0.35
+  dynamicGraspPushAwayPenaltyScale: 14.0
+  dynamicGraspPushAwaySpeedMargin: 0.35
+  dynamicGraspPushAwayHeightMargin: 0.16
+  dynamicGraspDroppedPenaltyScale: 250.0
+  dynamicGraspTimeoutPenaltyScale: 25.0

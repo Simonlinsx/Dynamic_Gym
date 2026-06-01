@@ -1,0 +1,52 @@
+defaults:
+  - SimToolRealDynamicGrasp
+  - _self_
+
+env:
+  # Real-observation variant for sim2real experiments. The actor sees
+  # segmented object point cloud features instead of clean simulator object
+  # pose/keypoints. In real deployment, an RGB-D + mask adapter should produce
+  # the same fixed-size object_pointcloud_rel_palm tensor.
+  objectPointCloudNumPoints: 128
+  objectPointCloudNoiseStd: 0.003
+  objectPointCloudDropoutProb: 0.15
+
+  stateList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "fingertip_pos_rel_palm",
+      "object_pointcloud_rel_palm",
+      "object_pointcloud_centroid_rel_palm",
+      "object_pointcloud_vel_rel_palm",
+      "object_pointcloud_tracking_confidence",
+      "object_rot",
+      "object_vel",
+      "object_vel_rel_palm",
+      "keypoints_rel_palm",
+      "predicted_keypoints_rel_palm",
+      "object_scales",
+      "closest_fingertip_dist",
+      "lifted_object",
+      "progress",
+      "successes",
+      "reward",
+    ]
+  obsList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "fingertip_pos_rel_palm",
+      "object_pointcloud_rel_palm",
+      "object_pointcloud_centroid_rel_palm",
+      "object_pointcloud_vel_rel_palm",
+      "object_pointcloud_tracking_confidence",
+    ]

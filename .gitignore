@@ -217,5 +217,18 @@ train_dir/
 runs/
 wandb/
 
+# Local dynamic-grasp experiments and generated artifacts
+eval_videos/
+eval_logs/
+train_logs/
+outputs/
+nohup*.out
+nohup*.log
+*.mp4
+*.pth
+*.pkl
+*.tfevents*
+SimToolReal- An Object-Centric Policy for Zero-Shot Dexterous Tool Manipulation.pdf
+
 # FoundationPose (separate repo)
 FoundationPose/
