@@ -14,6 +14,9 @@ env:
   robotDofPropertyPreset: "generic_position"
   robotAssetRoot: "/data1/linsixu/simtoolreal/assets/generated/franka_brainco_revo2_right"
   assetCollapseFixedJoints: False
+  robotStartPose: [-0.35, 0.0, 0.55, 0.70710678, 0.0, 0.0, 0.70710678]
+  tableStartPose: [0.0, 0.0, 0.38, 0.0, 0.0, 0.0, 1.0]
+  objectStartPose: [0.0, 0.0, 0.63, 0.0, 0.0, 0.0, 1.0]
 
   asset:
     robot: "franka_brainco_revo2_right.urdf"

@@ -255,6 +255,19 @@ def assert_equals(a, b):
     assert a == b, f"a: {a}, b: {b}"
 
 
+def cfg_pose_to_transform(pose, name: str) -> gymapi.Transform:
+    assert len(pose) == 7, f"{name} must be [x, y, z, qx, qy, qz, qw]"
+    transform = gymapi.Transform()
+    transform.p = gymapi.Vec3(float(pose[0]), float(pose[1]), float(pose[2]))
+    transform.r = gymapi.Quat(
+        float(pose[3]),
+        float(pose[4]),
+        float(pose[5]),
+        float(pose[6]),
+    )
+    return transform
+
+
 class SimToolReal(VecTask):
     def __init__(
         self,
@@ -3553,11 +3566,15 @@ class SimToolReal(VecTask):
             self.arm_hand_dof_upper_limits, device=self.device
         )
 
-        robot_pose = gymapi.Transform()
-        robot_pose.p = gymapi.Vec3(
-            *get_axis_params(0.0, self.up_axis_idx)
-        ) + gymapi.Vec3(0.0, 0.8, 0)
-        robot_pose.r = gymapi.Quat(0, 0, 0, 1)
+        robot_start_pose_cfg = self.cfg["env"].get("robotStartPose", None)
+        if robot_start_pose_cfg is None:
+            robot_pose = gymapi.Transform()
+            robot_pose.p = gymapi.Vec3(
+                *get_axis_params(0.0, self.up_axis_idx)
+            ) + gymapi.Vec3(0.0, 0.8, 0)
+            robot_pose.r = gymapi.Quat(0, 0, 0, 1)
+        else:
+            robot_pose = cfg_pose_to_transform(robot_start_pose_cfg, "robotStartPose")
 
         object_assets, object_rb_count, object_shapes_count = (
             self._load_main_object_asset()
@@ -3589,12 +3606,18 @@ class SimToolReal(VecTask):
             if self.table_sensor_idx == -1:
                 raise ValueError("Failed to create table force sensor")
 
-        table_pose = gymapi.Transform()
-        table_pose.p = gymapi.Vec3()
-        table_pose.p.x = robot_pose.p.x
-        table_pose_dy, table_pose_dz = -0.8, self.cfg["env"]["tableResetZ"]
-        table_pose.p.y = robot_pose.p.y + table_pose_dy
-        table_pose.p.z = robot_pose.p.z + table_pose_dz
+        table_start_pose_cfg = self.cfg["env"].get("tableStartPose", None)
+        if table_start_pose_cfg is None:
+            table_pose = gymapi.Transform()
+            table_pose.p = gymapi.Vec3()
+            table_pose.p.x = robot_pose.p.x
+            table_pose_dy, table_pose_dz = -0.8, self.cfg["env"]["tableResetZ"]
+            table_pose.p.y = robot_pose.p.y + table_pose_dy
+            table_pose.p.z = robot_pose.p.z + table_pose_dz
+        else:
+            table_pose = cfg_pose_to_transform(table_start_pose_cfg, "tableStartPose")
+            table_pose_dy = table_pose.p.y - robot_pose.p.y
+            table_pose_dz = table_pose.p.z - robot_pose.p.z
 
         table_rb_count = self.gym.get_asset_rigid_body_count(table_asset)
         table_shapes_count = self.gym.get_asset_rigid_shape_count(table_asset)

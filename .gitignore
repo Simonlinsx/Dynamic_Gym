@@ -219,6 +219,7 @@ wandb/
 
 # Local dynamic-grasp experiments and generated artifacts
 eval_videos/
+preview_videos/
 eval_logs/
 train_logs/
 outputs/
