@@ -262,14 +262,16 @@ deployment observation.
 ## Main Action Space
 
 The v31/v32 policies control the original SimToolReal robot action vector. v33
-can change the simulated arm/hand DOF count, but a deployment policy still needs
-a hardware adapter:
+uses `policyActionInterface: joint_target`: each policy action is clipped to
+`[-1, 1]`, interpreted around the configured default arm/hand pose, mapped to
+the corresponding lower/upper DOF limit, smoothed separately for the arm and
+hand, then sent as Isaac Gym position targets. A deployment policy still needs a
+hardware adapter for rate limits, collision guards, and controller protocols:
 
 ```text
-policy action -> wrist / palm command + low-dimensional grasp synergy
-              -> Shadow-style hand adapter
-              -> Inspire Hand adapter
-              -> BrainCo Revo2 adapter
+policy action -> normalized joint-position targets
+              -> safety/rate-limit adapter
+              -> Franka controller + Inspire/Revo2 controller
 ```
 
 ## Training

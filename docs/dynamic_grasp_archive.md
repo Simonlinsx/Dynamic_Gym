@@ -182,6 +182,10 @@ DOMINO's embodiment directory points to RoboTwin assets. On this machine it has
 still needs a local/official hand URDF; generated combined URDF assets go under
 `assets/generated/` and are ignored by git.
 
+For v33, `policyActionInterface: joint_target` maps the policy action to
+default-centered normalized arm/hand joint-position targets before sending them
+to Isaac Gym. Older configs keep the legacy SimToolReal action semantics.
+
 ## Suggested GitHub Staging
 
 Use a targeted `git add`; avoid `git add .` until after checking ignored files.
