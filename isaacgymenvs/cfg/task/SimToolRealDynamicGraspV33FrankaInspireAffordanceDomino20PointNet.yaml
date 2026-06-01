@@ -11,9 +11,9 @@ env:
   robotDofPropertyPreset: "generic_position"
   robotAssetRoot: "/data1/linsixu/DOMINO/assets/embodiments/franka-inspire"
   assetCollapseFixedJoints: False
-  # Task-aligned Franka base pose using the DOMINO/RoboTwin franka-inspire
-  # orientation. This places the Inspire palm near the tabletop motion region.
-  robotStartPose: [-0.35, 0.0, 0.55, 0.70710678, 0.0, 0.0, 0.70710678]
+  # Task-aligned Franka base pose. Keep the URDF upright in Isaac Gym and move
+  # the base so the Inspire palm starts near the tabletop motion region.
+  robotStartPose: [-0.45, -0.08, 0.62, 0.0, 0.0, 0.0, 1.0]
   tableStartPose: [0.0, 0.0, 0.38, 0.0, 0.0, 0.0, 1.0]
   objectStartPose: [0.0, 0.0, 0.63, 0.0, 0.0, 0.0, 1.0]
 
