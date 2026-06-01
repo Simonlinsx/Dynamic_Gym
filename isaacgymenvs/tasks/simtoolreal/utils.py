@@ -33,6 +33,79 @@ from typing import Tuple
 from torch import Tensor
 
 
+def _as_dof_array(value, n: int, name: str):
+    import numpy as np
+
+    if isinstance(value, (int, float)):
+        return np.full(n, float(value), dtype=np.float32)
+    if not isinstance(value, str):
+        try:
+            arr = np.asarray(list(value), dtype=np.float32)
+        except TypeError:
+            arr = None
+        if arr is None:
+            raise TypeError(f"{name} must be a scalar or sequence, got {type(value)}")
+        assert arr.shape == (n,), f"{name} must be a scalar or length-{n} list"
+        return arr
+    raise TypeError(f"{name} must be a scalar or sequence, got {type(value)}")
+
+
+def populate_generic_dof_properties(
+    hand_arm_dof_props,
+    arm_dofs: int,
+    hand_dofs: int,
+    arm_stiffness=600.0,
+    arm_damping=60.0,
+    arm_effort=87.0,
+    arm_armature=0.0,
+    arm_friction=0.0,
+    hand_stiffness=40.0,
+    hand_damping=4.0,
+    hand_effort=20.0,
+    hand_armature=0.0,
+    hand_friction=0.01,
+) -> None:
+    assert len(hand_arm_dof_props["stiffness"]) == arm_dofs + hand_dofs
+
+    arm_slice = slice(0, arm_dofs)
+    hand_slice = slice(arm_dofs, arm_dofs + hand_dofs)
+
+    hand_arm_dof_props["stiffness"][arm_slice] = _as_dof_array(
+        arm_stiffness, arm_dofs, "arm_stiffness"
+    )
+    hand_arm_dof_props["damping"][arm_slice] = _as_dof_array(
+        arm_damping, arm_dofs, "arm_damping"
+    )
+    hand_arm_dof_props["effort"][arm_slice] = _as_dof_array(
+        arm_effort, arm_dofs, "arm_effort"
+    )
+    hand_arm_dof_props["armature"][arm_slice] = _as_dof_array(
+        arm_armature, arm_dofs, "arm_armature"
+    )
+    hand_arm_dof_props["friction"][arm_slice] = _as_dof_array(
+        arm_friction, arm_dofs, "arm_friction"
+    )
+
+    if hand_dofs == 0:
+        return
+
+    hand_arm_dof_props["stiffness"][hand_slice] = _as_dof_array(
+        hand_stiffness, hand_dofs, "hand_stiffness"
+    )
+    hand_arm_dof_props["damping"][hand_slice] = _as_dof_array(
+        hand_damping, hand_dofs, "hand_damping"
+    )
+    hand_arm_dof_props["effort"][hand_slice] = _as_dof_array(
+        hand_effort, hand_dofs, "hand_effort"
+    )
+    hand_arm_dof_props["armature"][hand_slice] = _as_dof_array(
+        hand_armature, hand_dofs, "hand_armature"
+    )
+    hand_arm_dof_props["friction"][hand_slice] = _as_dof_array(
+        hand_friction, hand_dofs, "hand_friction"
+    )
+
+
 def populate_dof_properties(hand_arm_dof_props, arm_dofs: int, hand_dofs: int) -> None:
     assert len(hand_arm_dof_props["stiffness"]) == arm_dofs + hand_dofs
 

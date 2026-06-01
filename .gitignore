@@ -222,6 +222,7 @@ eval_videos/
 eval_logs/
 train_logs/
 outputs/
+assets/generated/
 nohup*.out
 nohup*.log
 *.mp4

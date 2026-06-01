@@ -1,0 +1,51 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV32AffordanceDomino20PointNet
+  - _self_
+
+env:
+  # Uses DOMINO/RoboTwin's checked-in franka-inspire embodiment.
+  robotEmbodiment: "franka_inspire"
+  armEmbodiment: "franka_panda"
+  handEmbodiment: "inspire_hand"
+  policyActionInterface: "joint_target"
+  robotDofPropertyPreset: "generic_position"
+  robotAssetRoot: "/data1/linsixu/DOMINO/assets/embodiments/franka-inspire"
+  assetCollapseFixedJoints: False
+
+  asset:
+    robot: "franka_inspire.urdf"
+    table: "urdf/table_narrow.urdf"
+
+  armDofs: 7
+  handDofs: 12
+  numFingertips: 5
+  palmBodyName: "hand_base_link"
+  fingertipBodyNames:
+    ["thumb_tip", "index_tip", "middle_tip", "ring_tip", "pinky_tip"]
+  palmOffset: [0.0, 0.0, 0.02]
+  fingertipOffsets:
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+    ]
+
+  defaultArmDofPos:
+    [0.0, 0.19634954084936207, 0.0, -2.617993877991494, 0.0, 2.941592653589793, 0.7853981633974483]
+  # Isaac Gym orders the Inspire hand DOFs as:
+  # index, middle, pinky, ring, thumb.
+  defaultHandDofPos:
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+  robotArmStiffness: 1000.0
+  robotArmDamping: 200.0
+  robotArmEffort: [87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0]
+  robotHandStiffness: 60.0
+  robotHandDamping: 6.0
+  robotHandEffort: 1.0
+  robotHandJointFriction: 0.01
+
+  resetDofPosRandomIntervalArm: 0.04
+  resetDofPosRandomIntervalFingers: 0.04

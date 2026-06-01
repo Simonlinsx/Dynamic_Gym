@@ -1,0 +1,60 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV32AffordanceDomino20PointNet
+  - _self_
+
+env:
+  # Franka + BrainCo Revo2 embodiment template. This repo does not currently
+  # include a Revo2 URDF; build a local combined asset with:
+  #   BRAINCO_REVO2_URDF=/path/to/revo2_right.urdf \
+  #   bash scripts/prepare_franka_brainco_revo2_asset.sh
+  robotEmbodiment: "franka_brainco_revo2_right"
+  armEmbodiment: "franka_panda"
+  handEmbodiment: "brainco_revo2_right"
+  policyActionInterface: "joint_target"
+  robotDofPropertyPreset: "generic_position"
+  robotAssetRoot: "/data1/linsixu/simtoolreal/assets/generated/franka_brainco_revo2_right"
+  assetCollapseFixedJoints: False
+
+  asset:
+    robot: "franka_brainco_revo2_right.urdf"
+    table: "urdf/table_narrow.urdf"
+
+  armDofs: 7
+  # BrainCo's public Revo2 docs describe 6 active joints and 11 total DOF.
+  # Keep this equal to the number of non-fixed hand joints in the generated URDF.
+  handDofs: 11
+  numFingertips: 5
+  palmBodyName: "revo2_base_link"
+  fingertipBodyNames:
+    [
+      "revo2_thumb_tip",
+      "revo2_index_tip",
+      "revo2_middle_tip",
+      "revo2_ring_tip",
+      "revo2_pinky_tip",
+    ]
+  palmOffset: [0.0, 0.0, 0.02]
+  fingertipOffsets:
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+    ]
+
+  defaultArmDofPos:
+    [0.0, 0.19634954084936207, 0.0, -2.617993877991494, 0.0, 2.941592653589793, 0.7853981633974483]
+  defaultHandDofPos:
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+  robotArmStiffness: 1000.0
+  robotArmDamping: 200.0
+  robotArmEffort: [87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0]
+  robotHandStiffness: 60.0
+  robotHandDamping: 6.0
+  robotHandEffort: 20.0
+  robotHandJointFriction: 0.01
+
+  resetDofPosRandomIntervalArm: 0.04
+  resetDofPosRandomIntervalFingers: 0.04

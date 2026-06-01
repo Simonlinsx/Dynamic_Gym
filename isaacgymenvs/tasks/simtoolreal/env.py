@@ -58,6 +58,7 @@ from pytorch3d.transforms import (
 from dextoolbench.objects import NAME_TO_OBJECT
 from isaacgymenvs.tasks.base.vec_task import VecTask
 from isaacgymenvs.tasks.simtoolreal.utils import (
+    populate_generic_dof_properties,
     populate_dof_properties,
     tolerance_curriculum,
     tolerance_successes_objective,
@@ -287,22 +288,50 @@ class SimToolReal(VecTask):
         )
 
         self.robot_asset_file: str = self.cfg["env"]["asset"]["robot"]
+        self.robot_asset_root_cfg = self.cfg["env"].get("robotAssetRoot", None)
+        self.robot_embodiment = str(
+            self.cfg["env"].get("robotEmbodiment", "sharpa_legacy")
+        )
+        self.arm_embodiment = str(self.cfg["env"].get("armEmbodiment", "kuka_legacy"))
+        self.hand_embodiment = str(
+            self.cfg["env"].get("handEmbodiment", "sharpa_legacy")
+        )
+        self.policy_action_interface = str(
+            self.cfg["env"].get("policyActionInterface", "legacy_joint_target")
+        )
+        valid_action_interfaces = {"legacy_joint_target", "joint_target"}
+        if self.policy_action_interface not in valid_action_interfaces:
+            raise NotImplementedError(
+                f"policyActionInterface={self.policy_action_interface} is not "
+                f"implemented; expected one of {sorted(valid_action_interfaces)}."
+            )
+        self.robot_dof_property_preset = str(
+            self.cfg["env"].get(
+                "robotDofPropertyPreset",
+                "legacy_kuka_sharpa" if self.use_sharpa else "generic_position",
+            )
+        )
 
         self.clamp_abs_observations: float = self.cfg["env"]["clampAbsObservations"]
 
         self.privileged_actions = self.cfg["env"]["privilegedActions"]
         self.privileged_actions_torque = self.cfg["env"]["privilegedActionsTorque"]
 
-        # 4 joints for index, middle, ring, and thumb and 7 for kuka arm
-        self.num_arm_dofs = 7
-        self.num_finger_dofs = 4
-        self.num_fingertips = 4
-        self.num_hand_dofs = self.num_finger_dofs * self.num_fingertips
+        configured_fingertips = self.cfg["env"].get("fingertipBodyNames", None)
+        default_num_fingertips = len(configured_fingertips or [])
+        if default_num_fingertips == 0:
+            default_num_fingertips = 5 if self.use_sharpa else 4
 
-        if self.use_sharpa:
-            self.num_fingertips = 5
-            self.num_hand_dofs = 22
-            self.num_finger_dofs = None  # Different per finger
+        self.num_arm_dofs = int(self.cfg["env"].get("armDofs", 7))
+        self.num_fingertips = int(
+            self.cfg["env"].get("numFingertips", default_num_fingertips)
+        )
+        self.num_hand_dofs = int(
+            self.cfg["env"].get("handDofs", 22 if self.use_sharpa else 16)
+        )
+        self.num_finger_dofs = (
+            None if self.num_fingertips == 0 else self.num_hand_dofs / self.num_fingertips
+        )
         self.num_hand_arm_dofs = self.num_hand_dofs + self.num_arm_dofs
 
         self.num_robot_actions = self.num_hand_arm_dofs
@@ -580,21 +609,6 @@ class SimToolReal(VecTask):
         self.dynamic_grasp_palm_only_lift_dist = float(
             self.cfg["env"].get("dynamicGraspPalmOnlyLiftDist", 0.12)
         )
-        self.robot_embodiment = str(
-            self.cfg["env"].get("robotEmbodiment", "sharpa_legacy")
-        )
-        self.arm_embodiment = str(self.cfg["env"].get("armEmbodiment", "kuka_legacy"))
-        self.hand_embodiment = str(
-            self.cfg["env"].get("handEmbodiment", "sharpa_legacy")
-        )
-        self.policy_action_interface = str(
-            self.cfg["env"].get("policyActionInterface", "legacy_joint_target")
-        )
-        if self.policy_action_interface != "legacy_joint_target":
-            raise NotImplementedError(
-                "Only policyActionInterface=legacy_joint_target is implemented. "
-                "Use a new embodiment adapter before enabling Linker/Revo2 actions."
-            )
         self.dynamic_grasp_use_affordance_prior = bool(
             self.cfg["env"].get("dynamicGraspUseAffordancePrior", False)
         )
@@ -841,6 +855,8 @@ class SimToolReal(VecTask):
             [[0.05, 0.005, 0], [0.05, 0.005, 0], [0.05, 0.005, 0], [0.06, 0.005, 0]],
             dtype=np.float32,
         )
+        configured_fingertips = self.cfg["env"].get("fingertipBodyNames", None)
+        configured_fingertip_offsets = self.cfg["env"].get("fingertipOffsets", None)
 
         if self.use_sharpa:
             if self.use_right_sharpa:
@@ -872,6 +888,21 @@ class SimToolReal(VecTask):
                 dtype=np.float32,
                 # [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]], dtype=np.float32
             )
+        if configured_fingertips is not None:
+            self.fingertips = [str(name) for name in configured_fingertips]
+            if configured_fingertip_offsets is None:
+                configured_fingertip_offsets = [[0.0, 0.0, 0.0]] * len(
+                    self.fingertips
+                )
+            self.fingertip_offsets = np.asarray(
+                configured_fingertip_offsets,
+                dtype=np.float32,
+            )
+            assert self.fingertip_offsets.shape == (len(self.fingertips), 3), (
+                "fingertipOffsets must be a list of [x, y, z] values matching "
+                f"fingertipBodyNames; got {self.fingertip_offsets.shape} for "
+                f"{len(self.fingertips)} fingertips"
+            )
         self.thumb_fingertip_idx = next(
             (idx for idx, name in enumerate(self.fingertips) if "thumb" in name),
             min(3, len(self.fingertips) - 1),
@@ -879,7 +910,19 @@ class SimToolReal(VecTask):
         self.non_thumb_fingertip_indices = [
             idx for idx in range(len(self.fingertips)) if idx != self.thumb_fingertip_idx
         ]
-        self.palm_offset = np.array([-0.00, -0.02, 0.16], dtype=np.float32)
+        self.palm_body_name = str(
+            self.cfg["env"].get(
+                "palmBodyName",
+                "iiwa14_link_7" if self.use_sharpa else "palm",
+            )
+        )
+        self.palm_offset = np.asarray(
+            self.cfg["env"].get("palmOffset", [-0.00, -0.02, 0.16]),
+            dtype=np.float32,
+        )
+        assert self.palm_offset.shape == (3,), (
+            f"palmOffset must be a length-3 list, got {self.palm_offset.shape}"
+        )
 
         assert self.num_fingertips == len(self.fingertips)
 
@@ -1093,20 +1136,44 @@ class SimToolReal(VecTask):
             self.num_hand_arm_dofs, dtype=torch.float, device=self.device
         )
 
-        desired_kuka_pos = torch.tensor(
+        desired_arm_pos = torch.tensor(
             [-1.571, 1.571, -0.000, 1.376, -0.000, 1.485, 2.358]
         )  # pose v1
         if self.use_sharpa:
-            desired_kuka_pos = torch.tensor(
+            desired_arm_pos = torch.tensor(
                 [-1.571, 1.571, -0.000, 1.376, -0.000, 1.485, 1.308]
             )  # same as above but 60 deg offset for the mount
+        if "defaultArmDofPos" in self.cfg["env"]:
+            desired_arm_pos = torch.tensor(
+                self.cfg["env"]["defaultArmDofPos"],
+                dtype=torch.float,
+            )
+        assert desired_arm_pos.shape == (self.num_arm_dofs,), (
+            f"defaultArmDofPos must have length {self.num_arm_dofs}, got "
+            f"{desired_arm_pos.shape}"
+        )
 
         START_HIGHER = self.cfg["env"]["startArmHigher"]
         if START_HIGHER:
-            desired_kuka_pos[1] -= np.deg2rad(10)
-            desired_kuka_pos[3] += np.deg2rad(10)
+            desired_arm_pos[1] -= np.deg2rad(10)
+            desired_arm_pos[3] += np.deg2rad(10)
 
-        self.hand_arm_default_dof_pos[:7] = desired_kuka_pos
+        self.hand_arm_default_dof_pos[: self.num_arm_dofs] = desired_arm_pos.to(
+            self.device
+        )
+        if "defaultHandDofPos" in self.cfg["env"]:
+            desired_hand_pos = torch.tensor(
+                self.cfg["env"]["defaultHandDofPos"],
+                dtype=torch.float,
+                device=self.device,
+            )
+            assert desired_hand_pos.shape == (self.num_hand_dofs,), (
+                f"defaultHandDofPos must have length {self.num_hand_dofs}, got "
+                f"{desired_hand_pos.shape}"
+            )
+            self.hand_arm_default_dof_pos[
+                self.num_arm_dofs : self.num_hand_arm_dofs
+            ] = desired_hand_pos
 
         self.arm_hand_dof_state = self.dof_state.view(self.num_envs, -1, 2)[
             :, : self.num_hand_arm_dofs
@@ -3411,6 +3478,19 @@ class SimToolReal(VecTask):
         asset_root = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "../../../assets"
         )
+        robot_asset_root = asset_root
+        robot_asset_file = self.robot_asset_file
+        if os.path.isabs(robot_asset_file):
+            robot_asset_root = os.path.dirname(robot_asset_file)
+            robot_asset_file = os.path.basename(robot_asset_file)
+        elif self.robot_asset_root_cfg is not None:
+            robot_asset_root = os.path.expanduser(str(self.robot_asset_root_cfg))
+        robot_asset_path = os.path.join(robot_asset_root, robot_asset_file)
+        if not os.path.exists(robot_asset_path):
+            raise FileNotFoundError(
+                f"Robot asset not found: {robot_asset_path}. "
+                "Set env.robotAssetRoot/env.asset.robot or generate the asset first."
+            )
 
         object_asset_root = asset_root
         tmp_assets_dir = tempfile.TemporaryDirectory()
@@ -3422,7 +3502,9 @@ class SimToolReal(VecTask):
         # asset_options.vhacd_enabled = True  # Should be False so the robot is not complicated to model, but can test
         asset_options.fix_base_link = True
         asset_options.flip_visual_attachments = False
-        asset_options.collapse_fixed_joints = True
+        asset_options.collapse_fixed_joints = bool(
+            self.cfg["env"].get("assetCollapseFixedJoints", True)
+        )
         asset_options.disable_gravity = True
         asset_options.thickness = 0.001
         asset_options.angular_damping = 0.01
@@ -3432,9 +3514,9 @@ class SimToolReal(VecTask):
             asset_options.use_physx_armature = True
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_POS
 
-        print(f"Loading asset {self.robot_asset_file} from {asset_root}")
+        print(f"Loading asset {robot_asset_file} from {robot_asset_root}")
         robot_asset = self.gym.load_asset(
-            self.sim, asset_root, self.robot_asset_file, asset_options
+            self.sim, robot_asset_root, robot_asset_file, asset_options
         )
         print(f"Loaded asset {robot_asset}")
 
@@ -3554,9 +3636,14 @@ class SimToolReal(VecTask):
         # Sanity checks
         body_names = self.gym.get_asset_rigid_body_names(robot_asset)
         for name in self.fingertips:
-            assert name in body_names, f"Finger {name} not found in asset {robot_asset}"
-        has_iiwa14 = "iiwa14_link_7" in body_names
-        assert has_iiwa14, f"iiwa14_link_7 not found in asset {robot_asset}"
+            assert name in body_names, (
+                f"Fingertip body {name} not found in asset {robot_asset}; "
+                f"available bodies: {body_names}"
+            )
+        assert self.palm_body_name in body_names, (
+            f"Palm body {self.palm_body_name} not found in asset {robot_asset}; "
+            f"available bodies: {body_names}"
+        )
 
         self.fingertip_handles = [
             self.gym.find_asset_rigid_body_index(robot_asset, name)
@@ -3572,13 +3659,10 @@ class SimToolReal(VecTask):
                 for ft_handle in self.fingertip_handles
             ]
 
-        if has_iiwa14:
-            self.robot_name = "iiwa14"
-            self.palm_handle = self.gym.find_asset_rigid_body_index(
-                robot_asset, "iiwa14_link_7"
-            )
-        else:
-            raise ValueError(f"iiwa14_link_7 not found in asset {robot_asset}")
+        self.robot_name = self.arm_embodiment
+        self.palm_handle = self.gym.find_asset_rigid_body_index(
+            robot_asset, self.palm_body_name
+        )
 
         # this rely on the fact that objects are added right after the arms in terms of create_actor()
         self.object_rb_handles = list(
@@ -3639,9 +3723,30 @@ class SimToolReal(VecTask):
                 collision_filter,
                 segmentation_id,
             )
-            populate_dof_properties(
-                robot_dof_props, self.num_arm_dofs, self.num_hand_dofs
-            )
+            if self.robot_dof_property_preset == "legacy_kuka_sharpa":
+                populate_dof_properties(
+                    robot_dof_props, self.num_arm_dofs, self.num_hand_dofs
+                )
+            elif self.robot_dof_property_preset == "generic_position":
+                populate_generic_dof_properties(
+                    robot_dof_props,
+                    self.num_arm_dofs,
+                    self.num_hand_dofs,
+                    arm_stiffness=self.cfg["env"].get("robotArmStiffness", 600.0),
+                    arm_damping=self.cfg["env"].get("robotArmDamping", 60.0),
+                    arm_effort=self.cfg["env"].get("robotArmEffort", 87.0),
+                    arm_armature=self.cfg["env"].get("robotArmArmature", 0.0),
+                    arm_friction=self.cfg["env"].get("robotArmJointFriction", 0.0),
+                    hand_stiffness=self.cfg["env"].get("robotHandStiffness", 40.0),
+                    hand_damping=self.cfg["env"].get("robotHandDamping", 4.0),
+                    hand_effort=self.cfg["env"].get("robotHandEffort", 20.0),
+                    hand_armature=self.cfg["env"].get("robotHandArmature", 0.0),
+                    hand_friction=self.cfg["env"].get("robotHandJointFriction", 0.01),
+                )
+            else:
+                raise ValueError(
+                    f"Unknown robotDofPropertyPreset={self.robot_dof_property_preset}"
+                )
 
             self.gym.set_actor_dof_properties(env_ptr, robot_actor, robot_dof_props)
             robot_idx = self.gym.get_actor_index(
@@ -4093,12 +4198,19 @@ class SimToolReal(VecTask):
 
     def _action_penalties(self) -> Tuple[Tensor, Tensor]:
         kuka_actions_penalty = (
-            torch.sum(torch.abs(self.arm_hand_dof_vel[..., 0:7]), dim=-1)
+            torch.sum(
+                torch.abs(self.arm_hand_dof_vel[..., 0 : self.num_arm_dofs]),
+                dim=-1,
+            )
             * self.kuka_actions_penalty_scale
         )
         hand_actions_penalty = (
             torch.sum(
-                torch.abs(self.arm_hand_dof_vel[..., 7 : self.num_hand_arm_dofs]),
+                torch.abs(
+                    self.arm_hand_dof_vel[
+                        ..., self.num_arm_dofs : self.num_hand_arm_dofs
+                    ]
+                ),
                 dim=-1,
             )
             * self.hand_actions_penalty_scale
@@ -6650,8 +6762,10 @@ class SimToolReal(VecTask):
                 self.hand_arm_default_dof_pos, device=self.device
             )
 
-            noise_coeff[0:7] = self.reset_dof_pos_noise_arm
-            noise_coeff[7 : self.num_hand_arm_dofs] = self.reset_dof_pos_noise_fingers
+            noise_coeff[0 : self.num_arm_dofs] = self.reset_dof_pos_noise_arm
+            noise_coeff[
+                self.num_arm_dofs : self.num_hand_arm_dofs
+            ] = self.reset_dof_pos_noise_fingers
 
             robot_pos = self.hand_arm_default_dof_pos + noise_coeff * rand_delta
             robot_pos = tensor_clamp(
@@ -6827,47 +6941,61 @@ class SimToolReal(VecTask):
         if self.use_relative_control:
             # arm relative to current position
             targets = (
-                self.arm_hand_dof_pos[:, :7]
-                + self.hand_dof_speed_scale * self.dt * self.actions[:, :7]
+                self.arm_hand_dof_pos[:, : self.num_arm_dofs]
+                + self.hand_dof_speed_scale
+                * self.dt
+                * self.actions[:, : self.num_arm_dofs]
             )
-            self.cur_targets[:, :7] = tensor_clamp(
+            self.cur_targets[:, : self.num_arm_dofs] = tensor_clamp(
                 targets,
-                self.arm_hand_dof_lower_limits[:7],
-                self.arm_hand_dof_upper_limits[:7],
+                self.arm_hand_dof_lower_limits[: self.num_arm_dofs],
+                self.arm_hand_dof_upper_limits[: self.num_arm_dofs],
             )
         else:
             # arm relative to previous target
             targets = (
-                self.prev_targets[:, :7]
-                + self.hand_dof_speed_scale * self.dt * self.actions[:, :7]
+                self.prev_targets[:, : self.num_arm_dofs]
+                + self.hand_dof_speed_scale
+                * self.dt
+                * self.actions[:, : self.num_arm_dofs]
             )
-            self.cur_targets[:, :7] = tensor_clamp(
+            self.cur_targets[:, : self.num_arm_dofs] = tensor_clamp(
                 targets,
-                self.arm_hand_dof_lower_limits[:7],
-                self.arm_hand_dof_upper_limits[:7],
+                self.arm_hand_dof_lower_limits[: self.num_arm_dofs],
+                self.arm_hand_dof_upper_limits[: self.num_arm_dofs],
             )
 
         # Smooth arm
-        self.cur_targets[:, :7] = (
-            self.arm_moving_average * self.cur_targets[:, :7]
-            + (1.0 - self.arm_moving_average) * self.prev_targets[:, :7]
+        self.cur_targets[:, : self.num_arm_dofs] = (
+            self.arm_moving_average * self.cur_targets[:, : self.num_arm_dofs]
+            + (1.0 - self.arm_moving_average)
+            * self.prev_targets[:, : self.num_arm_dofs]
         )
 
         # hand
-        self.cur_targets[:, 7 : self.num_hand_arm_dofs] = scale(
-            actions[:, 7 : self.num_hand_arm_dofs],
-            self.arm_hand_dof_lower_limits[7 : self.num_hand_arm_dofs],
-            self.arm_hand_dof_upper_limits[7 : self.num_hand_arm_dofs],
+        self.cur_targets[:, self.num_arm_dofs : self.num_hand_arm_dofs] = scale(
+            actions[:, self.num_arm_dofs : self.num_hand_arm_dofs],
+            self.arm_hand_dof_lower_limits[
+                self.num_arm_dofs : self.num_hand_arm_dofs
+            ],
+            self.arm_hand_dof_upper_limits[
+                self.num_arm_dofs : self.num_hand_arm_dofs
+            ],
         )
-        self.cur_targets[:, 7 : self.num_hand_arm_dofs] = (
-            self.hand_moving_average * self.cur_targets[:, 7 : self.num_hand_arm_dofs]
+        self.cur_targets[:, self.num_arm_dofs : self.num_hand_arm_dofs] = (
+            self.hand_moving_average
+            * self.cur_targets[:, self.num_arm_dofs : self.num_hand_arm_dofs]
             + (1.0 - self.hand_moving_average)
-            * self.prev_targets[:, 7 : self.num_hand_arm_dofs]
+            * self.prev_targets[:, self.num_arm_dofs : self.num_hand_arm_dofs]
         )
-        self.cur_targets[:, 7 : self.num_hand_arm_dofs] = tensor_clamp(
-            self.cur_targets[:, 7 : self.num_hand_arm_dofs],
-            self.arm_hand_dof_lower_limits[7 : self.num_hand_arm_dofs],
-            self.arm_hand_dof_upper_limits[7 : self.num_hand_arm_dofs],
+        self.cur_targets[:, self.num_arm_dofs : self.num_hand_arm_dofs] = tensor_clamp(
+            self.cur_targets[:, self.num_arm_dofs : self.num_hand_arm_dofs],
+            self.arm_hand_dof_lower_limits[
+                self.num_arm_dofs : self.num_hand_arm_dofs
+            ],
+            self.arm_hand_dof_upper_limits[
+                self.num_arm_dofs : self.num_hand_arm_dofs
+            ],
         )
 
         # Default CHECK_WITH_COMPUTED_JOINT_POS_TARGETS = False
@@ -6918,9 +7046,9 @@ class SimToolReal(VecTask):
             HACK_OVERWRITE = False
             if HACK_OVERWRITE:
                 # SUPER HACK
-                joint_pos_targets[:, 7:] = 0.0
-                joint_pos_targets[:, 7 + 0] = 1.85
-                joint_pos_targets[:, 7 + 1] = 0.2
+                joint_pos_targets[:, self.num_arm_dofs :] = 0.0
+                joint_pos_targets[:, self.num_arm_dofs + 0] = 1.85
+                joint_pos_targets[:, self.num_arm_dofs + 1] = 0.2
             self.cur_targets[:, : self.num_hand_arm_dofs] = joint_pos_targets.clone()
 
         # print(f"self.cur_targets: {self.cur_targets[0, 7:]}")
@@ -8309,6 +8437,10 @@ class SimToolReal(VecTask):
                 if fingertip_friction is not None:
                     rigid_shape_props[i].friction = fingertip_friction
 
+        if not self.use_sharpa:
+            self.gym.set_asset_rigid_shape_properties(robot_asset, rigid_shape_props)
+            return
+
         # Turn off self-collisions for adjacent links
         from isaacgymenvs.tasks.simtoolreal.adjacent_links import (
             LEFT_SHARPA_KUKA_LINK_TO_ADJACENT_LINKS,
@@ -8322,8 +8454,6 @@ class SimToolReal(VecTask):
                 link_to_adjacent_links = LEFT_SHARPA_KUKA_LINK_TO_ADJACENT_LINKS
             else:
                 raise ValueError(f"Invalid use_sharpa: {self.use_sharpa}")
-        else:
-            raise ValueError(f"Invalid use_sharpa: {self.use_sharpa}")
 
         assert set(link_to_adjacent_links.keys()).issubset(rb_names), (
             f"Some links are not in the asset {robot_asset}, rb_names: {rb_names}, link_to_adjacent_links: {link_to_adjacent_links}, only in link_to_adjacent_links: {set(link_to_adjacent_links.keys()) - set(rb_names)}, only in rb_names: {set(rb_names) - set(link_to_adjacent_links.keys())}"

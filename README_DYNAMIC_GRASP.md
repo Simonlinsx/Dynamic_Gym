@@ -5,9 +5,8 @@ SimToolReal codebase. The target task is to intercept a moving object on a table
 close the dexterous hand around it, lift it, and keep a stable hold.
 
 The current implementation is useful for simulation research and ablations. It is
-not a ready-to-deploy real-robot stack yet. In particular, the current embodied
-hand is still the original SimToolReal/Shadow-style hand, while the intended real
-hardware direction is Linker Hand or BrainCo Revo2 with a Franka arm.
+not a ready-to-deploy real-robot stack yet. The current real-hardware direction
+is Franka with either Inspire Hand or BrainCo Revo2.
 
 ## What Was Added
 
@@ -190,9 +189,47 @@ affordance_confidence
 
 - The current affordance source is a heuristic future-side prior. It is designed
   as a drop-in placeholder for a later DOMINO/AnyDex/RGB-D affordance predictor.
-- Embodiment metadata is explicit but still uses the legacy Shadow/Sharpa action
-  interface. Non-legacy Linker/Revo2 actions are intentionally not enabled until
-  a real adapter is implemented.
+- Embodiment metadata is explicit but this line still uses the legacy
+  Shadow/Sharpa action interface.
+
+### 6. Franka / Inspire / BrainCo Embodiment Line: v33
+
+v33 keeps the v32 task/reward/observation structure but makes the robot
+embodiment configurable:
+
+```text
+armDofs
+handDofs
+palmBodyName
+fingertipBodyNames
+palmOffset
+defaultArmDofPos
+defaultHandDofPos
+robotAssetRoot
+robotDofPropertyPreset
+policyActionInterface: joint_target
+```
+
+DOMINO's `assets/embodiments` symlinks into RoboTwin and includes
+`franka-panda` and `franka-inspire`. The Inspire variant can run directly:
+
+```bash
+CUDA_VISIBLE_DEVICES=6 bash scripts/run_dg_v33_franka_inspire_affordance_domino20_pointnet.sh
+```
+
+For BrainCo Revo2, provide an official/local Revo2 hand URDF and build a local
+combined Franka asset:
+
+```bash
+BRAINCO_REVO2_URDF=/path/to/revo2_right.urdf \
+bash scripts/prepare_franka_brainco_revo2_asset.sh
+```
+
+Then train with:
+
+```bash
+CUDA_VISIBLE_DEVICES=6 bash scripts/run_dg_v33_franka_brainco_revo2_affordance_domino20_pointnet.sh
+```
 
 ## Main Observation Variants
 
@@ -224,15 +261,14 @@ deployment observation.
 
 ## Main Action Space
 
-The policy still controls the original SimToolReal robot action vector: arm and
-hand target deltas/targets as used by the base environment. This is one of the
-main remaining sim2real gaps. For Linker Hand or BrainCo Revo2 + Franka, the
-next version should introduce an embodiment adapter:
+The v31/v32 policies control the original SimToolReal robot action vector. v33
+can change the simulated arm/hand DOF count, but a deployment policy still needs
+a hardware adapter:
 
 ```text
 policy action -> wrist / palm command + low-dimensional grasp synergy
               -> Shadow-style hand adapter
-              -> Linker Hand adapter
+              -> Inspire Hand adapter
               -> BrainCo Revo2 adapter
 ```
 
@@ -333,9 +369,8 @@ eval_videos/dynamic_grasp_domino20_v28_det100_per_object_2026-05-27_04-10-00/eva
 
 ## Known Limitations
 
-- The current hand embodiment is not Linker Hand or BrainCo Revo2.
-- The current arm embodiment is not yet constrained as a final Franka deployment
-  controller.
+- v33 adds Franka + Inspire / BrainCo configuration hooks, but the policy is
+  still a joint-target simulator policy, not a final hardware controller.
 - DOMINO20 success is still object-dependent. Flat, long, small, and asymmetric
   objects remain weak.
 - v28 has higher numeric success but relies too much on scoop-like behavior.
@@ -369,6 +404,6 @@ For deployment-oriented work, add an embodiment adapter before committing to a
 specific hand:
 
 ```text
-Franka + Linker Hand
+Franka + Inspire Hand
 Franka + BrainCo Revo2
 ```

@@ -160,8 +160,27 @@ scripts/eval_dg_v32_domino20_det_video.sh
 
 This is still a legacy Shadow/Sharpa-hand simulation policy. The config now
 records `robotEmbodiment`, `armEmbodiment`, `handEmbodiment`, and
-`policyActionInterface` so later Franka + Linker/Revo2 work has a clean place to
+`policyActionInterface` so later Franka + Inspire/Revo2 work has a clean place to
 branch from.
+
+### v33: Franka + Inspire / BrainCo Revo2 Embodiment Hooks
+
+This version makes the robot embodiment configurable instead of hard-coding
+KUKA+Sharpa body names and DOF counts. It adds:
+
+```text
+scripts/build_franka_hand_asset.py
+scripts/run_dg_v33_franka_inspire_affordance_domino20_pointnet.sh
+scripts/prepare_franka_brainco_revo2_asset.sh
+scripts/run_dg_v33_franka_brainco_revo2_affordance_domino20_pointnet.sh
+isaacgymenvs/cfg/task/SimToolRealDynamicGraspV33FrankaInspireAffordanceDomino20PointNet.yaml
+isaacgymenvs/cfg/task/SimToolRealDynamicGraspV33FrankaBrainCoRevo2AffordanceDomino20PointNet.yaml
+```
+
+DOMINO's embodiment directory points to RoboTwin assets. On this machine it has
+`franka-panda` and `franka-inspire`, so Inspire can run directly. BrainCo Revo2
+still needs a local/official hand URDF; generated combined URDF assets go under
+`assets/generated/` and are ignored by git.
 
 ## Suggested GitHub Staging
 
