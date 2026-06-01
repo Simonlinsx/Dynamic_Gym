@@ -154,6 +154,46 @@ Key idea:
 v26 is the last useful pre-DOMINO reward baseline with extra post-lift hold
 shaping and a leaky stable counter.
 
+### 5. Affordance-Conditioned Line: v32
+
+Use this as the first checkpoint after the GitHub archive. It keeps v31.1 as the
+parent config and adds a future affordance target:
+
+```text
+future_affordance = current_object_side_affordance + object_velocity * lead_time
+```
+
+Task config:
+
+```text
+isaacgymenvs/cfg/task/SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV32AffordanceDomino20PointNet.yaml
+```
+
+Launch script:
+
+```bash
+CUDA_VISIBLE_DEVICES=6 bash scripts/run_dg_v32_affordance_domino20_pointnet.sh
+```
+
+What it changes:
+
+- The intercept/pregrasp reward target can be `future_affordance_pos` instead of
+  the future object center.
+- Actor observation appends:
+
+```text
+affordance_pos_rel_palm
+future_affordance_pos_rel_palm
+affordance_axis_rel_palm
+affordance_confidence
+```
+
+- The current affordance source is a heuristic future-side prior. It is designed
+  as a drop-in placeholder for a later DOMINO/AnyDex/RGB-D affordance predictor.
+- Embodiment metadata is explicit but still uses the legacy Shadow/Sharpa action
+  interface. Non-legacy Linker/Revo2 actions are intentionally not enabled until
+  a real adapter is implemented.
+
 ## Main Observation Variants
 
 The sim2real-oriented point cloud actor observation is:
@@ -254,6 +294,20 @@ v28 per-object eval:
 CUDA_VISIBLE_DEVICES=7 bash scripts/eval_dg_v28_domino20_det100_per_object.sh
 ```
 
+v32 per-object eval:
+
+```bash
+RUN_NAME=<dynamic_grasp_domino20_affordance_v32_RUN_TIMESTAMP> \
+CUDA_VISIBLE_DEVICES=7 bash scripts/eval_dg_v32_domino20_det100_per_object.sh
+```
+
+v32 deterministic video rollout:
+
+```bash
+RUN_NAME=<dynamic_grasp_domino20_affordance_v32_RUN_TIMESTAMP> \
+CUDA_VISIBLE_DEVICES=7 bash scripts/eval_dg_v32_domino20_det_video.sh
+```
+
 ## Local Experimental Artifacts
 
 These paths are intentionally ignored by git. Keep them locally or upload them to
@@ -293,7 +347,9 @@ eval_videos/dynamic_grasp_domino20_v28_det100_per_object_2026-05-27_04-10-00/eva
 
 ## Recommended Next Step
 
-The next useful version should be affordance-conditioned:
+v32 adds the first affordance-conditioned hook. The next useful version should
+replace the heuristic future-side target with a learned or perception-derived
+affordance estimate:
 
 ```text
 RGB-D/object mask history
@@ -316,4 +372,3 @@ specific hand:
 Franka + Linker Hand
 Franka + BrainCo Revo2
 ```
-

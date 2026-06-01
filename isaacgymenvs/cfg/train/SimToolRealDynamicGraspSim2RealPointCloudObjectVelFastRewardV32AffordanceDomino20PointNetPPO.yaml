@@ -1,0 +1,7 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV311SafeInterceptBridgeDomino20PointNetPPO
+  - _self_
+
+params:
+  config:
+    name: ${resolve_default:SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV32AffordanceDomino20PointNetPPO,${....experiment}}

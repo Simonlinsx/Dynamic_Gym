@@ -1,0 +1,79 @@
+defaults:
+  - SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV311SafeInterceptBridgeDomino20PointNet
+  - _self_
+
+env:
+  # v3.2: affordance-conditioned safe intercept. This keeps v31.1 intact and
+  # changes only the target used by dynamic intercept/pregrasp shaping.
+  dynamicGraspUseAffordancePrior: True
+  dynamicGraspAffordanceMode: "heuristic_future_side"
+  dynamicGraspAffordanceLeadTime: 0.45
+  dynamicGraspAffordanceSurfaceOffset: 0.045
+  dynamicGraspAffordanceVerticalOffset: 0.0
+  dynamicGraspAffordanceMinSpeedForConfidence: 0.04
+  dynamicGraspAffordanceObsNoiseStd: 0.004
+  dynamicGraspAffordanceAxisNoiseStd: 0.02
+  dynamicGraspAffordanceDropoutProb: 0.05
+  dynamicGraspAffordanceTargetRewScale: 2.2
+
+  # Avoid double-counting "ahead of object": the affordance point is already on
+  # the moving/graspable side, so this can be smaller than v31.1.
+  dynamicGraspPregraspAheadDistance: 0.055
+  dynamicGraspPregraspReadyDistance: 0.10
+  dynamicGraspPregraspHoldRewScale: 10.0
+
+  # Keep the embodiment explicit. These are no-op metadata for now; non-legacy
+  # action interfaces intentionally raise until a real adapter is implemented.
+  robotEmbodiment: "sharpa_legacy"
+  armEmbodiment: "kuka_legacy"
+  handEmbodiment: "sharpa_legacy"
+  policyActionInterface: "legacy_joint_target"
+
+  stateList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "fingertip_pos_rel_palm",
+      "object_pointcloud_rel_palm",
+      "object_pointcloud_centroid_rel_palm",
+      "object_pointcloud_vel_rel_palm",
+      "object_pointcloud_tracking_confidence",
+      "object_vel_rel_palm",
+      "affordance_pos_rel_palm",
+      "future_affordance_pos_rel_palm",
+      "affordance_axis_rel_palm",
+      "affordance_confidence",
+      "object_rot",
+      "object_vel",
+      "keypoints_rel_palm",
+      "predicted_keypoints_rel_palm",
+      "object_scales",
+      "closest_fingertip_dist",
+      "lifted_object",
+      "progress",
+      "successes",
+      "reward",
+    ]
+  obsList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "fingertip_pos_rel_palm",
+      "object_pointcloud_rel_palm",
+      "object_pointcloud_centroid_rel_palm",
+      "object_pointcloud_vel_rel_palm",
+      "object_pointcloud_tracking_confidence",
+      "object_vel_rel_palm",
+      "affordance_pos_rel_palm",
+      "future_affordance_pos_rel_palm",
+      "affordance_axis_rel_palm",
+      "affordance_confidence",
+    ]

@@ -143,6 +143,26 @@ scripts/eval_dg_v311_domino20_det100_per_object.sh
 scripts/eval_dg_v311_domino20_det_video.sh
 ```
 
+### v32: Affordance-Conditioned Safe Intercept
+
+First post-archive version. It keeps v31.1 intact and adds a configurable
+future-affordance target for observation and reward shaping.
+
+Key files:
+
+```text
+isaacgymenvs/cfg/task/SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV32AffordanceDomino20PointNet.yaml
+isaacgymenvs/cfg/train/SimToolRealDynamicGraspSim2RealPointCloudObjectVelFastRewardV32AffordanceDomino20PointNetPPO.yaml
+scripts/run_dg_v32_affordance_domino20_pointnet.sh
+scripts/eval_dg_v32_domino20_det100_per_object.sh
+scripts/eval_dg_v32_domino20_det_video.sh
+```
+
+This is still a legacy Shadow/Sharpa-hand simulation policy. The config now
+records `robotEmbodiment`, `armEmbodiment`, `handEmbodiment`, and
+`policyActionInterface` so later Franka + Linker/Revo2 work has a clean place to
+branch from.
+
 ## Suggested GitHub Staging
 
 Use a targeted `git add`; avoid `git add .` until after checking ignored files.
@@ -167,4 +187,3 @@ git diff --cached --stat
 
 The GitHub snapshot should not include training outputs, checkpoint files,
 TensorBoard events, W&B run directories, videos, or local PDFs.
-

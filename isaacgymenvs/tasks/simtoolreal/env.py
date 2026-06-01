@@ -226,6 +226,29 @@ DEFAULT_DOMINO_OBJECT_VARIANTS = [
     },
 ]
 
+DEFAULT_DYNAMIC_GRASP_AFFORDANCE_SURFACE_OFFSETS = {
+    "mug": 0.045,
+    "cup": 0.040,
+    "bottle": 0.040,
+    "drill": 0.050,
+    "pill_bottle": 0.035,
+    "milk_box": 0.042,
+    "can": 0.038,
+    "milk_tea": 0.040,
+    "sauce_can": 0.038,
+    "tea_box": 0.040,
+    "bowl": 0.060,
+    "plate": 0.065,
+    "hammer": 0.055,
+    "screwdriver": 0.050,
+    "apple": 0.040,
+    "book": 0.045,
+    "mouse": 0.040,
+    "stapler": 0.045,
+    "dumbbell": 0.055,
+    "kettle": 0.060,
+}
+
 
 def assert_equals(a, b):
     assert a == b, f"a: {a}, b: {b}"
@@ -557,6 +580,65 @@ class SimToolReal(VecTask):
         self.dynamic_grasp_palm_only_lift_dist = float(
             self.cfg["env"].get("dynamicGraspPalmOnlyLiftDist", 0.12)
         )
+        self.robot_embodiment = str(
+            self.cfg["env"].get("robotEmbodiment", "sharpa_legacy")
+        )
+        self.arm_embodiment = str(self.cfg["env"].get("armEmbodiment", "kuka_legacy"))
+        self.hand_embodiment = str(
+            self.cfg["env"].get("handEmbodiment", "sharpa_legacy")
+        )
+        self.policy_action_interface = str(
+            self.cfg["env"].get("policyActionInterface", "legacy_joint_target")
+        )
+        if self.policy_action_interface != "legacy_joint_target":
+            raise NotImplementedError(
+                "Only policyActionInterface=legacy_joint_target is implemented. "
+                "Use a new embodiment adapter before enabling Linker/Revo2 actions."
+            )
+        self.dynamic_grasp_use_affordance_prior = bool(
+            self.cfg["env"].get("dynamicGraspUseAffordancePrior", False)
+        )
+        self.dynamic_grasp_affordance_mode = str(
+            self.cfg["env"].get("dynamicGraspAffordanceMode", "heuristic_future_side")
+        )
+        self.dynamic_grasp_affordance_lead_time = float(
+            self.cfg["env"].get(
+                "dynamicGraspAffordanceLeadTime",
+                self.dynamic_grasp_intercept_lead_time,
+            )
+        )
+        self.dynamic_grasp_affordance_surface_offset = float(
+            self.cfg["env"].get("dynamicGraspAffordanceSurfaceOffset", 0.045)
+        )
+        self.dynamic_grasp_affordance_vertical_offset = float(
+            self.cfg["env"].get("dynamicGraspAffordanceVerticalOffset", 0.0)
+        )
+        self.dynamic_grasp_affordance_min_speed_for_confidence = float(
+            self.cfg["env"].get("dynamicGraspAffordanceMinSpeedForConfidence", 0.04)
+        )
+        self.dynamic_grasp_affordance_obs_noise_std = float(
+            self.cfg["env"].get("dynamicGraspAffordanceObsNoiseStd", 0.0)
+        )
+        self.dynamic_grasp_affordance_axis_noise_std = float(
+            self.cfg["env"].get("dynamicGraspAffordanceAxisNoiseStd", 0.0)
+        )
+        self.dynamic_grasp_affordance_dropout_prob = float(
+            self.cfg["env"].get("dynamicGraspAffordanceDropoutProb", 0.0)
+        )
+        self.dynamic_grasp_affordance_target_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspAffordanceTargetRewScale", 0.0)
+        )
+        self.dynamic_grasp_affordance_surface_offsets_by_label = dict(
+            DEFAULT_DYNAMIC_GRASP_AFFORDANCE_SURFACE_OFFSETS
+        )
+        self.dynamic_grasp_affordance_surface_offsets_by_label.update(
+            {
+                str(label): float(offset)
+                for label, offset in self.cfg["env"]
+                .get("dynamicGraspAffordanceSurfaceOffsetsByLabel", {})
+                .items()
+            }
+        )
         self.object_pointcloud_num_points = int(
             self.cfg["env"].get("objectPointCloudNumPoints", 0)
         )
@@ -827,6 +909,10 @@ class SimToolReal(VecTask):
             "object_pointcloud_centroid_rel_palm": 3,
             "object_pointcloud_vel_rel_palm": 3,
             "object_pointcloud_tracking_confidence": 1,
+            "affordance_pos_rel_palm": 3,
+            "future_affordance_pos_rel_palm": 3,
+            "affordance_axis_rel_palm": 3,
+            "affordance_confidence": 1,
             "object_scales": 3,
             "closest_keypoint_max_dist": 1,
             "closest_fingertip_dist": self.num_fingertips,
@@ -1206,6 +1292,12 @@ class SimToolReal(VecTask):
         self.dynamic_grasp_object_yaw_rate = torch.zeros(
             self.num_envs, dtype=torch.float, device=self.device
         )
+        self.object_affordance_surface_offsets = torch.full(
+            (self.num_envs,),
+            float(self.dynamic_grasp_affordance_surface_offset),
+            dtype=torch.float,
+            device=self.device,
+        )
         self.prev_dynamic_grasp_contact_like = torch.zeros(
             self.num_envs, dtype=torch.bool, device=self.device
         )
@@ -1244,6 +1336,7 @@ class SimToolReal(VecTask):
             "raw_dynamic_velocity_match_rew",
             "raw_dynamic_intercept_rew",
             "raw_dynamic_pregrasp_alignment_rew",
+            "raw_dynamic_affordance_target_rew",
             "raw_dynamic_enclosure_rew",
             "raw_dynamic_lift_progress_rew",
             "raw_dynamic_stable_hold_rew",
@@ -1284,6 +1377,7 @@ class SimToolReal(VecTask):
             "dynamic_velocity_match_rew",
             "dynamic_intercept_rew",
             "dynamic_pregrasp_alignment_rew",
+            "dynamic_affordance_target_rew",
             "dynamic_enclosure_rew",
             "dynamic_lifted_enclosure_rew",
             "dynamic_lift_progress_rew",
@@ -2145,6 +2239,177 @@ class SimToolReal(VecTask):
 
         print(f"Loaded DOMINO object pool ({len(labels)} objects): {labels}")
         return object_asset_files, object_asset_scales, need_vhacds
+
+    def _dynamic_affordance_surface_offsets_for_assets(
+        self, object_asset_indices_np: np.ndarray
+    ) -> np.ndarray:
+        offsets = np.full(
+            len(object_asset_indices_np),
+            float(self.dynamic_grasp_affordance_surface_offset),
+            dtype=np.float32,
+        )
+        labels = getattr(self, "object_asset_labels", None)
+        if labels is None:
+            return offsets
+        for asset_idx, label in enumerate(labels):
+            label_offset = self.dynamic_grasp_affordance_surface_offsets_by_label.get(
+                str(label), self.dynamic_grasp_affordance_surface_offset
+            )
+            offsets[object_asset_indices_np == asset_idx] = float(label_offset)
+        return offsets
+
+    def _dynamic_affordance_targets(
+        self,
+        object_pos: Tensor,
+        object_vel: Tensor,
+        palm_pos: Tensor,
+    ) -> dict:
+        object_xy_vel = object_vel[:, 0:2]
+        commanded_xy_vel = (
+            self.dynamic_grasp_object_xy_velocity
+            if hasattr(self, "dynamic_grasp_object_xy_velocity")
+            else torch.zeros_like(object_xy_vel)
+        )
+        object_xy_speed = torch.norm(object_xy_vel, dim=-1, keepdim=True)
+        commanded_xy_speed = torch.norm(commanded_xy_vel, dim=-1, keepdim=True)
+        dir_source = torch.where(
+            object_xy_speed > 1e-4,
+            object_xy_vel,
+            commanded_xy_vel,
+        )
+        dir_source_speed = torch.norm(dir_source, dim=-1, keepdim=True)
+
+        palm_to_object_xy = object_pos[:, 0:2] - palm_pos[:, 0:2]
+        palm_to_object_speed = torch.norm(palm_to_object_xy, dim=-1, keepdim=True)
+        default_dir = torch.zeros_like(dir_source)
+        default_dir[:, 0] = 1.0
+        fallback_dir = torch.where(
+            palm_to_object_speed > 1e-4,
+            palm_to_object_xy / torch.clamp(palm_to_object_speed, min=1e-6),
+            default_dir,
+        )
+        xy_dir = torch.where(
+            dir_source_speed > 1e-4,
+            dir_source / torch.clamp(dir_source_speed, min=1e-6),
+            fallback_dir,
+        )
+
+        if (
+            self.dynamic_grasp_use_affordance_prior
+            and self.dynamic_grasp_affordance_mode != "center"
+        ):
+            if hasattr(self, "object_affordance_surface_offsets"):
+                surface_offsets = self.object_affordance_surface_offsets
+            else:
+                surface_offsets = torch.full(
+                    (self.num_envs,),
+                    float(self.dynamic_grasp_affordance_surface_offset),
+                    dtype=torch.float,
+                    device=self.device,
+                )
+        else:
+            surface_offsets = torch.zeros(
+                self.num_envs,
+                dtype=torch.float,
+                device=self.device,
+            )
+
+        affordance_pos = object_pos.clone()
+        affordance_pos[:, 0:2] = (
+            affordance_pos[:, 0:2] + xy_dir * surface_offsets[:, None]
+        )
+        affordance_pos[:, 2] = (
+            affordance_pos[:, 2] + self.dynamic_grasp_affordance_vertical_offset
+        )
+
+        lead_time = max(float(self.dynamic_grasp_affordance_lead_time), 0.0)
+        future_affordance_pos = affordance_pos.clone()
+        future_affordance_pos[:, 0:2] = (
+            future_affordance_pos[:, 0:2] + object_xy_vel * lead_time
+        )
+        future_affordance_pos[:, 2] = (
+            future_affordance_pos[:, 2] + object_vel[:, 2] * lead_time
+        )
+
+        axis_world = torch.zeros((self.num_envs, 3), dtype=torch.float, device=self.device)
+        axis_world[:, 0:2] = xy_dir
+        motion_speed = torch.maximum(object_xy_speed, commanded_xy_speed).squeeze(-1)
+        confidence = torch.clamp(
+            motion_speed
+            / max(float(self.dynamic_grasp_affordance_min_speed_for_confidence), 1e-6),
+            0.0,
+            1.0,
+        )
+        if not self.dynamic_grasp_use_affordance_prior:
+            confidence = torch.zeros_like(confidence)
+
+        return {
+            "pos": affordance_pos,
+            "future_pos": future_affordance_pos,
+            "axis_world": axis_world,
+            "confidence": confidence.unsqueeze(-1),
+        }
+
+    def _dynamic_affordance_observation(
+        self,
+        object_pos: Tensor,
+        object_vel: Tensor,
+        palm_pos: Tensor,
+        palm_rot: Tensor,
+        add_noise: bool,
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        targets = self._dynamic_affordance_targets(
+            object_pos=object_pos,
+            object_vel=object_vel,
+            palm_pos=palm_pos,
+        )
+        affordance_pos_rel_palm = quat_rotate_inverse(
+            palm_rot, targets["pos"] - palm_pos
+        )
+        future_affordance_pos_rel_palm = quat_rotate_inverse(
+            palm_rot, targets["future_pos"] - palm_pos
+        )
+        affordance_axis_rel_palm = quat_rotate_inverse(
+            palm_rot, targets["axis_world"]
+        )
+        confidence = targets["confidence"]
+
+        if add_noise:
+            if self.dynamic_grasp_affordance_obs_noise_std > 0.0:
+                pos_noise = (
+                    torch.randn_like(affordance_pos_rel_palm)
+                    * self.dynamic_grasp_affordance_obs_noise_std
+                )
+                future_noise = (
+                    torch.randn_like(future_affordance_pos_rel_palm)
+                    * self.dynamic_grasp_affordance_obs_noise_std
+                )
+                affordance_pos_rel_palm = affordance_pos_rel_palm + pos_noise
+                future_affordance_pos_rel_palm = (
+                    future_affordance_pos_rel_palm + future_noise
+                )
+            if self.dynamic_grasp_affordance_axis_noise_std > 0.0:
+                affordance_axis_rel_palm = affordance_axis_rel_palm + (
+                    torch.randn_like(affordance_axis_rel_palm)
+                    * self.dynamic_grasp_affordance_axis_noise_std
+                )
+                affordance_axis_rel_palm = affordance_axis_rel_palm / torch.clamp(
+                    torch.norm(affordance_axis_rel_palm, dim=-1, keepdim=True),
+                    min=1e-6,
+                )
+            if self.dynamic_grasp_affordance_dropout_prob > 0.0:
+                keep = (
+                    torch.rand((self.num_envs, 1), dtype=torch.float, device=self.device)
+                    > self.dynamic_grasp_affordance_dropout_prob
+                )
+                confidence = confidence * keep.float()
+
+        return (
+            affordance_pos_rel_palm,
+            future_affordance_pos_rel_palm,
+            affordance_axis_rel_palm,
+            confidence,
+        )
 
     def _object_pointcloud_observation(
         self,
@@ -3641,6 +3906,11 @@ class SimToolReal(VecTask):
         self.object_asset_indices = to_torch(
             object_asset_indices, dtype=torch.long, device=self.device
         )
+        self.object_affordance_surface_offsets = to_torch(
+            self._dynamic_affordance_surface_offsets_for_assets(object_asset_indices_np),
+            dtype=torch.float,
+            device=self.device,
+        )
         if hasattr(self, "object_asset_default_quats_xyzw_np"):
             self.object_default_rot = to_torch(
                 self.object_asset_default_quats_xyzw_np[object_asset_indices_np],
@@ -4017,10 +4287,21 @@ class SimToolReal(VecTask):
             * (~lifted_object)
         )
 
-        predicted_object_xy = (
-            self.object_pos[:, 0:2]
-            + object_xy_vel * self.dynamic_grasp_intercept_lead_time
+        object_xy_speed = torch.norm(object_xy_vel, dim=-1, keepdim=True)
+        object_xy_dir = object_xy_vel / torch.clamp(object_xy_speed, min=1e-4)
+        affordance_targets = self._dynamic_affordance_targets(
+            object_pos=self.object_pos,
+            object_vel=self.object_state[:, 7:13],
+            palm_pos=self.palm_center_pos,
         )
+        if self.dynamic_grasp_use_affordance_prior:
+            predicted_object_xy = affordance_targets["future_pos"][:, 0:2]
+            object_xy_dir = affordance_targets["axis_world"][:, 0:2]
+        else:
+            predicted_object_xy = (
+                self.object_pos[:, 0:2]
+                + object_xy_vel * self.dynamic_grasp_intercept_lead_time
+            )
         palm_intercept_xy_dist = torch.norm(
             self.palm_center_pos[:, 0:2] - predicted_object_xy, dim=-1
         )
@@ -4032,8 +4313,14 @@ class SimToolReal(VecTask):
             * (~lifted_object)
         )
 
-        object_xy_speed = torch.norm(object_xy_vel, dim=-1, keepdim=True)
-        object_xy_dir = object_xy_vel / torch.clamp(object_xy_speed, min=1e-4)
+        dynamic_affordance_target_rew = (
+            torch.exp(
+                -palm_intercept_xy_dist
+                / max(float(self.dynamic_grasp_intercept_distance_scale), 1e-6)
+            )
+            * (~lifted_object).float()
+            * affordance_targets["confidence"].squeeze(-1)
+        )
         pregrasp_target_xy = (
             predicted_object_xy
             + object_xy_dir * self.dynamic_grasp_pregrasp_ahead_distance
@@ -4361,6 +4648,9 @@ class SimToolReal(VecTask):
             "raw_dynamic_pregrasp_alignment_rew"
         ] += dynamic_pregrasp_alignment_rew
         self.rewards_episode[
+            "raw_dynamic_affordance_target_rew"
+        ] += dynamic_affordance_target_rew
+        self.rewards_episode[
             "raw_dynamic_enclosure_rew"
         ] += dynamic_enclosure_base_rew
         self.rewards_episode[
@@ -4460,6 +4750,9 @@ class SimToolReal(VecTask):
         dynamic_intercept_rew *= self.dynamic_grasp_intercept_rew_scale
         dynamic_pregrasp_alignment_rew *= (
             self.dynamic_grasp_pregrasp_alignment_rew_scale
+        )
+        dynamic_affordance_target_rew *= (
+            self.dynamic_grasp_affordance_target_rew_scale
         )
         dynamic_enclosure_rew *= self.dynamic_grasp_enclosure_rew_scale
         dynamic_lifted_enclosure_rew *= (
@@ -4562,6 +4855,7 @@ class SimToolReal(VecTask):
             + dynamic_velocity_match_rew
             + dynamic_intercept_rew
             + dynamic_pregrasp_alignment_rew
+            + dynamic_affordance_target_rew
             + dynamic_enclosure_rew
             + dynamic_lifted_enclosure_rew
             + dynamic_lift_progress_rew
@@ -4690,6 +4984,18 @@ class SimToolReal(VecTask):
         self.extras["dynamic_pregrasp_xy_dist"] = (
             palm_pregrasp_xy_dist.mean().item()
         )
+        self.extras["dynamic_affordance_enabled"] = float(
+            self.dynamic_grasp_use_affordance_prior
+        )
+        self.extras["dynamic_affordance_confidence"] = (
+            affordance_targets["confidence"].mean().item()
+        )
+        self.extras["dynamic_affordance_target_xy_dist"] = (
+            palm_intercept_xy_dist.mean().item()
+        )
+        self.extras["dynamic_affordance_target_rew"] = (
+            dynamic_affordance_target_rew.mean().item()
+        )
         self.extras["dynamic_pregrasp_ready_fraction"] = (
             pregrasp_ready.float().mean().item()
         )
@@ -4796,6 +5102,10 @@ class SimToolReal(VecTask):
             (
                 dynamic_pregrasp_alignment_rew,
                 "dynamic_pregrasp_alignment_rew",
+            ),
+            (
+                dynamic_affordance_target_rew,
+                "dynamic_affordance_target_rew",
             ),
             (dynamic_enclosure_rew, "dynamic_enclosure_rew"),
             (dynamic_lifted_enclosure_rew, "dynamic_lifted_enclosure_rew"),
@@ -5705,6 +6015,18 @@ class SimToolReal(VecTask):
             palm_vel=obs_dict["palm_vel"],
             add_noise=False,
         )
+        (
+            obs_dict["affordance_pos_rel_palm"],
+            obs_dict["future_affordance_pos_rel_palm"],
+            obs_dict["affordance_axis_rel_palm"],
+            obs_dict["affordance_confidence"],
+        ) = self._dynamic_affordance_observation(
+            object_pos=self.object_pos,
+            object_vel=obs_dict["object_vel"],
+            palm_pos=self.palm_center_pos,
+            palm_rot=obs_dict["palm_rot"],
+            add_noise=False,
+        )
         # closest distance to the furthest keypoint, achieved so far in this episode
         obs_dict["closest_keypoint_max_dist"] = (
             self.closest_keypoint_max_dist.unsqueeze(-1)
@@ -5789,6 +6111,18 @@ class SimToolReal(VecTask):
             palm_pos=self.palm_center_pos,
             palm_rot=obs_dict["palm_rot"],
             palm_vel=obs_dict["palm_vel"],
+            add_noise=True,
+        )
+        (
+            obs_dict["affordance_pos_rel_palm"],
+            obs_dict["future_affordance_pos_rel_palm"],
+            obs_dict["affordance_axis_rel_palm"],
+            obs_dict["affordance_confidence"],
+        ) = self._dynamic_affordance_observation(
+            object_pos=self.observed_object_pos,
+            object_vel=observed_object_vel,
+            palm_pos=self.palm_center_pos,
+            palm_rot=obs_dict["palm_rot"],
             add_noise=True,
         )
         if self.object_pointcloud_velocity_from_centroid:
