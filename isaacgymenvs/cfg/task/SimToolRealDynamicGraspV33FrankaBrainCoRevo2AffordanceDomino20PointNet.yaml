@@ -14,7 +14,10 @@ env:
   robotDofPropertyPreset: "generic_position"
   robotAssetRoot: "/data1/linsixu/simtoolreal/assets/generated/franka_brainco_revo2_right"
   assetCollapseFixedJoints: False
-  robotStartPose: [-0.45, -0.08, 0.62, 0.0, 0.0, 0.0, 1.0]
+  # Keep the Franka URDF upright in Isaac Gym. The table top is at z=0.53, so
+  # the base stays below the tabletop and the arm default pose reaches up into
+  # the tabletop grasp region.
+  robotStartPose: [-0.45, -0.08, 0.20, 0.0, 0.0, 0.0, 1.0]
   tableStartPose: [0.0, 0.0, 0.38, 0.0, 0.0, 0.0, 1.0]
   objectStartPose: [0.0, 0.0, 0.63, 0.0, 0.0, 0.0, 1.0]
 
@@ -47,7 +50,7 @@ env:
     ]
 
   defaultArmDofPos:
-    [0.0, 0.19634954084936207, 0.0, -2.617993877991494, 0.0, 2.941592653589793, 0.7853981633974483]
+    [0.0, -0.35, 0.0, -2.20, 0.0, 2.35, 0.7853981633974483]
   defaultHandDofPos:
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 

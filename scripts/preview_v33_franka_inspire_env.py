@@ -9,8 +9,10 @@ from pathlib import Path
 import isaacgym  # noqa: F401  # Isaac Gym must be imported before torch.
 from isaacgym import gymapi
 
+from hydra import compose, initialize_config_dir
 import isaacgymenvs
 import imageio.v2 as imageio
+from omegaconf import open_dict
 import torch
 
 
@@ -27,6 +29,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sim-device", default="cuda:0")
     parser.add_argument("--rl-device", default="cuda:0")
     parser.add_argument("--graphics-device-id", type=int, default=0)
+    parser.add_argument(
+        "--robot-start-pose",
+        type=float,
+        nargs=7,
+        default=None,
+        help="Optional [x y z qx qy qz qw] override for task.env.robotStartPose.",
+    )
+    parser.add_argument(
+        "--default-arm-dof-pos",
+        type=float,
+        nargs=7,
+        default=None,
+        help="Optional 7-DOF Franka default arm pose override.",
+    )
     parser.add_argument(
         "--camera-pos",
         type=float,
@@ -52,15 +68,41 @@ def main() -> None:
     png_path = out_dir / f"franka_inspire_v33_env_preview_{stamp}.png"
     mp4_path = out_dir / f"franka_inspire_v33_env_preview_{stamp}.mp4"
 
+    cfg_dir = Path(__file__).resolve().parents[1] / "isaacgymenvs" / "cfg"
+    with initialize_config_dir(config_dir=str(cfg_dir), version_base="1.1"):
+        cfg = compose(
+            config_name="config",
+            overrides=[
+                f"task={args.task}",
+                "headless=True",
+                "capture_video=False",
+                "wandb_activate=False",
+            ],
+        )
+    with open_dict(cfg):
+        cfg.task.env.numEnvs = args.num_envs
+        cfg.seed = 0
+        cfg.sim_device = args.sim_device
+        cfg.rl_device = args.rl_device
+        cfg.graphics_device_id = args.graphics_device_id
+        cfg.headless = True
+        cfg.capture_video = False
+        cfg.force_render = False
+        if args.robot_start_pose is not None:
+            cfg.task.env.robotStartPose = list(args.robot_start_pose)
+        if args.default_arm_dof_pos is not None:
+            cfg.task.env.defaultArmDofPos = list(args.default_arm_dof_pos)
+
     env = isaacgymenvs.make(
         seed=0,
-        task=args.task,
+        task=cfg.task.name,
         num_envs=args.num_envs,
         sim_device=args.sim_device,
         rl_device=args.rl_device,
         graphics_device_id=args.graphics_device_id,
         headless=True,
         force_render=False,
+        cfg=cfg,
     )
     env.cfg["env"]["capture_video"] = False
     if args.camera_pos is not None or args.camera_target is not None:
@@ -114,7 +156,7 @@ def main() -> None:
         )[..., :3].copy()
         frames.append(frame)
 
-    imageio.imwrite(png_path, frames[0])
+    imageio.imwrite(png_path, frames[-1])
     imageio.mimsave(mp4_path, frames, fps=args.fps)
     print(f"saved_png {png_path}", flush=True)
     print(f"saved_mp4 {mp4_path}", flush=True)
