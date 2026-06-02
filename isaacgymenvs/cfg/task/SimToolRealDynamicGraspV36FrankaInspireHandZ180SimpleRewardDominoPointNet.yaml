@@ -1,0 +1,67 @@
+defaults:
+  - SimToolRealDynamicGraspV35FrankaInspireHandZ180WarmupDominoPointNet
+  - _self_
+
+env:
+  # v36: keep the v35 Franka+Inspire-z180 geometry, DOMINO8 warmup objects,
+  # point-cloud observations, and legacy joint-target action interface. Only
+  # simplify the reward so the policy cannot sit in a high-contact/no-lift
+  # local optimum.
+
+  # Stage 1: modest interception/pregrasp shaping.
+  dynamicGraspAffordanceTargetRewScale: 3.0
+  dynamicGraspInterceptRewScale: 1.5
+  dynamicGraspPregraspAlignmentRewScale: 2.0
+  dynamicGraspVelocityMatchRewScale: 0.05
+  dynamicGraspPregraspHoldRewScale: 4.0
+  dynamicGraspPreContactSlowRewScale: 2.0
+
+  # Stage 2: light controlled-contact signal. The v34 ready/contact rewards
+  # were large enough to make "touch and stay near object" a local optimum, so
+  # disable the redundant ready terms and keep only small real-contact shaping.
+  dynamicGraspControlledContactRewScale: 14.0
+  dynamicGraspReadyEnclosureRewScale: 0.0
+  dynamicGraspReadyGraspQualityRewScale: 0.0
+  dynamicGraspReadyContactRewScale: 0.0
+  dynamicGraspTrueGraspQualityRewScale: 8.0
+  dynamicGraspOpposingContactRewScale: 15.0
+  dynamicGraspEnclosureRewScale: 0.5
+
+  # Stage 3/4: make grasped lift the dominant dense reward.
+  liftingRewScale: 120.0
+  liftingBonus: 900.0
+  liftingBonusThreshold: 0.12
+  dynamicGraspLiftProgressRewScale: 160.0
+  dynamicGraspQualityLiftProgressRewScale: 420.0
+  dynamicGraspLiftedTrueGraspRewScale: 700.0
+  dynamicGraspLiftedEnclosureRewScale: 8.0
+
+  # Stage 5: stable lifted hold and success.
+  dynamicGraspLiftedRelVelRewScale: 90.0
+  dynamicGraspLiftedCenteringRewScale: 60.0
+  dynamicGraspLiftedHeightHoldRewScale: 90.0
+  dynamicGraspLiftedEnclosureVelRewScale: 160.0
+  dynamicGraspStableHoldRewScale: 600.0
+  dynamicGraspStableProgressRewScale: 700.0
+  dynamicGraspSuccessBonus: 7000.0
+  dynamicGraspSuccessSteps: 8
+  dynamicGraspStableObjectPalmVel: 0.34
+  dynamicGraspRequireTrueGraspForSuccess: True
+
+  # Safety/anti-scoop terms stay active, but are no longer allowed to dominate
+  # early exploration as much as the stricter safety-intercept variants.
+  dynamicGraspEarlyContactPenaltyScale: 4.0
+  dynamicGraspPreContactRelVelPenaltyScale: 2.0
+  dynamicGraspImpactPenaltyScale: 12.0
+  dynamicGraspKickPenaltyScale: 10.0
+  dynamicGraspPostContactRelVelPenaltyScale: 4.0
+  dynamicGraspPushAwayPenaltyScale: 8.0
+  dynamicGraspScoopLiftPenaltyScale: 160.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 320.0
+
+  # Keep the motion-smoothness regularizers, but soften them slightly so the
+  # arm can still discover lifting behavior.
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.02
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 25.0
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 45.0
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 1.0
