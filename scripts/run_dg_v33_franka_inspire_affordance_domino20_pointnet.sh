@@ -9,6 +9,7 @@ source /data1/linsixu/miniconda3/etc/profile.d/conda.sh
 conda activate simtoolreal
 
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-6}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
 python isaacgymenvs/launch_training.py \
   --task SimToolRealDynamicGraspV33FrankaInspireAffordanceDomino20PointNet \
