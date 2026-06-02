@@ -1,0 +1,126 @@
+defaults:
+  - SimToolRealDynamicGraspV33FrankaInspireAffordanceDomino20PointNet
+  - _self_
+
+env:
+  # v34: keep the v33 front-facing Franka/Inspire layout, but restore the
+  # legacy control semantics that worked better for the Sharpa embodiment:
+  # arm actions are incremental joint-target deltas, hand actions are absolute
+  # normalized joint targets.
+  policyActionInterface: "legacy_joint_target"
+
+  # Let the new embodiment learn the approach/closure chain before exposing it
+  # to the full DOMINO-20 set.
+  dominoObjectVariants:
+    - label: "mug"
+      asset_modelname: "039_mug"
+      asset_model_id: 0
+      quat: [0.70710678, 0.70710678, 0.0, 0.0]
+      mass: 0.035
+    - label: "cup"
+      asset_modelname: "021_cup"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.025
+    - label: "bottle"
+      asset_modelname: "001_bottle"
+      asset_model_id: 13
+      quat: [0.70710678, 0.0, 0.0, 0.70710678]
+      mass: 0.025
+      random_yaw: False
+    - label: "can"
+      asset_modelname: "071_can"
+      asset_model_id: 0
+      quat: [0.707225, 0.706849, -0.0100455, -0.00982061]
+      mass: 0.020
+    - label: "hammer"
+      asset_modelname: "020_hammer"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.035
+    - label: "screwdriver"
+      asset_modelname: "032_screwdriver"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.018
+    - label: "drill"
+      asset_modelname: "030_drill"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.035
+    - label: "dumbbell"
+      asset_modelname: "052_dumbbell"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.035
+
+  # Lower initial dispersion for the new kinematic chain. The table remains the
+  # larger v33 front-table asset.
+  resetDofPosRandomIntervalArm: 0.025
+  resetDofPosRandomIntervalFingers: 0.03
+  resetPositionNoiseX: 0.08
+  resetPositionNoiseY: 0.06
+  resetPositionNoiseZ: 0.004
+  dynamicGraspWorkspaceX: [-0.22, 0.22]
+  dynamicGraspWorkspaceY: [-0.12, 0.18]
+
+  # Start with a slower object, then ramp toward the previous fast setting.
+  dynamicGraspInitialSpeedRange: [0.04, 0.14]
+  dynamicGraspInitialYawRateRange: [-0.6, 0.6]
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspStartSpeedRange: [0.0, 0.05]
+  dynamicGraspStartYawRateRange: [-0.2, 0.2]
+  dynamicGraspSpeedCurriculumSteps: 3000000
+
+  # Incremental-arm control needs enough speed to intercept, but should not
+  # produce the unsafe, jerky behavior seen with full-range absolute arm targets.
+  dofSpeedScale: 2.4
+  armMovingAverage: 0.34
+  handMovingAverage: 0.34
+  useActionDelay: False
+
+  # Warmup reward: make reaching and staying at the future affordance point more
+  # valuable early, while keeping lift/contact rewards high enough to avoid a
+  # pure hover solution.
+  dynamicGraspAffordanceTargetRewScale: 5.5
+  dynamicGraspInterceptRewScale: 3.2
+  dynamicGraspPregraspAlignmentRewScale: 4.2
+  dynamicGraspVelocityMatchRewScale: 0.12
+  dynamicGraspPregraspAheadDistance: 0.05
+  dynamicGraspPregraspReadyDistance: 0.13
+  dynamicGraspPregraspHoldRewScale: 18.0
+  dynamicGraspPreContactSlowRewScale: 10.0
+  dynamicGraspPreContactRelVelPenaltyScale: 6.0
+  dynamicGraspPreContactRelVelMargin: 0.22
+
+  dynamicGraspControlledContactRewScale: 58.0
+  dynamicGraspControlledContactVelScale: 0.20
+  dynamicGraspReadyEnclosureRewScale: 42.0
+  dynamicGraspReadyGraspQualityRewScale: 100.0
+  dynamicGraspReadyContactRewScale: 70.0
+  dynamicGraspReadyContactVelScale: 0.20
+
+  # Keep safety terms active, but soften the v31/v32 penalties so exploration
+  # can actually discover contact and lift with the new hand.
+  dynamicGraspEarlyContactPenaltyScale: 8.0
+  dynamicGraspImpactPenaltyScale: 18.0
+  dynamicGraspImpactRelVelMargin: 0.20
+  dynamicGraspPostContactRelVelPenaltyScale: 8.0
+  dynamicGraspPostContactRelVelMargin: 0.28
+  dynamicGraspKickPenaltyScale: 18.0
+  dynamicGraspKickSpeedMargin: 0.07
+  dynamicGraspPushAwayPenaltyScale: 12.0
+  dynamicGraspPushAwaySpeedMargin: 0.22
+
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.03
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 35.0
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 65.0
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 2.0
+
+  liftingRewScale: 50.0
+  liftingBonus: 560.0
+  dynamicGraspLiftProgressRewScale: 40.0
+  dynamicGraspQualityLiftProgressRewScale: 145.0
+  dynamicGraspLiftedTrueGraspRewScale: 340.0
+  dynamicGraspStableObjectPalmVel: 0.34
+  dynamicGraspSuccessSteps: 10

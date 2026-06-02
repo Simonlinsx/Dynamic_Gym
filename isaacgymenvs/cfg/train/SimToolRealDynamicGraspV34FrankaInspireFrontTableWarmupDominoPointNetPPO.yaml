@@ -1,0 +1,7 @@
+defaults:
+  - SimToolRealDynamicGraspV33FrankaInspireAffordanceDomino20PointNetPPO
+  - _self_
+
+params:
+  config:
+    name: ${resolve_default:SimToolRealDynamicGraspV34FrankaInspireFrontTableWarmupDominoPointNetPPO,${....experiment}}
