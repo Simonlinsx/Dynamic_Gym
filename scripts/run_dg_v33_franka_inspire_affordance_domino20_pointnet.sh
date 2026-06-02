@@ -12,8 +12,8 @@ export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-6}"
 
 python isaacgymenvs/launch_training.py \
   --task SimToolRealDynamicGraspV33FrankaInspireAffordanceDomino20PointNet \
-  --custom-experiment-name dynamic_grasp_franka_inspire_affordance_v33 \
-  --num-envs 12288 \
+  --custom-experiment-name dynamic_grasp_franka_inspire_affordance_v33_front_table \
+  --num-envs 6144 \
   --wandb-entity simonlsx \
   --wandb-project simtoolreal \
   --wandb-group dynamic_grasp_franka_inspire \

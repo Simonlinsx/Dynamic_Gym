@@ -14,16 +14,16 @@ env:
   robotDofPropertyPreset: "generic_position"
   robotAssetRoot: "/data1/linsixu/simtoolreal/assets/generated/franka_brainco_revo2_right"
   assetCollapseFixedJoints: False
-  # Keep the Franka URDF upright in Isaac Gym. The table top is at z=0.53, so
-  # the base stays below the tabletop and the arm default pose reaches up into
-  # the tabletop grasp region.
-  robotStartPose: [-0.45, -0.08, 0.20, 0.0, 0.0, 0.0, 1.0]
+  # Keep the Franka URDF upright and place it on the same table-facing side as
+  # the legacy dynamic-grasp setup. The -90 deg yaw turns Franka's natural
+  # reach direction toward the table center instead of leaving it side-on.
+  robotStartPose: [0.0, 0.60, 0.20, 0.0, 0.0, -0.7071067811865475, 0.7071067811865476]
   tableStartPose: [0.0, 0.0, 0.38, 0.0, 0.0, 0.0, 1.0]
   objectStartPose: [0.0, 0.0, 0.63, 0.0, 0.0, 0.0, 1.0]
 
   asset:
     robot: "franka_brainco_revo2_right.urdf"
-    table: "urdf/table_narrow.urdf"
+    table: "urdf/table_dynamic_grasp.urdf"
 
   armDofs: 7
   # BrainCo's public Revo2 docs describe 6 active joints and 11 total DOF.
