@@ -1,0 +1,12 @@
+defaults:
+  - SimToolRealDynamicGraspV34FrankaInspireFrontTableWarmupDominoPointNet
+  - _self_
+
+env:
+  # v35: keep the v34 front-table/warmup setup, but use a locally patched
+  # Franka+Inspire URDF whose Inspire mount is rotated 180 deg around z.
+  robotAssetRoot: "/data1/linsixu/simtoolreal/assets/embodiments/franka-inspire-z180"
+
+  asset:
+    robot: "franka_inspire_z180.urdf"
+    table: "urdf/table_dynamic_grasp.urdf"
