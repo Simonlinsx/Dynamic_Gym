@@ -7,6 +7,7 @@ env:
   # point-cloud observations, and legacy joint-target action interface. Only
   # simplify the reward so the policy cannot sit in a high-contact/no-lift
   # local optimum.
+  createGoalObject: False
 
   # Stage 1: modest interception/pregrasp shaping.
   dynamicGraspAffordanceTargetRewScale: 3.0

@@ -287,6 +287,7 @@ class SimToolReal(VecTask):
                 f"Unknown taskMode {self.task_mode}; expected one of {valid_task_modes}"
             )
         self.dynamic_tabletop_grasp = self.task_mode == "dynamic_tabletop_grasp"
+        self.create_goal_object = bool(cfg["env"].get("createGoalObject", True))
 
         # Goal related variables
         self.goal_object_indices = []
@@ -2950,6 +2951,10 @@ class SimToolReal(VecTask):
         return object_assets, object_rb_count, object_shapes_count
 
     def _load_additional_assets(self, object_asset_root, arm_pose):
+        if not self.create_goal_object:
+            self.goal_assets = []
+            return 0, 0
+
         object_asset_options = gymapi.AssetOptions()
         object_asset_options.disable_gravity = True
 
@@ -2984,6 +2989,9 @@ class SimToolReal(VecTask):
     def _create_additional_objects(
         self, env_ptr, env_idx, object_asset_idx, object_start_pose=None
     ):
+        if not self.create_goal_object:
+            return
+
         self.goal_displacement = gymapi.Vec3(-0.35, -0.06, 0.12)
         self.goal_displacement_tensor = to_torch(
             [
@@ -3080,6 +3088,7 @@ class SimToolReal(VecTask):
         tensor_reset=True,
         is_first_goal=True,
     ) -> None:
+        has_goal_object = bool(self.create_goal_object) and len(self.goal_object_indices) > 0
         if len(env_ids) > 0 and reset_buf_idxs is None and tensor_reset:
             USE_FIXED_GOAL_STATES = self.cfg["env"]["useFixedGoalStates"]
             if USE_FIXED_GOAL_STATES:
@@ -3141,15 +3150,23 @@ class SimToolReal(VecTask):
                 new_rot = self.get_random_quat(env_ids)
                 self.goal_states[env_ids, 3:7] = new_rot
                 self._clip_goal_z(env_ids)
-            self.root_state_tensor[self.goal_object_indices[env_ids], 0:7] = (
-                self.goal_states[env_ids, 0:7]
-            )
-            self.root_state_tensor[self.goal_object_indices[env_ids], 7:13] = (
-                torch.zeros_like(
-                    self.root_state_tensor[self.goal_object_indices[env_ids], 7:13]
+            if has_goal_object:
+                self.root_state_tensor[self.goal_object_indices[env_ids], 0:7] = (
+                    self.goal_states[env_ids, 0:7]
                 )
-            )
-        if len(env_ids) > 0 and reset_buf_idxs is not None and tensor_reset:
+                self.root_state_tensor[self.goal_object_indices[env_ids], 7:13] = (
+                    torch.zeros_like(
+                        self.root_state_tensor[
+                            self.goal_object_indices[env_ids], 7:13
+                        ]
+                    )
+                )
+        if (
+            has_goal_object
+            and len(env_ids) > 0
+            and reset_buf_idxs is not None
+            and tensor_reset
+        ):
             # TODO: Check if last 6 indices are 0
             rs_ofs = self.root_state_resets.shape[1]
             self.root_state_tensor[self.goal_object_indices[env_ids], :] = (
@@ -3163,9 +3180,10 @@ class SimToolReal(VecTask):
                 self.goal_object_indices[env_ids], 0:7
             ]
 
-        self.deferred_set_actor_root_state_tensor_indexed(
-            [self.goal_object_indices[env_ids]]
-        )
+        if has_goal_object:
+            self.deferred_set_actor_root_state_tensor_indexed(
+                [self.goal_object_indices[env_ids]]
+            )
 
         # HACK: Force the goal object pose to be the specified value
         if self.cfg["env"]["goalObjectPose"] is not None:
@@ -3175,14 +3193,17 @@ class SimToolReal(VecTask):
             )
             for i in range(7):
                 self.goal_states[env_ids, i] = desired_goal_object_pose[i]
-            self.root_state_tensor[self.goal_object_indices[env_ids], 0:7] = (
-                self.goal_states[env_ids, 0:7]
-            )
-            self.deferred_set_actor_root_state_tensor_indexed(
-                [self.goal_object_indices]
-            )
+            if has_goal_object:
+                self.root_state_tensor[self.goal_object_indices[env_ids], 0:7] = (
+                    self.goal_states[env_ids, 0:7]
+                )
+                self.deferred_set_actor_root_state_tensor_indexed(
+                    [self.goal_object_indices]
+                )
 
     def _extra_object_indices(self, env_ids: Tensor) -> List[Tensor]:
+        if not self.create_goal_object or len(self.goal_object_indices) == 0:
+            return []
         return [self.goal_object_indices[env_ids]]
 
     def _extra_curriculum(self):
