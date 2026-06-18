@@ -1,641 +1,303 @@
-# SimToolReal: An Object-Centric Policy for Zero-Shot Dexterous Tool Manipulation
+# Dynamic Gym: Franka + BrainCo Revo2 Dynamic Dexterous Benchmark
 
-[Project Page](https://simtoolreal.github.io/)
+Dynamic Gym is a dynamic dexterous manipulation benchmark built on top of
+SimToolReal. This branch is focused on simulation environment construction for
+Franka + BrainCo Revo2, especially the aerial baton-style tasks that Bill will
+continue developing.
 
-https://github.com/user-attachments/assets/e2d0db98-2e31-46aa-9480-c4c6f4a48f7d
+The original SimToolReal codebase is still the foundation for Isaac Gym scene
+creation, assets, robot control, and RL utilities, but the entry point of this
+fork is now the dynamic-object benchmark rather than the original static
+DexToolBench policy release.
 
-# Overview
+## Current Scope
 
-This repository contains the official implementation of the SimToolReal framework, which was introduced in _SimToolReal: An Object-Centric Policy for Zero-Shot Dexterous Tool Manipulation_. It consists of:
+This branch is the simulation/environment handoff branch:
 
-* Simulation Environments: Isaac Gym environments for training and evaluation of dexterous tool manipulation policies.
-
-* DexToolBench: A benchmark for dexterous tool manipulation.
-
-* Reinforcement Learning (RL) Training: RL training algorithms for training dexterous tool manipulation policies.
-
-* Deployment: Policy deployment in simulation and the real world.
-
-**Dynamic tabletop grasping extension.** This local fork also contains an
-experimental moving-object dexterous grasping track with RGB-D/object-mask style
-point cloud observations, DOMINO20 object support, W&B/video launch scripts, and
-deterministic evaluation utilities. See
-[README_DYNAMIC_GRASP.md](README_DYNAMIC_GRASP.md) for the archived dynamic-grasp
-versions and recommended baselines.
-
-# Project Structure
-
-```
-simtoolreal
-  ├── assets
-  │   └── // Assets such as robot URDF files, object models, etc.
-  ├── baselines
-  │   └── // Implementation of kinematic retargeting and fixed grasp
-  ├── deployment
-  │   └── // Sim-to-real and sim-to-sim deployment of the policy
-  ├── dextoolbench
-  │   ├── data
-  │   │   └── // DexToolBench data (needs to be downloaded)
-  │   ├── // Scripts for evaluating policies on DexToolBench
-  │   └── // Scripts for visualizing DexToolBench objects and trajectories
-  ├── docs
-  │   └── // Documentation
-  ├── isaacgymenvs
-  │   └── // Simulation environment for training and evaluating policies
-  ├── pretrained_policy
-  │   └── // Checkpoint of the pretrained policy (needs to be downloaded)
-  ├── recorded_data
-  │   └── // Interface and tools for saving, loading, and visualizing recorded data
-  └── rl_games
-      └── // RL algorithms, including PPO and SAPG
-
+```text
+sim-env/franka-revo2-aerial-v1
 ```
 
-**External repos:**
-[FoundationPose](https://github.com/kushal2000/FoundationPose) — Perception system (SAM + FoundationPose pose tracking)
+It contains:
 
-# Installation
+- Franka + BrainCo Revo2 right-hand simulation assets.
+- Revo2 right-hand mounting, alignment, preview, and sanity-check scripts.
+- A runnable Falling Baton reference environment.
+- A Baton Insert / passive receiving task specification.
+- Marker and screwdriver object assets.
+- Clean v2 grasp affordance labels for the baton-like objects.
+- A static project page summarizing the benchmark, task settings, pipeline, and
+  affordance labeling.
 
-Please see the [Installation](docs/installation.md) documentation for more details.
+It intentionally does not treat training logs, W&B runs, checkpoints, or
+historical PPO launch scripts as the primary product of this branch.
 
-# Quick Start
+## Benchmark Tasks
 
-Please run all commands from the root directory of this repository.For most commands, you can add `--help` to see the available options.
+### Aerial Tasks
 
-## Interactive Evaluation of a Pretrained Policy on DexToolBench
+| Task | Motion source | Affordance | Goal |
+| --- | --- | --- | --- |
+| Falling Baton | Free fall with random angular velocity | Middle / handle graspable; ends negative | Actively intercept, grasp, and hold the object |
+| Baton Insert | Low-speed handoff or guided free fall into a receive zone | Safe middle region | Passively receive, absorb impact, close on the object, and stabilize it |
 
-### Download Pretrained Policy
+### Tabletop Tasks
 
-First, download the pretrained policy to `pretrained_policy/`.
+| Task | Motion source | Affordance | Goal |
+| --- | --- | --- | --- |
+| Rolling Marker | Ramp or tabletop rolling | Marker tip negative; body graspable | Capture, align, and place into a holder |
+| Conveyor Tool | Conveyor or moving cart | Handle graspable; functional end negative | Grasp by handle and correct pose for downstream use |
 
-```
-python download_pretrained_policy.py
-```
+The two tabletop tasks are part of the planned benchmark direction. The current
+handoff package emphasizes the two aerial tasks.
 
-This will result in the following directory structure:
+## Project Layout
 
-```
-pretrained_policy/
-  ├── config.yaml  // Configuration file for the policy
-  └── model.pth  // Checkpoint of the policy
-```
+```text
+assets/
+  generated/franka_brainco_revo2_right/    # Combined Franka + Revo2 right-hand asset
+  urdf/dextoolbench/marker/                # Baton-like marker objects
+  urdf/dextoolbench/screwdriver/           # Baton-like screwdriver objects
+  affordance_labels/                       # Clean v2 grasp affordance labels and visualizations
 
-### Run Interactive Evaluation
+docs/
+  handoff/franka_brainco_revo2_aerial_env/ # Simulation-only handoff docs and task specs
+  project_page/                            # Static website for the benchmark summary
+  brainco_revo2_embodiment.md              # Revo2 embodiment notes
 
-Then, run the interactive evaluation script with the pretrained policy:
+isaacgymenvs/
+  cfg/task/                                # Task/environment configs
+  tasks/simtoolreal/env.py                 # Main Isaac Gym environment implementation
 
-```
-python dextoolbench/eval_interactive.py \
---config-path pretrained_policy/config.yaml \
---checkpoint-path pretrained_policy/model.pth
-```
-
-This launches a web-based interactive demo (default at `http://localhost:8080`) where you can select the tool category, object instance, and task from dropdown menus, then load the environment and run episodes. You can optionally specify a custom port with `--port` for the viser server.
-
-https://github.com/user-attachments/assets/58eb188b-662c-4190-8148-29710c9eb20f
-
-
-The following is the full DexToolBench data structure:
-```
-# ── Full DexToolBench data structure ──────────────────────────────────────────
-# {object_category: {object_name: [task_name, ...]}}
-DEXTOOLBENCH_DATA_STRUCTURE: Dict[str, Dict[str, List[str]]] = {
-    "hammer": {
-        "claw_hammer": ["swing_down", "swing_side"],
-        "mallet_hammer": ["swing_down", "swing_side"],
-    },
-    "marker": {
-        "sharpie_marker": ["draw_smile", "write_c"],
-        "staples_marker": ["draw_smile", "write_c"],
-    },
-    "eraser": {
-        "flat_eraser": ["wipe_smile", "wipe_c"],
-        "handle_eraser": ["wipe_smile", "wipe_c"],
-    },
-    "brush": {
-        "blue_brush": ["sweep_forward", "sweep_right"],
-        "red_brush": ["sweep_forward", "sweep_right"],
-    },
-    "spatula": {
-        "flat_spatula": ["serve_plate", "flip_over"],
-        "spoon_spatula": ["serve_plate", "flip_over"],
-    },
-    "screwdriver": {
-        "long_screwdriver": ["spin_vertical", "spin_horizontal"],
-        "short_screwdriver": ["spin_vertical", "spin_horizontal"],
-    },
-}
+scripts/
+  prepare_franka_brainco_revo2_asset.sh    # Build combined Franka + Revo2 asset
+  preview_franka_brainco_revo2_aerial_envs.sh
+  preview_dg_franka_brainco_revo2_env.sh
+  run_revo2_scripted_grasp_sanity.py
+  package_franka_brainco_revo2_aerial_env.sh
 ```
 
-See `dextoolbench/objects.py` and `assets/urdf/dextoolbench/<object_category>/<object_name>/<object_name>.urdf` for more details about the objects. 
+## Environment Setup
 
-See `dextoolbench/trajectories` for the list of task names following the directory structure `dextoolbench/trajectories/<object_category>/<object_name>/<task_name>.json`, which is the output of `dextoolbench/process_poses.py`. These `.json` files are poses specified in world frame.
+Isaac Gym Preview 4 requires Python 3.8. The most robust route on the lab
+server is a conda environment.
 
-## Policy Learning in Simulation
-
-### WandB Setup
-
-Training logs are tracked with [Weights & Biases](https://wandb.ai/). Before training, log in and update the `wandb_entity` in `isaacgymenvs/launch_training.py` to your own WandB entity:
-
-```
-wandb login
-```
-
-### Training a New Policy
-
-To train a policy from scratch, run the following command:
-
-```
-python isaacgymenvs/launch_training.py \
---custom_experiment_name my_experiment
-```
-
-### Finetuning a Trained Policy
-
-To finetune a trained policy, run the following command:
-
-```
-python isaacgymenvs/launch_training.py \
---custom_experiment_name my_finetuning_experiment \
---checkpoint <checkpoint_path>
-```
-
-For example:
-
-```
-python isaacgymenvs/launch_training.py \
---custom_experiment_name my_finetuning_experiment \
---checkpoint pretrained_policy/model.pth
-```
-
-If you run out of GPU memory, you can reduce the number of environments by setting `--num_envs` to a smaller number. Note that `num_envs` must be divisible by `num_blocks` (default 6).
-
-```
-python isaacgymenvs/launch_training.py \
---custom_experiment_name my_finetuning_experiment_12288 \
---checkpoint pretrained_policy/model.pth \
---num_envs 12288
-```
-
-## DexToolBench
-
-### Downloading the DexToolBench Dataset
-
-To list all available options, run:
-
-```
-python download_dextoolbench_data.py --list
-```
-
-
-To download the data for a specific task, run:
-
-```
-python download_dextoolbench_data.py \
---object_category hammer \
---object_name claw_hammer \
---task_name swing_down
-```
-
-To download the data for a specific object, run:
-
-```
-python download_dextoolbench_data.py \
---object_category hammer \
---object_name claw_hammer
-```
-
-To download the data for a specific category, run:
-
-```
-python download_dextoolbench_data.py \
---object_category hammer
-```
-
-To download all data, run:
-
-```
-python download_dextoolbench_data.py
-```
-
-For each task, it will download the data into the `dextoolbench/data/<object_category>/<object_name>/<task_name>/` directory with the following structure:
-
-```
-dextoolbench/data/<object_category>/<object_name>/<task_name>/
-├── cam_K.txt  // Camera intrinsics
-├── depth  // Depth images
-├── masks  // Object masks
-├── poses.json  // Object poses in robot frame
-└── rgb  // RGB images
-```
-
-### Visualize 1 Demo
-
-To visualize 1 demo:
-```
-python dextoolbench/visualize_demo.py \
---object_category hammer \
---object_name claw_hammer \
---task_name swing_down
-```
-
-https://github.com/user-attachments/assets/b7532984-6642-497b-a20c-4aa6ed486cf2
-
-### Object Models
-
-See `dextoolbench/objects.py` for the list of object models.
-
-### Visualizing the Objects
-
-To visualize a DexToolBench object:
-
-```
-python dextoolbench/visualize_object.py \
---urdf_path assets/urdf/dextoolbench/hammer/claw_hammer/claw_hammer.urdf 
-```
-
-To visualize all DexToolBench objects:
-
-```
-python dextoolbench/visualize_all_objects.py
-```
-
-<img width="1082" height="899" alt="image" src="https://github.com/user-attachments/assets/1d112fee-1f29-450d-87de-657895a8cab1" />
-
-
-To visualize training objects:
-
-```
-python dextoolbench/generate_training_objects.py
-python dextoolbench/visualize_training_objects.py
-```
-
-<img width="705" height="696" alt="image" src="https://github.com/user-attachments/assets/34f8df95-f2c5-478e-ace9-1e786ee97d7e" />
-
-
-### Visualizing the Task Trajectories
-
-To visualize a DexToolBench task trajectory:
-
-```
-python dextoolbench/visualize_task.py \
---object_category hammer \
---object_name claw_hammer \
---task_name swing_down
-```
-
-To visualize all DexToolBench task trajectories:
-
-```
-python dextoolbench/visualize_all_tasks.py
-```
-
-https://github.com/user-attachments/assets/a5e631af-9afd-4410-9273-c4eab3c48e60
-
-### Manually Creating a Task Trajectory
-
-To manually create a task trajectory:
-```
-python dextoolbench/interactive_create_task_trajectory.py \
---object_category hammer \
---object_name claw_hammer \
---task_name my_new_task
-```
-
-### Evaluating a Trained Policy
-
-To numerically evaluate a trained policy on DexToolBench:
-```
-python dextoolbench/run_all_evals.py
-```
-
-### Manually Adjusting the Object Models
-
-Use this to manually adjust the position and orientation of the object's origin frame, as well as the object's scale.
-
-```
-python dextoolbench/interactive_adjust_object.py \
---mesh_path assets/urdf/dextoolbench/hammer/claw_hammer/claw_hammer.obj \
---output_dir assets/urdf/dextoolbench/hammer/new_claw_hammer
-```
-
-### Data Collection and Processing
-
-To collect new task demonstrations from the real world, you need a ZED camera
-and the [FoundationPose fork](https://github.com/kushal2000/FoundationPose)
-(installed in a separate environment). The pipeline is:
-record RGB-D video → extract object mesh with SAM 2 + SAM 3D → extract 6D poses
-with FoundationPose → process into DexToolBench task trajectories.
-
-See [data_collection_and_processing.md](docs/data_collection_and_processing.md)
-for the full step-by-step guide.
-
-## Deployment
-
-### Sim2Real
-
-For Sim2Real policy deployment, we need to run the following nodes:
-
-1. RL Policy Node: Takes in observations, runs policy to get raw actions, converts to joint position targets, and publishes these targets.
-2. Goal Pose Node: Stores a sequence of goal poses, takes in object pose, updates current goal pose if dist(goal, object) < threshold, and publishes the current goal pose.
-3. Perception Node: Takes in RGB-D images, uses SAM and FoundationPose to get object pose, and publishes these poses. See the [FoundationPose fork](https://github.com/kushal2000/FoundationPose) for setup and usage.
-4. Robot Node: Sends joint position targets to robot and publishes joint states.
-
-(1) and (2) are in this repo. (3) is in the [FoundationPose fork](https://github.com/kushal2000/FoundationPose). (4) is not in this repo.
-
-The following is the Sim2Real deployment flowchart:
-
-```mermaid
-flowchart TD
-    subgraph Perception ["Perception System"]
-        Cam["RGB-D Camera"]
-        PN["Perception Node<br/>(SAM + FoundationPose)"]
-    end
-
-    subgraph Policy ["Control System"]
-        RL["RL Policy Node"]
-        GPN["Goal Pose Node"]
-    end
-
-    subgraph Hardware ["Physical Robot"]
-        RN["Robot Node<br/>(IIWA Arm + Sharpa Hand)"]
-    end
-
-    %% Perception Connections
-    Cam -- "RGB-D Images" --> PN
-    PN -- "/robot_frame/<br/>current_object_pose" --> RL
-    PN -- "/robot_frame/<br/>current_object_pose" --> GPN
-    
-    %% Goal Pose Node Connections
-    GPN -- "/robot_frame/<br/>goal_object_pose" --> RL
-    
-    %% Robot State Connections (Feedback)
-    RN -- "/iiwa/<br/>joint_states" --> RL
-    RN -- "/sharpa/<br/>joint_states" --> RL
-    
-    %% Policy Command Connections (Actions)
-    RL -- "/iiwa/<br/>joint_cmd" --> RN
-    RL -- "/sharpa/<br/>joint_cmd" --> RN
-
-    %% Styling
-    classDef node fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef topic fill:#e1f5fe,stroke:#0288d1,stroke-width:1px;
-```
-
-### Sim2Sim
-
-Before testing the policy in the real world, we can test it in simulation using a similar setup to the real world. For Sim2Sim policy deployment, we need to run the following nodes:
-
-1. RL Policy Node: (same as above)
-2. Goal Pose Node: (same as above)
-3. Simulation Node: Takes in joint position targets, runs the simulation environment and publishes the simulation state (robot state and object pose). Replaces the robot node and perception node.
-
-(1) and (2) are in this repo. (3) is handled by the Simulation Node.
-
-The following is the Sim2Sim deployment flowchart (the Simulation Node at the top and bottom are the same node, but separated in the diagram for clarity/symmetry with the Sim2Real deployment flowchart):
-
-```mermaid
-flowchart TD
-    subgraph SimPerception ["Simulated Perception"]
-        SPN["Simulation Node<br/>(Simulates Perception)"]
-    end
-
-    subgraph Policy ["Control System"]
-        RL["RL Policy Node"]
-        GPN["Goal Pose Node"]
-    end
-
-    subgraph SimHardware ["Simulated Robot"]
-        SRN["Simulation Node<br/>(Simulates Robot)"]
-    end
-
-    %% Perception Connections
-    SPN -- "/robot_frame/<br/>current_object_pose" --> RL
-    SPN -- "/robot_frame/<br/>current_object_pose" --> GPN
-    
-    %% Goal Pose Node Connections
-    GPN -- "/robot_frame/<br/>goal_object_pose" --> RL
-    
-    %% Robot State Connections (Feedback)
-    SRN -- "/iiwa/<br/>joint_states" --> RL
-    SRN -- "/sharpa/<br/>joint_states" --> RL
-    
-    %% Policy Command Connections (Actions)
-    RL -- "/iiwa/<br/>joint_cmd" --> SRN
-    RL -- "/sharpa/<br/>joint_cmd" --> SRN
-
-    %% Styling
-    classDef node fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef topic fill:#e1f5fe,stroke:#0288d1,stroke-width:1px;
-```
-
-### Visualization Node
-
-We also use a Visualization Node that subscribes to relevant ROS topics and renders a 3D scene using Viser. This is very useful for debugging and visualization. This node only subscribes and does not publish any topics (read-only).
-
-```mermaid
-flowchart LR
-    subgraph Inputs ["Subscribed ROS Topics"]
-        direction TB
-        JS_I["/iiwa/joint_states"]
-        JS_S["/sharpa/joint_states"]
-        JC_I["/iiwa/joint_cmd"]
-        JC_S["/sharpa/joint_cmd"]
-        OP_C["/robot_frame/current_object_pose"]
-        OP_G["/robot_frame/goal_object_pose"]
-    end
-
-    VVN["Visualization Node"]
-
-    subgraph Output ["User Interface"]
-        GUI["Viser 3D Web Interface"]
-    end
-
-    %% Input Connections
-    JS_I --> VVN
-    JS_S --> VVN
-    JC_I --> VVN
-    JC_S --> VVN
-    OP_C --> VVN
-    OP_G --> VVN
-
-    %% Output Connection
-    VVN -- "Renders Scene" --> GUI
-
-    %% Styling
-    classDef node fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef topic fill:#e1f5fe,stroke:#0288d1,stroke-width:1px;
-    class JS_I,JS_S,JC_I,JC_S,OP_C,OP_G topic;
-```
-
-### How To Run
-
-#### Sim2Real
-
-**Prerequisites:**
-- **Hardware**: IIWA arm, Sharpa hand, ZED stereo camera
-- **FoundationPose**: Clone and install the [FoundationPose fork](https://github.com/kushal2000/FoundationPose) in a **separate environment** (`foundationpose`). Follow its README for installation, model weight download, and ROS setup.
-- **Calibration**: A camera-to-robot transform `T_RC` specific to your setup. An example is provided at `FoundationPose/calibration/T_RC_example.txt`.
-- **Object mesh**: `.obj` file (in meters) for the object being manipulated. See [data_collection_and_processing.md](docs/data_collection_and_processing.md) for mesh extraction with SAM 2 + SAM 3D.
-
-Run the following nodes in separate terminals:
+### 1. Create the Conda Environment
 
 ```bash
-# Terminal 1: Arm (ROS)
-roslaunch iiwa_control joint_position_control.launch
+conda create -n simtoolreal python=3.8 -y
+conda activate simtoolreal
+
+python -m pip install --upgrade pip setuptools wheel
 ```
+
+### 2. Install PyTorch
+
+Use the CUDA wheel that matches the machine. For CUDA 11.8:
 
 ```bash
-# Terminal 2: Hand
-source .venv/bin/activate
-python deployment/sharpa_node.py
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 ```
+
+If the cluster already has a known-good PyTorch/Isaac Gym combination, prefer
+that version.
+
+### 3. Install Isaac Gym Preview 4
+
+Download Isaac Gym Preview 4 from NVIDIA and install the Python package:
 
 ```bash
-# Terminal 3: Perception (separate environment)
-# Activate the FoundationPose environment (see FoundationPose README)
-cd /path/to/FoundationPose
-python live_tracking_with_ros.py \
-    --mesh_path <mesh.obj> \
-    --calibration calibration/T_RC_example.txt
+tar -xzf IsaacGym_Preview_4_Package.tar.gz -C /path/to/isaacgym_preview4
+python -m pip install -e /path/to/isaacgym_preview4/isaacgym/python
 ```
 
-#### Sim2Sim
+Quick import check:
 
-If running in simulation, run the following:
-
-```
-python deployment/isaac/isaac_env_node.py \
---object_category hammer \
---object_name claw_hammer \
---task_name swing_down
+```bash
+python - <<'PY'
+import isaacgym
+print("Isaac Gym import OK")
+PY
 ```
 
-#### Sim2Sim (No Physics)
+### 4. Install This Repository
 
-To test this pipeline without running an actual physics simulation, you can replace the Simulation Node with (1) a fake robot node that simply interpolates to the joint position targets and (2) a fake perception node that simply publishes a fixed object pose:
+From the repository root:
 
-```
-python deployment/fake/fake_robot_node.py
-```
-
-```
-python deployment/fake/fake_perception_node.py
+```bash
+python -m pip install -e .
+python -m pip install -e rl_games
 ```
 
-#### Before Running Policy
+Some local utilities also expect:
 
-First, start the Visualization Node:
-
-```
-python deployment/visualization_node.py \
---object_name claw_hammer
+```bash
+python -m pip install tyro wandb imageio[ffmpeg]
 ```
 
-Next, home the robot:
+### 5. Prepare the Franka + Revo2 Asset
 
-```
-python deployment/home_robot.py
-```
+The branch already includes the generated right-hand combined asset. If it needs
+to be rebuilt from an official BrainCo Revo2 right-hand URDF:
 
-### Running the Policy
-
-To run the Goal Pose Node, run:
-
-```
-python deployment/goal_pose_node.py \
---object_category hammer \
---object_name claw_hammer \
---task_name swing_down
+```bash
+BRAINCO_REVO2_URDF=/path/to/revo2_right_hand.urdf \
+bash scripts/prepare_franka_brainco_revo2_asset.sh
 ```
 
-To run the RL Policy Node, run:
+The project convention is BrainCo Revo2 right hand only.
 
-```
-python deployment/rl_policy_node.py \
---policy_path pretrained_policy \
---object_name claw_hammer
-```
+## Quick Start: Preview the Aerial Environment
 
+Run a headless preview of the Falling Baton environment:
 
-#### Running Open-loop Replay of Joint Position Trajectory
+```bash
+conda activate simtoolreal
 
-To run an open-loop replay of a joint position trajectory:
-
-```
-python deployment/replay_trajectory.py \
---file_path <file_path>
+TASK=SimToolRealFallingBatonV88FrankaBrainCoRevo2PrivPointCloudPhysicalCatch \
+NUM_ENVS=8 \
+STEPS=160 \
+OUT_DIR=preview_videos \
+bash scripts/preview_dg_franka_brainco_revo2_env.sh
 ```
 
-For example:
+Or use the handoff wrapper:
 
-```
-python deployment/replay_trajectory.py \
---file_path recorded_robot_inputs/2026-02-17_testing/2026-02-17_02-33-12_model_arm0.1_claw_hammer.npz
-```
-
-### Run Baselines
-
-See [baselines.md](docs/baselines.md) for more details.
-
-### Visualize Recorded Policy Data
-
-When `rl_policy_node.py` is running, it will record observation data and save this to a file upon exiting. You can visualize this data using the following script:
-
-```
-python recorded_data/visualize.py \
---file_path <file_path>
+```bash
+bash scripts/preview_franka_brainco_revo2_aerial_envs.sh
 ```
 
-For example:
+The preview videos/images are written to:
 
-```
-python recorded_data/visualize.py \
---file_path recorded_robot_inputs/2026-02-17_testing/2026-02-17_02-33-12_model_arm0.1_claw_hammer.npz
-```
-
-https://github.com/user-attachments/assets/b27f293c-2f04-4057-b369-6117ba05ce4f
-
-
-
-
-## Formatting
-
-Python files:
-
-```
-./format_pys.sh
+```text
+preview_videos/
 ```
 
-URDF files:
+## Sanity Check the Robot Asset
 
-```
-./format_urdfs.sh
-```
-
-
-# Acknowledgements
-
-This implementation builds upon the following codebases:
-
-1. [IsaacGymEnvs](https://github.com/isaac-sim/IsaacGymEnvs)
-2. [rl_games](https://github.com/Denys88/rl_games)
-3. [SAPG](https://github.com/jayeshs999/sapg)
-
-# Citation
-
-```
-@misc{kedia2026simtoolrealobjectcentricpolicyzeroshot,
-      title={SimToolReal: An Object-Centric Policy for Zero-Shot Dexterous Tool Manipulation},
-      author={Kushal Kedia and Tyler Ga Wei Lum and Jeannette Bohg and C. Karen Liu},
-      year={2026},
-      eprint={2602.16863},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2602.16863}
-}
+```bash
+python scripts/run_revo2_scripted_grasp_sanity.py \
+  --task SimToolRealFallingBatonV88FrankaBrainCoRevo2PrivPointCloudPhysicalCatch \
+  --num-envs 4 \
+  --out-dir preview_videos
 ```
 
-# Contact
+This is useful for checking gross hand alignment, collision behavior, and basic
+Revo2 joint motion before training or environment development.
 
-If you have any questions, issues, or feedback, please contact [Tyler Lum](https://tylerlum.github.io/) or [Kushal Kedia](https://kushal2000.github.io/).
+## Handoff Package
+
+To create a simulation-only overlay package for another checkout:
+
+```bash
+bash scripts/package_franka_brainco_revo2_aerial_env.sh
+```
+
+The package is written to:
+
+```text
+handoff_packages/franka_brainco_revo2_aerial_env_<timestamp>.tar.gz
+```
+
+Extract it into another SimToolReal-compatible checkout with:
+
+```bash
+tar -xzf franka_brainco_revo2_aerial_env_<timestamp>.tar.gz \
+  --strip-components=1 \
+  -C /path/to/simtoolreal
+```
+
+See:
+
+```text
+docs/handoff/franka_brainco_revo2_aerial_env/README.md
+```
+
+## Static Project Page
+
+The benchmark summary page lives at:
+
+```text
+docs/project_page/
+```
+
+Serve it on the lab server:
+
+```bash
+cd docs/project_page
+python -m http.server 8124 --bind 0.0.0.0
+```
+
+If direct browser access to the server is blocked, use SSH port forwarding from
+your local machine:
+
+```bash
+ssh -N -L 8124:127.0.0.1:8124 linsixu@10.26.1.172
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8124/
+```
+
+## Training Notes
+
+This branch is organized around environment construction. Training support still
+exists in the repository, but new training experiments should be treated as a
+separate research track and should not be mixed into this environment handoff
+branch without a clear reason.
+
+For training, the main entry point remains:
+
+```bash
+python isaacgymenvs/launch_training.py --help
+```
+
+Typical logs are written under:
+
+```text
+train_dir/simtoolreal/
+```
+
+Do not commit `train_dir`, W&B run directories, checkpoints, or generated
+evaluation videos to this branch.
+
+## Affordance Labels
+
+The recommended labels are:
+
+```text
+assets/affordance_labels/**/grasp_affordance_clean_v2.npz
+```
+
+Label convention:
+
+```text
+grasp_label = 1   positive grasp region
+grasp_label = 0   conservative negative region
+grasp_label = -1  ignore / uncertain
+```
+
+For supervised losses or analysis:
+
+```python
+valid = grasp_label >= 0
+```
+
+For RL and environment shaping, use the labels as weak priors/debug signals, not
+as the final task success criterion.
+
+## Attribution
+
+This fork builds on:
+
+```text
+SimToolReal: An Object-Centric Policy for Zero-Shot Dexterous Tool Manipulation
+https://simtoolreal.github.io/
+https://github.com/tylerlum/simtoolreal
+```
+
+The original repository provides the Isaac Gym framework, DexToolBench assets,
+deployment utilities, and RL infrastructure that Dynamic Gym extends for
+dynamic-object dexterous manipulation.
