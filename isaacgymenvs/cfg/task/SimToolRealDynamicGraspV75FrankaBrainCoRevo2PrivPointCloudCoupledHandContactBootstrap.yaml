@@ -1,0 +1,98 @@
+defaults:
+  - SimToolRealDynamicGraspV74FrankaBrainCoRevo2PrivPointCloudCoupledHand
+  - _self_
+
+env:
+  # V75 keeps V74's deployable 6D Revo2 semantic hand action interface, but
+  # fixes the V74 local optimum where the policy hovers near pregrasp without
+  # closing into object contact. This is a contact/grasp bootstrap, not an
+  # affordance-label experiment.
+
+  # Start almost static so Revo2 first learns close-contact and lift mechanics.
+  # The inherited dynamic task is restored gradually through the step curriculum.
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspSpeedCurriculumMode: "steps"
+  dynamicGraspStartSpeedRange: [0.0, 0.012]
+  dynamicGraspStartYawRateRange: [-0.05, 0.05]
+  dynamicGraspInitialSpeedRange: [0.03, 0.12]
+  dynamicGraspInitialYawRateRange: [-0.40, 0.40]
+  dynamicGraspSpeedCurriculumSteps: 8000000
+
+  # Keep enough generic reach to find the object, but make "being near" much
+  # less valuable than forming thumb/finger contact.
+  dynamicGraspPalmReachRewScale: 20.0
+  dynamicGraspPalmReachDistanceScale: 0.38
+  dynamicGraspFingertipReachRewScale: 30.0
+  dynamicGraspFingertipReachDistanceScale: 0.28
+  dynamicGraspReachReadyCutoff: 0.09
+  dynamicGraspReachReadyFadeDistance: 0.22
+  dynamicGraspReachReadyKeepFraction: 0.25
+  dynamicGraspReadyBonusRewScale: 6.0
+  dynamicGraspInterceptRewScale: 0.8
+  dynamicGraspPregraspAlignmentRewScale: 1.0
+  dynamicGraspPregraspHoldRewScale: 1.0
+  dynamicGraspPreContactSlowRewScale: 0.6
+  dynamicGraspPreContactRelVelPenaltyScale: 0.8
+
+  # Make real surface contact easier to bootstrap, but still require fingers to
+  # get close to the object rather than only passing through the pregrasp zone.
+  dynamicGraspSurfaceContactDistance: 0.085
+  dynamicGraspReleaseMotionContactDistance: 0.085
+  dynamicGraspMinFingerContacts: 2
+  dynamicGraspMinNonThumbContacts: 1
+  dynamicGraspOpposingDotThreshold: 0.10
+  dynamicGraspContactProgressFingerWeight: 0.25
+  dynamicGraspContactProgressNonThumbWeight: 0.20
+  dynamicGraspContactProgressThumbWeight: 0.55
+  dynamicGraspContactProgressRewScale: 45.0
+  dynamicGraspContactProgressVelScale: 0.30
+  dynamicGraspControlledContactRewScale: 12.0
+  dynamicGraspControlledContactVelScale: 0.24
+  dynamicGraspClosedContactBonusRewScale: 110.0
+  dynamicGraspTrueGraspQualityRewScale: 32.0
+  dynamicGraspThumbOppositionRewScale: 55.0
+  dynamicGraspOpposingContactRewScale: 120.0
+  dynamicGraspTrueGraspBonusRewScale: 280.0
+
+  # If the hand has already reached pregrasp, reward the first useful contacts
+  # directly. These terms are gated by readiness/contact, so they do not pay for
+  # the old "hover near object" behavior.
+  dynamicGraspReadyEnclosureRewScale: 16.0
+  dynamicGraspReadyGraspQualityRewScale: 26.0
+  dynamicGraspReadyContactRewScale: 70.0
+  dynamicGraspReadyContactVelScale: 0.26
+
+  # Do not decay contact rewards immediately near the lift threshold during the
+  # bootstrap. Give the policy time to discover stable contact before the lift
+  # objective takes over.
+  dynamicGraspDecayContactRewardsNearLiftThreshold: False
+  dynamicGraspContactRewardDecayGraceSteps: 20
+  dynamicGraspContactRewardDecaySteps: 80
+  dynamicGraspContactRewardDecayMinFraction: 0.35
+  dynamicGraspContactNoLiftPenaltyScale: 80.0
+  dynamicGraspContactNoLiftPenaltyGraceSteps: 24
+  dynamicGraspContactNoLiftPenaltyRampSteps: 70
+
+  # Keep anti-scoop and impact checks present but gentle in the first contact
+  # phase, otherwise Revo2 can learn to avoid touching the object entirely.
+  dynamicGraspEarlyContactPenaltyScale: 0.0
+  dynamicGraspImpactPenaltyScale: 3.0
+  dynamicGraspKickPenaltyScale: 3.0
+  dynamicGraspPostContactRelVelPenaltyScale: 1.5
+  dynamicGraspPushAwayPenaltyScale: 3.0
+  dynamicGraspScoopLiftPenaltyScale: 120.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 260.0
+
+  # Arm smoothness remains conservative; hand closure is allowed to move more
+  # decisively because the 6 policy commands are already coupled semantic DOFs.
+  handMovingAverage: 0.58
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 0.8
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 0.7
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.015
+
+  # Slightly stronger Revo2 fingers for the first closed-contact examples.
+  robotHandStiffness: 130.0
+  robotHandDamping: 12.0
+  robotHandEffort: 60.0
+  robotHandJointFriction: 0.018
+  fingerTipFriction: 4.5

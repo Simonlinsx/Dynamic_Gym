@@ -1,0 +1,200 @@
+defaults:
+  - SimToolRealDynamicGraspV75FrankaBrainCoRevo2PrivPointCloudCoupledHandContactBootstrap
+  - _self_
+
+env:
+  # V86 is a clean Revo2 tabletop graspability baseline. It keeps the corrected
+  # Revo2 right-hand asset, touch-link fingertips, legacy Franka control, and
+  # 6D coupled hand action interface from V75, but removes affordance labels and
+  # strict lift-and-hold gates. The purpose is to verify that the Revo2 model can
+  # learn reach -> finger/thumb contact -> lift before reintroducing harder
+  # dynamic motion, clean-v2 affordance shaping, and stricter hold success.
+
+  # Start with the easy object subset that previously produced useful lift
+  # examples for the Franka+Inspire teacher line.
+  dominoObjectVariants:
+    - label: "mug"
+      asset_modelname: "039_mug"
+      asset_model_id: 0
+      quat: [0.70710678, 0.70710678, 0.0, 0.0]
+      mass: 0.035
+    - label: "cup"
+      asset_modelname: "021_cup"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.025
+    - label: "bottle"
+      asset_modelname: "001_bottle"
+      asset_model_id: 13
+      quat: [0.70710678, 0.0, 0.0, 0.70710678]
+      mass: 0.025
+      random_yaw: False
+    - label: "can"
+      asset_modelname: "071_can"
+      asset_model_id: 0
+      quat: [0.707225, 0.706849, -0.0100455, -0.00982061]
+      mass: 0.020
+    - label: "dumbbell"
+      asset_modelname: "052_dumbbell"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.035
+
+  # Tight, contact-friendly reset distribution. This makes the first ablation an
+  # embodiment/control sanity check rather than a full dynamic generalization run.
+  resetPositionNoiseX: 0.055
+  resetPositionNoiseY: 0.040
+  resetPositionNoiseZ: 0.003
+  dynamicGraspWorkspaceX: [-0.20, 0.20]
+  dynamicGraspWorkspaceY: [-0.10, 0.16]
+  resetDofPosRandomIntervalArm: 0.003
+  resetDofPosRandomIntervalFingers: 0.0
+  resetDofVelRandomInterval: 0.0
+
+  # Static-to-slow curriculum. Use the easy legacy success metric to add motion
+  # only after Revo2 has discovered reliable lifted examples.
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspSpeedCurriculumMode: "success"
+  dynamicGraspSpeedCurriculumMetric: "legacy_success"
+  dynamicGraspSpeedCurriculumStartSuccess: 0.08
+  dynamicGraspSpeedCurriculumFullSuccess: 0.45
+  dynamicGraspSpeedCurriculumEmaAlpha: 0.02
+  dynamicGraspSpeedCurriculumAlphaRise: 0.00035
+  dynamicGraspSpeedCurriculumAllowDecrease: False
+  dynamicGraspStartSpeedRange: [0.0, 0.0]
+  dynamicGraspStartYawRateRange: [0.0, 0.0]
+  dynamicGraspInitialSpeedRange: [0.035, 0.12]
+  dynamicGraspInitialYawRateRange: [-0.45, 0.45]
+  dynamicGraspBounceAtWorkspace: False
+
+  # The current heuristic/future-side affordance and clean-v2 labels are not
+  # part of this baseline. We still log their enabled flags as zero.
+  dynamicGraspUseAffordancePrior: True
+  dynamicGraspAffordanceTargetRewScale: 0.0
+  dynamicGraspUseBinaryAffordanceLabels: False
+  dynamicGraspBinaryAffordancePositiveContactRewScale: 0.0
+  dynamicGraspBinaryAffordanceNegativeContactPenaltyScale: 0.0
+  dynamicGraspBinaryAffordanceLiftProgressRewScale: 0.0
+  dynamicGraspBinaryAffordanceLiftedTrueGraspRewScale: 0.0
+  dynamicGraspBinaryAffordanceNegativeLiftPenaltyScale: 0.0
+
+  # Reach -> contact -> lift, close to the V36/V46 simple reward balance.
+  distanceDeltaRewScale: 50.0
+  dynamicGraspVelocityMatchRewScale: 0.0
+  dynamicGraspInterceptRewScale: 0.0
+  dynamicGraspPregraspAlignmentRewScale: 0.0
+  dynamicGraspPregraspHoldRewScale: 0.0
+  dynamicGraspPreContactSlowRewScale: 0.0
+  dynamicGraspPreContactRelVelPenaltyScale: 0.0
+
+  dynamicGraspPalmReachRewScale: 24.0
+  dynamicGraspPalmReachDistanceScale: 0.38
+  dynamicGraspFingertipReachRewScale: 22.0
+  dynamicGraspFingertipReachDistanceScale: 0.26
+  dynamicGraspReachReadyCutoff: 0.09
+  dynamicGraspReachReadyFadeDistance: 0.22
+  dynamicGraspReachReadyKeepFraction: 0.35
+  dynamicGraspReadyBonusRewScale: 8.0
+
+  # Use real touch-link surface proximity, but do not make true-grasp an early
+  # hard success gate. It remains a reward/logging signal.
+  dynamicGraspSurfaceContactDistance: 0.080
+  dynamicGraspReleaseMotionContactDistance: 0.080
+  dynamicGraspReleaseMotionMinFingerContacts: 1
+  dynamicGraspMinFingerContacts: 2
+  dynamicGraspMinNonThumbContacts: 1
+  dynamicGraspOpposingDotThreshold: 0.05
+  dynamicGraspContactProgressFingerWeight: 0.25
+  dynamicGraspContactProgressNonThumbWeight: 0.20
+  dynamicGraspContactProgressThumbWeight: 0.55
+  dynamicGraspContactProgressRewScale: 22.0
+  dynamicGraspContactProgressVelScale: 0.35
+  dynamicGraspControlledContactRewScale: 6.0
+  dynamicGraspClosedContactBonusRewScale: 36.0
+  dynamicGraspTrueGraspQualityRewScale: 20.0
+  dynamicGraspThumbOppositionRewScale: 28.0
+  dynamicGraspOpposingContactRewScale: 55.0
+  dynamicGraspTrueGraspBonusRewScale: 120.0
+  dynamicGraspReadyEnclosureRewScale: 0.0
+  dynamicGraspReadyGraspQualityRewScale: 0.0
+  dynamicGraspReadyContactRewScale: 0.0
+
+  # Strong dense lift bridge, but with moderate contact-no-lift penalties so the
+  # early policy does not learn to avoid touching the object.
+  liftingRewScale: 180.0
+  liftingBonus: 1100.0
+  liftingBonusThreshold: 0.085
+  dynamicGraspContactPalmLiftRewScale: 70.0
+  dynamicGraspContactPalmLiftVelScale: 0.12
+  dynamicGraspContactLiftVelocityRewScale: 180.0
+  dynamicGraspContactLiftVelocityScale: 0.18
+  dynamicGraspContactLiftProgressRewScale: 650.0
+  dynamicGraspLiftProgressRewScale: 260.0
+  dynamicGraspQualityLiftProgressRewScale: 560.0
+  dynamicGraspLiftedTrueGraspRewScale: 650.0
+  dynamicGraspLiftedEnclosureRewScale: 8.0
+  dynamicGraspGateLiftRewardByGraspQuality: True
+  dynamicGraspLiftRewardMinGraspQualityMultiplier: 0.50
+  dynamicGraspDecayContactRewardsNearLiftThreshold: False
+  dynamicGraspContactNoLiftPenaltyScale: 55.0
+  dynamicGraspContactNoLiftPenaltyGraceSteps: 30
+  dynamicGraspContactNoLiftPenaltyRampSteps: 80
+  dynamicGraspContactRewardDecayGraceSteps: 35
+  dynamicGraspContactRewardDecaySteps: 100
+  dynamicGraspContactRewardDecayMinFraction: 0.35
+
+  # Easy bootstrap success; strict lift-hold metrics remain logged separately.
+  dynamicGraspLiftHoldEnabled: False
+  dynamicGraspSuccessSteps: 4
+  dynamicGraspStableCounterDecay: 0
+  dynamicGraspStableFingertipDistance: 0.17
+  dynamicGraspStableObjectPalmVel: 0.50
+  dynamicGraspRequireTrueGraspForSuccess: False
+  dynamicGraspLegacySuccessSteps: 4
+  dynamicGraspLegacyStableFingertipDistance: 0.17
+  dynamicGraspLegacyStableObjectPalmVel: 0.50
+  dynamicGraspLegacyRequireTrueGraspForSuccess: False
+  dynamicGraspStableHoldRewScale: 220.0
+  dynamicGraspStableProgressRewScale: 220.0
+  dynamicGraspSuccessBonus: 3500.0
+  dynamicGraspLiftedRelVelRewScale: 30.0
+  dynamicGraspLiftedCenteringRewScale: 30.0
+  dynamicGraspLiftedHeightHoldRewScale: 40.0
+  dynamicGraspLiftedEnclosureVelRewScale: 45.0
+  dynamicGraspHoldHeightRewScale: 0.0
+  dynamicGraspHoldObjectVelRewScale: 0.0
+  dynamicGraspHoldObjectAngVelPenaltyScale: 0.0
+  dynamicGraspHoldPalmUprightRewScale: 0.0
+
+  # Light safety only for this diagnostic baseline.
+  dynamicGraspEarlyContactPenaltyScale: 0.0
+  dynamicGraspImpactPenaltyScale: 2.0
+  dynamicGraspKickPenaltyScale: 2.0
+  dynamicGraspPostContactRelVelPenaltyScale: 1.0
+  dynamicGraspPushAwayPenaltyScale: 2.0
+  dynamicGraspScoopLiftPenaltyScale: 60.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 120.0
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.002
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 0.55
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 0.45
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.02
+
+  # Match the Inspire hand's faster command response more closely; V75's hand
+  # smoothing was too sluggish for a 6D coupled hand close action.
+  dofSpeedScale: 3.0
+  armMovingAverage: 0.42
+  handMovingAverage: 0.38
+  robotHandStiffness: 140.0
+  robotHandDamping: 12.0
+  robotHandEffort: 70.0
+  robotHandJointFriction: 0.020
+  fingerTipFriction: 5.0
+  objectFriction: 0.55
+  tableFriction: 0.22
+
+  videoDebugOverlayEnabled: True
+  videoDebugOverlayPointRadius: 2
+  videoDebugOverlayTrajectoryHistory: 36
+  videoDebugOverlayFutureSteps: 3
+  videoDebugOverlayFutureDt: 0.2
+  videoDebugOverlayVelocityArrowLength: 0.10

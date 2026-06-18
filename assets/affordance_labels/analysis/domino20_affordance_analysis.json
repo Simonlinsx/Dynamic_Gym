@@ -1,0 +1,772 @@
+{
+  "manifest_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/asset_manifest.json",
+  "stage": "domino20",
+  "aggregate": {
+    "num_assets": 20,
+    "num_labeled": 20,
+    "num_missing": 0,
+    "total_vertices": 382776,
+    "total_primary_labeled_vertices": 222574,
+    "total_multilabel_labeled_vertices": 222574,
+    "total_overlap_vertices": 104739,
+    "warning_counts": {
+      "tool_use_hidden_by_primary_overlap": 17
+    }
+  },
+  "assets": [
+    {
+      "asset_id": "domino20/mug",
+      "label": "mug",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/mug/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 11519,
+      "primary_labeled_vertices": 1602,
+      "multilabel_labeled_vertices": 1602,
+      "primary_coverage": 0.1390745724455248,
+      "multilabel_coverage": 0.1390745724455248,
+      "overlap_vertices": 411,
+      "primary_counts": {
+        "background": 9917,
+        "positive_grasp": 1191,
+        "negative_grasp": 411,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 1191,
+        "negative_grasp": 411,
+        "tool_use_surface": 411,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 0,
+        "positive_grasp+tool_use_surface": 0,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 411,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/cup",
+      "label": "cup",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/cup/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 11517,
+      "primary_labeled_vertices": 5156,
+      "multilabel_labeled_vertices": 5156,
+      "primary_coverage": 0.44768602934792046,
+      "multilabel_coverage": 0.44768602934792046,
+      "overlap_vertices": 3995,
+      "primary_counts": {
+        "background": 6361,
+        "positive_grasp": 4756,
+        "negative_grasp": 400,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 5114,
+        "negative_grasp": 3995,
+        "tool_use_surface": 3995,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 3953,
+        "positive_grasp+tool_use_surface": 3953,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 3995,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/bottle",
+      "label": "bottle",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/bottle/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 10587,
+      "primary_labeled_vertices": 7976,
+      "multilabel_labeled_vertices": 7976,
+      "primary_coverage": 0.7533767828468877,
+      "multilabel_coverage": 0.7533767828468877,
+      "overlap_vertices": 3321,
+      "primary_counts": {
+        "background": 2611,
+        "positive_grasp": 7167,
+        "negative_grasp": 809,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 7614,
+        "negative_grasp": 3325,
+        "tool_use_surface": 1231,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 2963,
+        "positive_grasp+tool_use_surface": 873,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 1231,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/drill",
+      "label": "drill",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/drill/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 19385,
+      "primary_labeled_vertices": 10390,
+      "multilabel_labeled_vertices": 10390,
+      "primary_coverage": 0.535981428939902,
+      "multilabel_coverage": 0.535981428939902,
+      "overlap_vertices": 4406,
+      "primary_counts": {
+        "background": 8995,
+        "positive_grasp": 3047,
+        "negative_grasp": 269,
+        "tool_use_surface": 7074,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 3247,
+        "negative_grasp": 1490,
+        "tool_use_surface": 10059,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 0,
+        "positive_grasp+tool_use_surface": 2916,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 1490,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": []
+    },
+    {
+      "asset_id": "domino20/pill_bottle",
+      "label": "pill_bottle",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/pill_bottle/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 19913,
+      "primary_labeled_vertices": 12273,
+      "multilabel_labeled_vertices": 12273,
+      "primary_coverage": 0.6163310400241049,
+      "multilabel_coverage": 0.6163310400241049,
+      "overlap_vertices": 3480,
+      "primary_counts": {
+        "background": 7640,
+        "positive_grasp": 8793,
+        "negative_grasp": 3480,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 8793,
+        "negative_grasp": 3480,
+        "tool_use_surface": 3480,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 0,
+        "positive_grasp+tool_use_surface": 0,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 3480,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/milk_box",
+      "label": "milk_box",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/milk_box/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 19023,
+      "primary_labeled_vertices": 14765,
+      "multilabel_labeled_vertices": 14765,
+      "primary_coverage": 0.7761656941597014,
+      "multilabel_coverage": 0.7761656941597014,
+      "overlap_vertices": 3998,
+      "primary_counts": {
+        "background": 4258,
+        "positive_grasp": 14738,
+        "negative_grasp": 27,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 14753,
+        "negative_grasp": 3998,
+        "tool_use_surface": 3998,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 3986,
+        "positive_grasp+tool_use_surface": 3986,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 3998,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/can",
+      "label": "can",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/can/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 20738,
+      "primary_labeled_vertices": 12179,
+      "multilabel_labeled_vertices": 12179,
+      "primary_coverage": 0.5872793904908863,
+      "multilabel_coverage": 0.5872793904908863,
+      "overlap_vertices": 2429,
+      "primary_counts": {
+        "background": 8559,
+        "positive_grasp": 9870,
+        "negative_grasp": 2309,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 9900,
+        "negative_grasp": 2429,
+        "tool_use_surface": 2429,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 150,
+        "positive_grasp+tool_use_surface": 150,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 2429,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/milk_tea",
+      "label": "milk_tea",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/milk_tea/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 17973,
+      "primary_labeled_vertices": 14213,
+      "multilabel_labeled_vertices": 14213,
+      "primary_coverage": 0.7907973070717187,
+      "multilabel_coverage": 0.7907973070717187,
+      "overlap_vertices": 214,
+      "primary_counts": {
+        "background": 3760,
+        "positive_grasp": 14210,
+        "negative_grasp": 3,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 14212,
+        "negative_grasp": 214,
+        "tool_use_surface": 214,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 213,
+        "positive_grasp+tool_use_surface": 213,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 214,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/sauce_can",
+      "label": "sauce_can",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/sauce_can/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 19739,
+      "primary_labeled_vertices": 7600,
+      "multilabel_labeled_vertices": 7600,
+      "primary_coverage": 0.3850245706469426,
+      "multilabel_coverage": 0.3850245706469426,
+      "overlap_vertices": 4183,
+      "primary_counts": {
+        "background": 12139,
+        "positive_grasp": 3596,
+        "negative_grasp": 4004,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 3889,
+        "negative_grasp": 4183,
+        "tool_use_surface": 4183,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 472,
+        "positive_grasp+tool_use_surface": 472,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 4183,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/tea_box",
+      "label": "tea_box",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/tea_box/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 21264,
+      "primary_labeled_vertices": 18380,
+      "multilabel_labeled_vertices": 18380,
+      "primary_coverage": 0.8643717080511663,
+      "multilabel_coverage": 0.8643717080511663,
+      "overlap_vertices": 195,
+      "primary_counts": {
+        "background": 2884,
+        "positive_grasp": 18345,
+        "negative_grasp": 35,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 18370,
+        "negative_grasp": 195,
+        "tool_use_surface": 195,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 185,
+        "positive_grasp+tool_use_surface": 185,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 195,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/bowl",
+      "label": "bowl",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/bowl/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 10361,
+      "primary_labeled_vertices": 9197,
+      "multilabel_labeled_vertices": 9197,
+      "primary_coverage": 0.8876556316957822,
+      "multilabel_coverage": 0.8876556316957822,
+      "overlap_vertices": 7476,
+      "primary_counts": {
+        "background": 1164,
+        "positive_grasp": 2974,
+        "negative_grasp": 6146,
+        "tool_use_surface": 77,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 5577,
+        "negative_grasp": 7730,
+        "tool_use_surface": 5862,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 4110,
+        "positive_grasp+tool_use_surface": 2496,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 5862,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": []
+    },
+    {
+      "asset_id": "domino20/plate",
+      "label": "plate",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/plate/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 10245,
+      "primary_labeled_vertices": 5397,
+      "multilabel_labeled_vertices": 5397,
+      "primary_coverage": 0.5267935578330893,
+      "multilabel_coverage": 0.5267935578330893,
+      "overlap_vertices": 2491,
+      "primary_counts": {
+        "background": 4848,
+        "positive_grasp": 2931,
+        "negative_grasp": 2466,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 2931,
+        "negative_grasp": 2491,
+        "tool_use_surface": 2491,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 25,
+        "positive_grasp+tool_use_surface": 25,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 2491,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/hammer",
+      "label": "hammer",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/hammer/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 11242,
+      "primary_labeled_vertices": 8538,
+      "multilabel_labeled_vertices": 8538,
+      "primary_coverage": 0.7594734033090198,
+      "multilabel_coverage": 0.7594734033090198,
+      "overlap_vertices": 5346,
+      "primary_counts": {
+        "background": 2704,
+        "positive_grasp": 4518,
+        "negative_grasp": 4020,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 5206,
+        "negative_grasp": 6819,
+        "tool_use_surface": 5093,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 3487,
+        "positive_grasp+tool_use_surface": 3234,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 5093,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/screwdriver",
+      "label": "screwdriver",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/screwdriver/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 9721,
+      "primary_labeled_vertices": 4673,
+      "multilabel_labeled_vertices": 4673,
+      "primary_coverage": 0.48071186091965845,
+      "multilabel_coverage": 0.48071186091965845,
+      "overlap_vertices": 2098,
+      "primary_counts": {
+        "background": 5048,
+        "positive_grasp": 3520,
+        "negative_grasp": 1153,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 3545,
+        "negative_grasp": 3205,
+        "tool_use_surface": 66,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 2077,
+        "positive_grasp+tool_use_surface": 45,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 66,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/apple",
+      "label": "apple",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/apple/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 49126,
+      "primary_labeled_vertices": 40346,
+      "multilabel_labeled_vertices": 40346,
+      "primary_coverage": 0.821275902780605,
+      "multilabel_coverage": 0.821275902780605,
+      "overlap_vertices": 40346,
+      "primary_counts": {
+        "background": 8780,
+        "positive_grasp": 40346,
+        "negative_grasp": 0,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 40346,
+        "negative_grasp": 102,
+        "tool_use_surface": 40346,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 102,
+        "positive_grasp+tool_use_surface": 40346,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 102,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/book",
+      "label": "book",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/book/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 26813,
+      "primary_labeled_vertices": 12563,
+      "multilabel_labeled_vertices": 12563,
+      "primary_coverage": 0.4685413791817402,
+      "multilabel_coverage": 0.4685413791817402,
+      "overlap_vertices": 1289,
+      "primary_counts": {
+        "background": 14250,
+        "positive_grasp": 12563,
+        "negative_grasp": 0,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 12563,
+        "negative_grasp": 1289,
+        "tool_use_surface": 1289,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 1289,
+        "positive_grasp+tool_use_surface": 1289,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 1289,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/mouse",
+      "label": "mouse",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/mouse/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 18392,
+      "primary_labeled_vertices": 14378,
+      "multilabel_labeled_vertices": 14378,
+      "primary_coverage": 0.7817529360591562,
+      "multilabel_coverage": 0.7817529360591562,
+      "overlap_vertices": 9885,
+      "primary_counts": {
+        "background": 4014,
+        "positive_grasp": 14035,
+        "negative_grasp": 343,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 14300,
+        "negative_grasp": 9963,
+        "tool_use_surface": 309,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 9885,
+        "positive_grasp+tool_use_surface": 309,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 309,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/stapler",
+      "label": "stapler",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/stapler/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 30202,
+      "primary_labeled_vertices": 9441,
+      "multilabel_labeled_vertices": 9441,
+      "primary_coverage": 0.3125951923713661,
+      "multilabel_coverage": 0.3125951923713661,
+      "overlap_vertices": 243,
+      "primary_counts": {
+        "background": 20761,
+        "positive_grasp": 9301,
+        "negative_grasp": 97,
+        "tool_use_surface": 43,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 9336,
+        "negative_grasp": 235,
+        "tool_use_surface": 257,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 144,
+        "positive_grasp+tool_use_surface": 152,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 235,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": []
+    },
+    {
+      "asset_id": "domino20/dumbbell",
+      "label": "dumbbell",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/dumbbell/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 25084,
+      "primary_labeled_vertices": 6740,
+      "multilabel_labeled_vertices": 6740,
+      "primary_coverage": 0.2686971774836549,
+      "multilabel_coverage": 0.2686971774836549,
+      "overlap_vertices": 6739,
+      "primary_counts": {
+        "background": 18344,
+        "positive_grasp": 333,
+        "negative_grasp": 6407,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 354,
+        "negative_grasp": 6739,
+        "tool_use_surface": 6739,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 353,
+        "positive_grasp+tool_use_surface": 353,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 6739,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "domino20/kettle",
+      "label": "kettle",
+      "stage": "domino20",
+      "category": "",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/kettle/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 19932,
+      "primary_labeled_vertices": 6767,
+      "multilabel_labeled_vertices": 6767,
+      "primary_coverage": 0.33950431466987757,
+      "multilabel_coverage": 0.33950431466987757,
+      "overlap_vertices": 2194,
+      "primary_counts": {
+        "background": 13165,
+        "positive_grasp": 2459,
+        "negative_grasp": 4308,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 3355,
+        "negative_grasp": 4888,
+        "tool_use_surface": 1930,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 1476,
+        "positive_grasp+tool_use_surface": 1212,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 1930,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    }
+  ]
+}

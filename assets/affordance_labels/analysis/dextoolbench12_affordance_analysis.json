@@ -1,0 +1,468 @@
+{
+  "manifest_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/asset_manifest.json",
+  "stage": "dextoolbench12",
+  "aggregate": {
+    "num_assets": 12,
+    "num_labeled": 12,
+    "num_missing": 0,
+    "total_vertices": 65780,
+    "total_primary_labeled_vertices": 44122,
+    "total_multilabel_labeled_vertices": 44122,
+    "total_overlap_vertices": 41146,
+    "warning_counts": {
+      "tool_use_hidden_by_primary_overlap": 9
+    }
+  },
+  "assets": [
+    {
+      "asset_id": "dextoolbench/brush/blue_brush",
+      "label": "blue_brush",
+      "stage": "dextoolbench12",
+      "category": "brush",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/brush/blue_brush/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 5983,
+      "primary_labeled_vertices": 3756,
+      "multilabel_labeled_vertices": 3756,
+      "primary_coverage": 0.6277787063346147,
+      "multilabel_coverage": 0.6277787063346147,
+      "overlap_vertices": 3260,
+      "primary_counts": {
+        "background": 2227,
+        "positive_grasp": 674,
+        "negative_grasp": 3082,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 674,
+        "negative_grasp": 3260,
+        "tool_use_surface": 3260,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 178,
+        "positive_grasp+tool_use_surface": 178,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 3260,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "dextoolbench/brush/red_brush",
+      "label": "red_brush",
+      "stage": "dextoolbench12",
+      "category": "brush",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/brush/red_brush/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 11953,
+      "primary_labeled_vertices": 4798,
+      "multilabel_labeled_vertices": 4798,
+      "primary_coverage": 0.4014055048941688,
+      "multilabel_coverage": 0.4014055048941688,
+      "overlap_vertices": 4638,
+      "primary_counts": {
+        "background": 7155,
+        "positive_grasp": 687,
+        "negative_grasp": 4111,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 700,
+        "negative_grasp": 4638,
+        "tool_use_surface": 4638,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 540,
+        "positive_grasp+tool_use_surface": 540,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 4638,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "dextoolbench/eraser/flat_eraser",
+      "label": "flat_eraser",
+      "stage": "dextoolbench12",
+      "category": "eraser",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/eraser/flat_eraser/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 5434,
+      "primary_labeled_vertices": 4893,
+      "multilabel_labeled_vertices": 4893,
+      "primary_coverage": 0.9004416635995584,
+      "multilabel_coverage": 0.9004416635995584,
+      "overlap_vertices": 4893,
+      "primary_counts": {
+        "background": 541,
+        "positive_grasp": 20,
+        "negative_grasp": 4873,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 2726,
+        "negative_grasp": 4893,
+        "tool_use_surface": 4893,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 2726,
+        "positive_grasp+tool_use_surface": 2726,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 4893,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "dextoolbench/eraser/handle_eraser",
+      "label": "handle_eraser",
+      "stage": "dextoolbench12",
+      "category": "eraser",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/eraser/handle_eraser/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 15098,
+      "primary_labeled_vertices": 9696,
+      "multilabel_labeled_vertices": 9696,
+      "primary_coverage": 0.6422042654656246,
+      "multilabel_coverage": 0.6422042654656246,
+      "overlap_vertices": 8216,
+      "primary_counts": {
+        "background": 5402,
+        "positive_grasp": 1480,
+        "negative_grasp": 8216,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 1480,
+        "negative_grasp": 8216,
+        "tool_use_surface": 8216,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 0,
+        "positive_grasp+tool_use_surface": 0,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 8216,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "dextoolbench/hammer/claw_hammer",
+      "label": "claw_hammer",
+      "stage": "dextoolbench12",
+      "category": "hammer",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/hammer/claw_hammer/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 2012,
+      "primary_labeled_vertices": 1872,
+      "multilabel_labeled_vertices": 1872,
+      "primary_coverage": 0.9304174950298211,
+      "multilabel_coverage": 0.9304174950298211,
+      "overlap_vertices": 1798,
+      "primary_counts": {
+        "background": 140,
+        "positive_grasp": 355,
+        "negative_grasp": 1059,
+        "tool_use_surface": 458,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 1293,
+        "negative_grasp": 1285,
+        "tool_use_surface": 1801,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 713,
+        "positive_grasp+tool_use_surface": 1267,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 1236,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": []
+    },
+    {
+      "asset_id": "dextoolbench/hammer/mallet_hammer",
+      "label": "mallet_hammer",
+      "stage": "dextoolbench12",
+      "category": "hammer",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/hammer/mallet_hammer/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 9909,
+      "primary_labeled_vertices": 7375,
+      "multilabel_labeled_vertices": 7375,
+      "primary_coverage": 0.7442728832374609,
+      "multilabel_coverage": 0.7442728832374609,
+      "overlap_vertices": 7175,
+      "primary_counts": {
+        "background": 2534,
+        "positive_grasp": 2710,
+        "negative_grasp": 3317,
+        "tool_use_surface": 1348,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 4074,
+        "negative_grasp": 6872,
+        "tool_use_surface": 7341,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 3738,
+        "positive_grasp+tool_use_surface": 4060,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 6851,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": []
+    },
+    {
+      "asset_id": "dextoolbench/marker/sharpie_marker",
+      "label": "sharpie_marker",
+      "stage": "dextoolbench12",
+      "category": "marker",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 2134,
+      "primary_labeled_vertices": 1776,
+      "multilabel_labeled_vertices": 1776,
+      "primary_coverage": 0.8322399250234301,
+      "multilabel_coverage": 0.8322399250234301,
+      "overlap_vertices": 1775,
+      "primary_counts": {
+        "background": 358,
+        "positive_grasp": 1341,
+        "negative_grasp": 435,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 1765,
+        "negative_grasp": 1775,
+        "tool_use_surface": 1775,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 1764,
+        "positive_grasp+tool_use_surface": 1764,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 1775,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "dextoolbench/marker/staples_marker",
+      "label": "staples_marker",
+      "stage": "dextoolbench12",
+      "category": "marker",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 2455,
+      "primary_labeled_vertices": 1501,
+      "multilabel_labeled_vertices": 1501,
+      "primary_coverage": 0.6114052953156823,
+      "multilabel_coverage": 0.6114052953156823,
+      "overlap_vertices": 1397,
+      "primary_counts": {
+        "background": 954,
+        "positive_grasp": 1370,
+        "negative_grasp": 131,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 1497,
+        "negative_grasp": 1397,
+        "tool_use_surface": 1397,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 1393,
+        "positive_grasp+tool_use_surface": 1393,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 1397,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "dextoolbench/screwdriver/long_screwdriver",
+      "label": "long_screwdriver",
+      "stage": "dextoolbench12",
+      "category": "screwdriver",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 5449,
+      "primary_labeled_vertices": 4204,
+      "multilabel_labeled_vertices": 4204,
+      "primary_coverage": 0.7715177096714994,
+      "multilabel_coverage": 0.7715177096714994,
+      "overlap_vertices": 4000,
+      "primary_counts": {
+        "background": 1245,
+        "positive_grasp": 3746,
+        "negative_grasp": 458,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 4187,
+        "negative_grasp": 4007,
+        "tool_use_surface": 577,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 3990,
+        "positive_grasp+tool_use_surface": 567,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 577,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "dextoolbench/screwdriver/short_screwdriver",
+      "label": "short_screwdriver",
+      "stage": "dextoolbench12",
+      "category": "screwdriver",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 2262,
+      "primary_labeled_vertices": 2049,
+      "multilabel_labeled_vertices": 2049,
+      "primary_coverage": 0.9058355437665783,
+      "multilabel_coverage": 0.9058355437665783,
+      "overlap_vertices": 1809,
+      "primary_counts": {
+        "background": 213,
+        "positive_grasp": 1737,
+        "negative_grasp": 308,
+        "tool_use_surface": 4,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 1928,
+        "negative_grasp": 1816,
+        "tool_use_surface": 233,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 1695,
+        "positive_grasp+tool_use_surface": 119,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 233,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": []
+    },
+    {
+      "asset_id": "dextoolbench/spatula/flat_spatula",
+      "label": "flat_spatula",
+      "stage": "dextoolbench12",
+      "category": "spatula",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/spatula/flat_spatula/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 1567,
+      "primary_labeled_vertices": 895,
+      "multilabel_labeled_vertices": 895,
+      "primary_coverage": 0.5711550733886407,
+      "multilabel_coverage": 0.5711550733886407,
+      "overlap_vertices": 879,
+      "primary_counts": {
+        "background": 672,
+        "positive_grasp": 376,
+        "negative_grasp": 519,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 446,
+        "negative_grasp": 879,
+        "tool_use_surface": 879,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 430,
+        "positive_grasp+tool_use_surface": 430,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 879,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    },
+    {
+      "asset_id": "dextoolbench/spatula/spoon_spatula",
+      "label": "spoon_spatula",
+      "stage": "dextoolbench12",
+      "category": "spatula",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/spatula/spoon_spatula/affordance.npz",
+      "status": "labeled",
+      "num_vertices": 1524,
+      "primary_labeled_vertices": 1307,
+      "multilabel_labeled_vertices": 1307,
+      "primary_coverage": 0.8576115485564304,
+      "multilabel_coverage": 0.8576115485564304,
+      "overlap_vertices": 1306,
+      "primary_counts": {
+        "background": 217,
+        "positive_grasp": 434,
+        "negative_grasp": 873,
+        "tool_use_surface": 0,
+        "safe_contact": 0
+      },
+      "multilabel_counts": {
+        "positive_grasp": 610,
+        "negative_grasp": 1306,
+        "tool_use_surface": 1306,
+        "safe_contact": 0
+      },
+      "overlap_counts": {
+        "positive_grasp+negative_grasp": 609,
+        "positive_grasp+tool_use_surface": 609,
+        "positive_grasp+safe_contact": 0,
+        "negative_grasp+tool_use_surface": 1306,
+        "negative_grasp+safe_contact": 0,
+        "tool_use_surface+safe_contact": 0
+      },
+      "warnings": [
+        "tool_use_hidden_by_primary_overlap"
+      ]
+    }
+  ]
+}

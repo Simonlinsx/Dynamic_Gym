@@ -1,0 +1,51 @@
+defaults:
+  - SimToolRealDynamicGraspV47FrankaInspirePrivPointCloudLiftHoldSimpleRewardTeacher
+  - _self_
+
+env:
+  # V49 keeps V47 Lift-and-Hold, but restores a small contact-to-lift bridge.
+  # V47 made the objective too sparse after contact: the policy learned to reach
+  # and touch, but almost never entered the lifted/hold regime.
+
+  # Success still requires a true, low-velocity lifted hold, but palm upright is
+  # softened into reward/logging for now. We can tighten it again after lift is
+  # reliable.
+  dynamicGraspHoldSuccessRequiresPalmUpright: False
+  dynamicGraspHoldPalmUprightRewScale: 60.0
+  dynamicGraspHoldPalmUprightMinDot: -0.35
+
+  # Restore just enough dense shaping to move from contact/enclosure to lift.
+  dynamicGraspEnclosureRewScale: 0.35
+  dynamicGraspControlledContactRewScale: 10.0
+  dynamicGraspControlledContactVelScale: 0.20
+  dynamicGraspLiftedEnclosureRewScale: 6.0
+  dynamicGraspLiftedRelVelRewScale: 45.0
+  dynamicGraspLiftedRelVelScale: 0.24
+  dynamicGraspLiftedEnclosureVelRewScale: 70.0
+
+  # Keep the cleaned pre-contact terms mostly off, but give the policy a small
+  # reason to settle at the pregrasp region before contact.
+  dynamicGraspPregraspHoldRewScale: 2.0
+  dynamicGraspPreContactSlowRewScale: 1.0
+
+  # Stronger lift bridge, still below the old high-contact reward stack.
+  liftingRewScale: 120.0
+  liftingBonus: 650.0
+  dynamicGraspLiftProgressRewScale: 150.0
+  dynamicGraspQualityLiftProgressRewScale: 380.0
+  dynamicGraspLiftedTrueGraspRewScale: 620.0
+
+  # Stable hold remains the final target.
+  dynamicGraspHoldHeightRewScale: 240.0
+  dynamicGraspHoldObjectVelRewScale: 180.0
+  dynamicGraspHoldObjectAngVelPenaltyScale: 8.0
+  dynamicGraspStableHoldRewScale: 650.0
+  dynamicGraspStableProgressRewScale: 850.0
+  dynamicGraspSuccessBonus: 8500.0
+
+  # Slightly relax early-contact pressure so exploration can discover lift.
+  dynamicGraspEarlyContactPenaltyScale: 1.0
+  dynamicGraspImpactPenaltyScale: 6.0
+  dynamicGraspKickPenaltyScale: 6.0
+  dynamicGraspPostContactRelVelPenaltyScale: 2.0
+  dynamicGraspPushAwayPenaltyScale: 5.0

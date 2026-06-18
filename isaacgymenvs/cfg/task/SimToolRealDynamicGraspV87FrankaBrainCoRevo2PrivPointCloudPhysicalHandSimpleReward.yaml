@@ -1,0 +1,34 @@
+defaults:
+  - SimToolRealDynamicGraspV86FrankaBrainCoRevo2PrivPointCloudStaticSimpleReward
+  - _self_
+
+env:
+  # V87 keeps the V86 simple/static tabletop bootstrap, but removes the 6D
+  # coupled-hand bottleneck. RevoLab's public Revo tasks control all hand joints
+  # directly/relatively; this ablation checks whether Revo2's current coupled
+  # action interface is the main reason lift retention is poor.
+  handActionMode: "physical_joint"
+  handActionDofs: 11
+  handActionNames:
+    - revo2_right_index_proximal_joint
+    - revo2_right_index_distal_joint
+    - revo2_right_middle_proximal_joint
+    - revo2_right_middle_distal_joint
+    - revo2_right_pinky_proximal_joint
+    - revo2_right_pinky_distal_joint
+    - revo2_right_ring_proximal_joint
+    - revo2_right_ring_distal_joint
+    - revo2_right_thumb_metacarpal_joint
+    - revo2_right_thumb_proximal_joint
+    - revo2_right_thumb_distal_joint
+
+  # The larger hand action space needs slightly smoother target changes, but
+  # still less sluggish than V75's coupled-hand setting.
+  handMovingAverage: 0.34
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.045
+
+  # Keep the first curriculum purely static a little longer so the larger action
+  # space can discover useful thumb/finger closure before the object moves.
+  dynamicGraspSpeedCurriculumStartSuccess: 0.10
+  dynamicGraspSpeedCurriculumFullSuccess: 0.50
+  dynamicGraspSpeedCurriculumAlphaRise: 0.00025

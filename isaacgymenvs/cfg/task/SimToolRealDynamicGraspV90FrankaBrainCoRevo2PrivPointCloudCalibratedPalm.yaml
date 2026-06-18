@@ -1,0 +1,85 @@
+defaults:
+  - SimToolRealDynamicGraspV86FrankaBrainCoRevo2PrivPointCloudStaticSimpleReward
+  - _self_
+
+env:
+  # V90 isolates the Revo2 embodiment issue. Keep the V86 simple tabletop
+  # teacher reward, but move the policy/reward palm center from the wrist-side
+  # base link to the actual Revo2 grasp workspace.
+
+  palmBodyName: "revo2_right_base_link"
+  fingertipBodyNames:
+    [
+      "revo2_right_thumb_touch_link",
+      "revo2_right_index_touch_link",
+      "revo2_right_middle_touch_link",
+      "revo2_right_ring_touch_link",
+      "revo2_right_pinky_touch_link",
+    ]
+
+  # Revo2 touch-pad centroid in the official right-hand URDF:
+  # open ~= [0.019, 0.020, 0.119], half-closed ~= [0.046, 0.009, 0.084].
+  # Use a mid-grasp center so reach/lift/relative-velocity rewards describe
+  # where the object should sit in the hand, not the wrist/base frame.
+  palmOffset: [0.040, 0.008, 0.080]
+
+  # Use the older Inspire-like safe reset rather than the lower V70 wrist-heavy
+  # pose. This gives the arm room to approach from the table side without
+  # learning a folded wrist posture.
+  defaultArmDofPos:
+    [0.0, -1.20, 0.0, -2.20, 0.0, 1.40, 0.7853981633974483]
+  resetDofPosRandomIntervalArm: 0.003
+  resetDofPosRandomIntervalFingers: 0.0
+  resetDofVelRandomInterval: 0.0
+
+  # Palm reach is now centered on the grasp workspace, so keep it helpful but
+  # not dominant. Fingertip/touch-link reach and contact remain the main guide.
+  dynamicGraspPalmReachRewScale: 14.0
+  dynamicGraspPalmReachDistanceScale: 0.26
+  dynamicGraspFingertipReachRewScale: 26.0
+  dynamicGraspFingertipReachDistanceScale: 0.24
+  dynamicGraspReachReadyCutoff: 0.095
+  dynamicGraspReachReadyFadeDistance: 0.20
+  dynamicGraspReachReadyKeepFraction: 0.30
+  dynamicGraspReadyBonusRewScale: 10.0
+
+  # Do not use palm-upright shaping until the Revo2 palm frame is explicitly
+  # calibrated against the real hand; otherwise it can reward hand-flip poses.
+  dynamicGraspHoldPalmUprightRewScale: 0.0
+  dynamicGraspHoldSuccessRequiresPalmUpright: False
+
+  # Mild posture/smoothness only. V89 proved that strong posture penalties can
+  # suppress bad motion without creating contact.
+  dofSpeedScale: 2.8
+  armMovingAverage: 0.40
+  handMovingAverage: 0.38
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.003
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 0.75
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 0.60
+  dynamicGraspSafeArmHomePosturePenaltyScale: 0.40
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.03
+
+  # Keep anti-shortcut terms present, but below V89 so the policy is not scared
+  # away from first contact while the geometry is being validated.
+  dynamicGraspEarlyContactPenaltyScale: 0.0
+  dynamicGraspImpactPenaltyScale: 2.5
+  dynamicGraspKickPenaltyScale: 2.5
+  dynamicGraspPostContactRelVelPenaltyScale: 1.0
+  dynamicGraspPushAwayPenaltyScale: 2.5
+  dynamicGraspScoopLiftPenaltyScale: 90.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 180.0
+
+  # Keep the simple static-to-slow bootstrap from V86.
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspSpeedCurriculumMode: "success"
+  dynamicGraspSpeedCurriculumMetric: "legacy_success"
+  dynamicGraspStartSpeedRange: [0.0, 0.0]
+  dynamicGraspStartYawRateRange: [0.0, 0.0]
+  dynamicGraspInitialSpeedRange: [0.035, 0.12]
+  dynamicGraspInitialYawRateRange: [-0.45, 0.45]
+
+  videoDebugOverlayEnabled: True
+  videoDebugOverlayPointRadius: 2
+  videoDebugOverlayTrajectoryHistory: 36
+  videoDebugOverlayFutureSteps: 3
+  videoDebugOverlayFutureDt: 0.2

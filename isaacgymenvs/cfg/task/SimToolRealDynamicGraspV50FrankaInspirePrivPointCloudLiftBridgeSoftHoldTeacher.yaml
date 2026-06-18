@@ -1,0 +1,67 @@
+defaults:
+  - SimToolRealDynamicGraspV49FrankaInspirePrivPointCloudLiftBridgeTeacher
+  - _self_
+
+env:
+  # V50 keeps the V49 Lift-and-Hold objective, but backs off the curriculum
+  # pressure that made the policy settle into contact/partial-lift behavior.
+  # The intent is to recover V36/V46-style lift bootstrap while still logging
+  # and rewarding the stricter suspended hold target.
+
+  # Softer first-stage success gate. V49's 24-step hold at +18 cm was too hard
+  # from scratch; use this as a bridge, then tighten again after stable lift.
+  dynamicGraspSuccessSteps: 16
+  dynamicGraspStableCounterDecay: 1
+  dynamicGraspStableObjectPalmVel: 0.34
+  dynamicGraspStableFingertipDistance: 0.14
+  dynamicGraspHoldSuccessRequiresHeight: True
+  dynamicGraspHoldSuccessRequiresLowObjectVel: True
+  dynamicGraspHoldSuccessRequiresPalmUpright: False
+  dynamicGraspHoldHeightOffset: 0.14
+  dynamicGraspHoldHeightTolerance: 0.08
+  dynamicGraspHoldHeightScale: 0.09
+  dynamicGraspHoldObjectVelSuccessThreshold: 0.32
+
+  # Keep the legacy metric next to the strict Lift-and-Hold metric so the two
+  # run families can be compared without changing the actual reward.
+  dynamicGraspLegacySuccessSteps: 8
+  dynamicGraspLegacyStableObjectPalmVel: 0.34
+  dynamicGraspLegacyStableFingertipDistance: 0.14
+  dynamicGraspLegacyRequireTrueGraspForSuccess: True
+
+  # Bring back the V36/V46 contact-to-lift bridge. These are dense enough to
+  # teach "grasp -> lift" before the suspended hold bonus becomes common.
+  dynamicGraspControlledContactRewScale: 14.0
+  dynamicGraspControlledContactVelScale: 0.22
+  dynamicGraspEnclosureRewScale: 0.5
+  dynamicGraspLiftedEnclosureRewScale: 8.0
+  dynamicGraspLiftedRelVelRewScale: 80.0
+  dynamicGraspLiftedRelVelScale: 0.30
+  dynamicGraspLiftedHeightHoldRewScale: 80.0
+  dynamicGraspLiftedEnclosureVelRewScale: 140.0
+  dynamicGraspPregraspHoldRewScale: 4.0
+  dynamicGraspPreContactSlowRewScale: 2.0
+
+  liftingRewScale: 120.0
+  liftingBonus: 900.0
+  dynamicGraspLiftProgressRewScale: 160.0
+  dynamicGraspQualityLiftProgressRewScale: 420.0
+  dynamicGraspLiftedTrueGraspRewScale: 700.0
+
+  # Hold remains important, but the penalties are less punitive while the policy
+  # is still discovering stable lifts.
+  dynamicGraspHoldHeightRewScale: 220.0
+  dynamicGraspHoldObjectVelRewScale: 150.0
+  dynamicGraspHoldObjectAngVelPenaltyScale: 4.0
+  dynamicGraspHoldObjectAngVelMargin: 1.4
+  dynamicGraspHoldPalmUprightRewScale: 50.0
+  dynamicGraspStableHoldRewScale: 650.0
+  dynamicGraspStableProgressRewScale: 800.0
+  dynamicGraspSuccessBonus: 8000.0
+
+  # Keep the safety terms, but avoid over-penalizing the first useful contacts.
+  dynamicGraspEarlyContactPenaltyScale: 2.0
+  dynamicGraspImpactPenaltyScale: 6.0
+  dynamicGraspKickPenaltyScale: 6.0
+  dynamicGraspPostContactRelVelPenaltyScale: 2.0
+  dynamicGraspPushAwayPenaltyScale: 5.0

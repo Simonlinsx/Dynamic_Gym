@@ -1,0 +1,692 @@
+{
+  "asset_id": "dextoolbench/marker/sharpie_marker",
+  "label": "sharpie_marker",
+  "mesh_path": "/data1/linsixu/simtoolreal/assets/urdf/dextoolbench/marker/sharpie_marker/sharpie_marker.obj",
+  "annotation_dir": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker",
+  "positive_prompt": "sharpie marker barrel",
+  "positive_prompt_variants": [
+    "sharpie marker barrel",
+    "barrel"
+  ],
+  "views": [
+    "front",
+    "back",
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "iso1",
+    "iso2",
+    "iso3",
+    "iso4",
+    "front_top",
+    "back_top"
+  ],
+  "render_dir": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views",
+  "render_only": false,
+  "prompt_infos": {
+    "front": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.3153344392776489,
+            0.924167811870575
+          ],
+          "boxes_xyxy": [
+            [
+              63.263145446777344,
+              349.9982604980469,
+              459.897216796875,
+              444.35595703125
+            ],
+            [
+              61.63700866699219,
+              322.20245361328125,
+              706.592529296875,
+              446.0624084472656
+            ]
+          ],
+          "mask_pixels": 61716
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "sharpie marker barrel",
+          "score": 0.924167811870575,
+          "mask_pixels": 61661,
+          "box_xyxy": [
+            61.63700866699219,
+            322.20245361328125,
+            706.592529296875,
+            446.0624084472656
+          ]
+        }
+      ],
+      "best_score": 0.924167811870575,
+      "mask_pixels": 61661,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/front_positive_grasp_mask.png",
+      "voted_faces": 1384
+    },
+    "back": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.9417410492897034,
+            0.27898210287094116
+          ],
+          "boxes_xyxy": [
+            [
+              61.59580993652344,
+              322.2231140136719,
+              705.953857421875,
+              446.0478515625
+            ],
+            [
+              309.54443359375,
+              348.9364929199219,
+              705.4342041015625,
+              444.35504150390625
+            ]
+          ],
+          "mask_pixels": 61863
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "sharpie marker barrel",
+          "score": 0.9417410492897034,
+          "mask_pixels": 61827,
+          "box_xyxy": [
+            61.59580993652344,
+            322.2231140136719,
+            705.953857421875,
+            446.0478515625
+          ]
+        }
+      ],
+      "best_score": 0.9417410492897034,
+      "mask_pixels": 61827,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/back_positive_grasp_mask.png",
+      "voted_faces": 1353
+    },
+    "left": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "selected": [],
+      "best_score": 0.0,
+      "mask_pixels": 0,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/left_positive_grasp_mask.png",
+      "voted_faces": 0
+    },
+    "right": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "selected": [],
+      "best_score": 0.0,
+      "mask_pixels": 0,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/right_positive_grasp_mask.png",
+      "voted_faces": 0
+    },
+    "top": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.9422087669372559
+          ],
+          "boxes_xyxy": [
+            [
+              61.620849609375,
+              336.67706298828125,
+              706.1755981445312,
+              432.70074462890625
+            ]
+          ],
+          "mask_pixels": 58575
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "sharpie marker barrel",
+          "score": 0.9422087669372559,
+          "mask_pixels": 58575,
+          "box_xyxy": [
+            61.620849609375,
+            336.67706298828125,
+            706.1755981445312,
+            432.70074462890625
+          ]
+        }
+      ],
+      "best_score": 0.9422087669372559,
+      "mask_pixels": 58575,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/top_positive_grasp_mask.png",
+      "voted_faces": 1366
+    },
+    "bottom": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.9605160355567932
+          ],
+          "boxes_xyxy": [
+            [
+              61.72386932373047,
+              336.0090026855469,
+              706.0709838867188,
+              432.4741516113281
+            ]
+          ],
+          "mask_pixels": 58235
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "sharpie marker barrel",
+          "score": 0.9605160355567932,
+          "mask_pixels": 58235,
+          "box_xyxy": [
+            61.72386932373047,
+            336.0090026855469,
+            706.0709838867188,
+            432.4741516113281
+          ]
+        }
+      ],
+      "best_score": 0.9605160355567932,
+      "mask_pixels": 58235,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/bottom_positive_grasp_mask.png",
+      "voted_faces": 1137
+    },
+    "iso1": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.21532343327999115,
+            0.9775069355964661
+          ],
+          "boxes_xyxy": [
+            [
+              63.108924865722656,
+              307.45672607421875,
+              473.4234924316406,
+              601.7967529296875
+            ],
+            [
+              62.02972412109375,
+              166.71453857421875,
+              706.697998046875,
+              601.2299194335938
+            ]
+          ],
+          "mask_pixels": 83802
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "sharpie marker barrel",
+          "score": 0.9775069355964661,
+          "mask_pixels": 83786,
+          "box_xyxy": [
+            62.02972412109375,
+            166.71453857421875,
+            706.697998046875,
+            601.2299194335938
+          ]
+        }
+      ],
+      "best_score": 0.9775069355964661,
+      "mask_pixels": 83786,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/iso1_positive_grasp_mask.png",
+      "voted_faces": 1249
+    },
+    "iso2": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.9635589122772217,
+            0.2363792210817337
+          ],
+          "boxes_xyxy": [
+            [
+              62.226173400878906,
+              173.47975158691406,
+              706.249755859375,
+              594.04443359375
+            ],
+            [
+              274.193359375,
+              173.3109130859375,
+              706.1405029296875,
+              475.9593200683594
+            ]
+          ],
+          "mask_pixels": 82808
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "sharpie marker barrel",
+          "score": 0.9635589122772217,
+          "mask_pixels": 82804,
+          "box_xyxy": [
+            62.226173400878906,
+            173.47975158691406,
+            706.249755859375,
+            594.04443359375
+          ]
+        }
+      ],
+      "best_score": 0.9635589122772217,
+      "mask_pixels": 82804,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/iso2_positive_grasp_mask.png",
+      "voted_faces": 1493
+    },
+    "iso3": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.28958576917648315,
+            0.9697895646095276
+          ],
+          "boxes_xyxy": [
+            [
+              62.79103088378906,
+              306.3948059082031,
+              473.69183349609375,
+              603.5028076171875
+            ],
+            [
+              62.2430419921875,
+              164.51846313476562,
+              706.3207397460938,
+              603.0147705078125
+            ]
+          ],
+          "mask_pixels": 85589
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "sharpie marker barrel",
+          "score": 0.9697895646095276,
+          "mask_pixels": 85571,
+          "box_xyxy": [
+            62.2430419921875,
+            164.51846313476562,
+            706.3207397460938,
+            603.0147705078125
+          ]
+        }
+      ],
+      "best_score": 0.9697895646095276,
+      "mask_pixels": 85571,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/iso3_positive_grasp_mask.png",
+      "voted_faces": 1304
+    },
+    "iso4": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.41073712706565857,
+            0.9126619100570679
+          ],
+          "boxes_xyxy": [
+            [
+              61.128662109375,
+              174.07911682128906,
+              494.9036865234375,
+              478.4667663574219
+            ],
+            [
+              62.161354064941406,
+              174.23031616210938,
+              706.6270751953125,
+              593.7015380859375
+            ]
+          ],
+          "mask_pixels": 84886
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "sharpie marker barrel",
+          "score": 0.9126619100570679,
+          "mask_pixels": 84833,
+          "box_xyxy": [
+            62.161354064941406,
+            174.23031616210938,
+            706.6270751953125,
+            593.7015380859375
+          ]
+        }
+      ],
+      "best_score": 0.9126619100570679,
+      "mask_pixels": 84833,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/iso4_positive_grasp_mask.png",
+      "voted_faces": 1545
+    },
+    "front_top": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.25480660796165466,
+            0.9281435608863831
+          ],
+          "boxes_xyxy": [
+            [
+              62.88990783691406,
+              340.6747741699219,
+              459.62255859375,
+              435.0233459472656
+            ],
+            [
+              61.75657653808594,
+              332.0431823730469,
+              706.5414428710938,
+              437.0202941894531
+            ]
+          ],
+          "mask_pixels": 60052
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "sharpie marker barrel",
+          "score": 0.9281435608863831,
+          "mask_pixels": 59972,
+          "box_xyxy": [
+            61.75657653808594,
+            332.0431823730469,
+            706.5414428710938,
+            437.0202941894531
+          ]
+        }
+      ],
+      "best_score": 0.9281435608863831,
+      "mask_pixels": 59972,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/front_top_positive_grasp_mask.png",
+      "voted_faces": 1305
+    },
+    "back_top": {
+      "variants": [
+        {
+          "prompt": "sharpie marker barrel",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.9523965120315552,
+            0.2267400324344635
+          ],
+          "boxes_xyxy": [
+            [
+              61.534263610839844,
+              327.8592529296875,
+              705.84716796875,
+              439.862548828125
+            ],
+            [
+              308.814208984375,
+              343.5820007324219,
+              705.1339721679688,
+              438.7147216796875
+            ]
+          ],
+          "mask_pixels": 61522
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "sharpie marker barrel",
+          "score": 0.9523965120315552,
+          "mask_pixels": 61501,
+          "box_xyxy": [
+            61.534263610839844,
+            327.8592529296875,
+            705.84716796875,
+            439.862548828125
+          ]
+        }
+      ],
+      "best_score": 0.9523965120315552,
+      "mask_pixels": 61501,
+      "prompt": "sharpie marker barrel",
+      "prompt_variants": [
+        "sharpie marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_only_views/back_top_positive_grasp_mask.png",
+      "voted_faces": 1361
+    }
+  },
+  "num_vertices": 2134,
+  "raw_positive_vertices": 2103,
+  "connected_positive_vertices": 2068,
+  "filled_positive_vertices": 2094,
+  "kept_component_sizes": [
+    190,
+    189,
+    175,
+    173,
+    171,
+    124,
+    124,
+    119,
+    110,
+    104,
+    94,
+    94,
+    87,
+    68,
+    60,
+    59,
+    38,
+    34,
+    33,
+    22
+  ],
+  "dilation_steps": 1,
+  "hole_fill_steps": 2,
+  "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/positive_grasp_only.npz",
+  "clean_v2_positive_vertices": 2094,
+  "clean_v2_negative_vertices": 11,
+  "clean_v2_ignore_vertices": 29,
+  "clean_binary_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/grasp_affordance_clean_v2.npz"
+}

@@ -1,0 +1,169 @@
+defaults:
+  - SimToolRealDynamicGraspV76FrankaBrainCoRevo2PrivPointCloudCoupledHandAffordance
+  - _self_
+
+env:
+  # Falling Baton: no table, one elongated object falls with gravity, initial
+  # downward velocity, small lateral velocity, and random angular velocity. The
+  # policy should catch the graspable middle/handle region and hold it stably.
+  taskMode: "falling_baton_grasp"
+  createTable: False
+  createGoalObject: False
+  withTableForceSensor: False
+  resetWhenDropped: False
+  episodeLength: 180
+
+  objectName: "falling_baton_pool"
+  dextoolbenchObjectAssetRoot: "assets/urdf/dextoolbench"
+  dextoolbenchObjectNeedVhacd: False
+  dextoolbenchObjectVariants:
+    - label: "marker/sharpie_marker"
+      urdf: "marker/sharpie_marker/sharpie_marker.urdf"
+      random_yaw: False
+    - label: "marker/staples_marker"
+      urdf: "marker/staples_marker/staples_marker.urdf"
+      random_yaw: False
+    - label: "screwdriver/long_screwdriver"
+      urdf: "screwdriver/long_screwdriver/long_screwdriver.urdf"
+      random_yaw: False
+    - label: "screwdriver/short_screwdriver"
+      urdf: "screwdriver/short_screwdriver/short_screwdriver.urdf"
+      random_yaw: False
+
+  objectPointCloudUseMeshSurface: True
+  objectPointCloudSource: "mesh_surface"
+  objectPointCloudUsePartialView: False
+  objectPointCloudCentroidFromPoints: False
+  objectPointCloudNoiseStd: 0.0
+  objectPointCloudDepthNoiseStd: 0.0
+  objectPointCloudDropoutProb: 0.0
+  objectPointCloudOutlierProb: 0.0
+  objectPointCloudRandomizeOrder: True
+  objectScaleNoiseMultiplierRange: [1.0, 1.0]
+
+  dynamicGraspUseBinaryAffordanceLabels: True
+  dynamicGraspBinaryAffordanceLabelRoot: "assets/affordance_labels"
+  dynamicGraspBinaryAffordanceLabelDataset: "dextoolbench"
+  dynamicGraspBinaryAffordanceLabelFile: "grasp_affordance_clean_v2.npz"
+  dynamicGraspBinaryAffordanceFallbackLabelFiles: ["grasp_affordance_binary.npz"]
+  dynamicGraspBinaryAffordanceMapMaxDistance: 0.0
+  dynamicGraspBinaryAffordanceNumSurfaceSamples: 768
+  dynamicGraspBinaryAffordanceContactDistance: 0.06
+  fallingBatonGeometricAffordance: True
+  fallingBatonAffordancePositiveHalfFraction: 0.35
+  fallingBatonAffordanceNegativeEndFraction: 0.70
+
+  fallingBatonSpawnXRange: [-0.16, 0.16]
+  fallingBatonSpawnYRange: [0.00, 0.24]
+  fallingBatonSpawnZRange: [0.95, 1.15]
+  # Keep the falling object in the same front workspace as the tabletop task,
+  # not above the Franka base/forearm column.
+  fallingBatonForwardWorkspaceEnabled: True
+  fallingBatonForwardWorkspaceXRange: [-0.22, 0.22]
+  fallingBatonForwardWorkspaceYRange: [-0.12, 0.18]
+  fallingBatonSpawnAvoidArmEnabled: True
+  fallingBatonSpawnAvoidArmMinXYDistance: 0.22
+  fallingBatonSpawnAvoidArmIters: 4
+  fallingBatonSpawnAvoidArmBodyNameContains: ["panda_link", "panda_hand"]
+  fallingBatonSpawnAvoidArmBodyNameExcludes: ["revo2_right_"]
+  fallingBatonSpawnAvoidArmFallbackDirection: [0.0, 1.0]
+  fallingBatonSpawnAbovePalmEnabled: True
+  fallingBatonSpawnAbovePalmRange: [0.28, 0.46]
+  fallingBatonPalmRelativeXYSpawnEnabled: True
+  fallingBatonPalmRelativeXYReference: "home_catch_center"
+  # Spawn above a catch point in front of the open fingers instead of directly
+  # over the wrist/forearm column. The early curriculum stays easy, but the
+  # falling object no longer starts on a path that immediately hits the arm.
+  fallingBatonCatchCenterFingerWeight: 1.15
+  fallingBatonCatchCenterForwardOffset: 0.14
+  fallingBatonCatchCenterWorldOffset: [0.0, 0.055, 0.0]
+  fallingBatonPalmRelativeStartXRange: [-0.005, 0.005]
+  fallingBatonPalmRelativeStartYRange: [0.075, 0.115]
+  fallingBatonPalmRelativeXRange: [-0.07, 0.07]
+  fallingBatonPalmRelativeYRange: [0.05, 0.18]
+  fallingBatonPalmRelativeXYClampToGlobalRange: True
+  fallingBatonInitialXYSpeedRange: [0.00, 0.12]
+  fallingBatonStartInitialXYSpeedRange: [0.00, 0.02]
+  fallingBatonInitialZSpeedRange: [0.12, 0.50]
+  fallingBatonStartInitialZSpeedRange: [0.00, 0.08]
+  fallingBatonInitialAngVelRange: [-3.0, 3.0]
+  fallingBatonStartInitialAngVelRange: [-0.25, 0.25]
+  fallingBatonRandomOrientation: False
+  fallingBatonCatchMinHeight: 0.48
+  fallingBatonDropResetZ: 0.22
+  fallingBatonStableObjectSpeed: 0.38
+  fallingBatonStableObjectAngSpeed: 4.0
+  fallingBatonDisableObjectArmCollision: True
+  fallingBatonObjectArmCollisionFilterBit: 536870912
+  fallingBatonObjectCollisionKeepBodyNameContains: ["revo2_right_"]
+
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspSpeedCurriculumMode: "success_gate"
+  dynamicGraspSpeedCurriculumMetric: "lifted"
+  dynamicGraspSpeedCurriculumStartSuccess: 0.08
+  dynamicGraspSpeedCurriculumFullSuccess: 0.35
+  dynamicGraspSpeedCurriculumEmaAlpha: 0.02
+  dynamicGraspSpeedCurriculumAlphaRise: 0.005
+  dynamicGraspSpeedCurriculumAllowDecrease: False
+  dynamicGraspSpeedCurriculumSteps: 12_000_000
+
+  # Falling reward weights. Keep this compact: reach, contact/true grasp,
+  # weak affordance contact, and stable catch/hold.
+  dynamicGraspPalmReachRewScale: 18.0
+  dynamicGraspPalmReachDistanceScale: 0.36
+  dynamicGraspFingertipReachRewScale: 28.0
+  dynamicGraspFingertipReachDistanceScale: 0.24
+  dynamicGraspContactProgressRewScale: 65.0
+  dynamicGraspContactProgressVelScale: 0.32
+  dynamicGraspSurfaceContactDistance: 0.075
+  dynamicGraspMinFingerContacts: 2
+  dynamicGraspMinNonThumbContacts: 1
+  dynamicGraspOpposingDotThreshold: 0.10
+  dynamicGraspContactProgressFingerWeight: 0.30
+  dynamicGraspContactProgressNonThumbWeight: 0.25
+  dynamicGraspContactProgressThumbWeight: 0.45
+  dynamicGraspTrueGraspQualityRewScale: 45.0
+  dynamicGraspOpposingContactRewScale: 90.0
+  dynamicGraspThumbOppositionRewScale: 45.0
+  dynamicGraspTrueGraspBonusRewScale: 220.0
+
+  dynamicGraspBinaryAffordancePositiveContactRewScale: 10.0
+  dynamicGraspBinaryAffordanceNegativeContactPenaltyScale: 5.0
+  dynamicGraspBinaryAffordanceLiftProgressRewScale: 0.0
+  dynamicGraspBinaryAffordanceLiftedTrueGraspRewScale: 0.0
+  dynamicGraspBinaryAffordanceNegativeLiftPenaltyScale: 0.0
+
+  dynamicGraspRequireTrueGraspForSuccess: True
+  dynamicGraspSuccessSteps: 10
+  dynamicGraspStableCounterDecay: 1
+  dynamicGraspStableFingertipDistance: 0.095
+  dynamicGraspStableObjectPalmVel: 0.24
+  dynamicGraspStableHoldRewScale: 320.0
+  dynamicGraspStableProgressRewScale: 420.0
+  dynamicGraspHoldObjectVelRewScale: 140.0
+  dynamicGraspHoldObjectAngVelPenaltyScale: 5.0
+  dynamicGraspDroppedPenaltyScale: 180.0
+  dynamicGraspTimeoutPenaltyScale: 15.0
+  dynamicGraspSuccessBonus: 4500.0
+
+  kukaActionsPenaltyScale: 0.015
+  handActionsPenaltyScale: 0.003
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 0.4
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 0.4
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.01
+
+  cycleVideoObjects: True
+  captureVideoAtStepZero: False
+  videoCameraStartIdx: 0
+  videoCameraStride: 1
+  videoCameraTrackObject: True
+  videoCameraTrackTargetOffset: [0.0, 0.0, 0.02]
+  videoCameraTrackOffset: [0.38, -0.58, 0.38]
+  videoDebugOverlayEnabled: True
+  videoDebugOverlayMode: "falling_3d"
+  videoDebugOverlayPointRadius: 2
+  videoDebugOverlayTrajectoryHistory: 28
+  videoDebugOverlayFutureSteps: 4
+  videoDebugOverlayFutureDt: 0.10
+  videoDebugOverlayVelocityArrowLength: 0.12
+  videoDebugOverlayUseGravityPrediction: True

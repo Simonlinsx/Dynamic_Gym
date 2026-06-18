@@ -1,0 +1,25 @@
+defaults:
+  - SimToolRealDynamicGraspV43FrankaInspireHandZ180PrivPointCloudBootstrap
+  - _self_
+
+env:
+  # V46 keeps the strong V43 privileged observation upper bound, but changes the
+  # dynamic object model toward the sim2real conveyor/slider setup:
+  # pre-contact motion is commanded; after real fingertip-surface contact, the
+  # object is no longer velocity-overwritten and follows contact physics.
+  dynamicGraspReleaseMotionOnContact: True
+  dynamicGraspReleaseMotionContactDistance: 0.06
+  dynamicGraspReleaseMotionMinFingerContacts: 1
+  dynamicGraspReleaseMotionOnLift: True
+
+  # A missed conveyor object should leave the active workspace and reset instead
+  # of bouncing back unrealistically.
+  dynamicGraspBounceAtWorkspace: False
+
+  # Train-video camera. The default SimToolReal camera is too low for the
+  # Franka/Inspire tabletop setup and can show mostly floor/table edge.
+  videoCameraTarget: [0.0, 0.0, 0.55]
+  videoCameraOffset: [0.35, -1.25, 0.70]
+  videoCameraTrackObject: True
+  videoCameraTrackTargetOffset: [0.0, 0.0, 0.04]
+  videoCameraTrackOffset: [0.32, -0.48, 0.38]

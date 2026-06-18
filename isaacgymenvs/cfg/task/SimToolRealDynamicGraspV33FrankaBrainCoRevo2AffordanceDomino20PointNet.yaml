@@ -26,18 +26,19 @@ env:
     table: "urdf/table_dynamic_grasp.urdf"
 
   armDofs: 7
-  # BrainCo's public Revo2 docs describe 6 active joints and 11 total DOF.
   # Keep this equal to the number of non-fixed hand joints in the generated URDF.
+  # The current value is only a placeholder until the real Revo2 URDF/control
+  # mapping is provided.
   handDofs: 11
   numFingertips: 5
-  palmBodyName: "revo2_base_link"
+  palmBodyName: "revo2_right_base_link"
   fingertipBodyNames:
     [
-      "revo2_thumb_tip",
-      "revo2_index_tip",
-      "revo2_middle_tip",
-      "revo2_ring_tip",
-      "revo2_pinky_tip",
+      "revo2_right_thumb_tip_link",
+      "revo2_right_index_tip_link",
+      "revo2_right_middle_tip_link",
+      "revo2_right_ring_tip_link",
+      "revo2_right_pinky_tip_link",
     ]
   palmOffset: [0.0, 0.0, 0.02]
   fingertipOffsets:
@@ -61,6 +62,10 @@ env:
   robotHandDamping: 6.0
   robotHandEffort: 20.0
   robotHandJointFriction: 0.01
+  robotHandBodyColor: [0.03, 0.08, 0.18]
+  robotHandTouchBodyColor: [0.12, 0.12, 0.14]
+  robotHandColorBodyNameContains: ["revo2_right_"]
+  robotHandTouchColorBodyNameContains: ["touch"]
 
   resetDofPosRandomIntervalArm: 0.04
   resetDofPosRandomIntervalFingers: 0.04

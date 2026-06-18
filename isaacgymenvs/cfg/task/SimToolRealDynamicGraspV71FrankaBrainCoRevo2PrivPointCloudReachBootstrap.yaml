@@ -1,0 +1,38 @@
+defaults:
+  - SimToolRealDynamicGraspV70FrankaBrainCoRevo2PrivPointCloudLowHomeStableReach
+  - _self_
+
+env:
+  # V70 fixed the bad hand_far reset collapse, but became too conservative and
+  # did not enter contact by ~12M frames. V71 keeps the lower Revo2 home and
+  # true-contact reward, then strengthens only the generic reach bootstrap.
+
+  # Middle ground between V69's too-aggressive arm and V70's too-slow arm.
+  dofSpeedScale: 3.2
+  armMovingAverage: 0.46
+  handMovingAverage: 0.45
+
+  # Persistent generic reach reward. This uses only object/palm/fingertip
+  # distances and should transfer across objects; it is deliberately not an
+  # affordance-label reward.
+  dynamicGraspPalmReachRewScale: 42.0
+  dynamicGraspPalmReachDistanceScale: 0.46
+  dynamicGraspFingertipReachRewScale: 34.0
+  dynamicGraspFingertipReachDistanceScale: 0.32
+  dynamicGraspReachReadyCutoff: 0.09
+  dynamicGraspReachReadyFadeDistance: 0.26
+  dynamicGraspReachReadyKeepFraction: 0.50
+  dynamicGraspReadyBonusRewScale: 30.0
+
+  # Encourage moving to a useful pregrasp side before contact, but keep these
+  # below the generic reach terms so the policy does not orbit without closing.
+  dynamicGraspInterceptRewScale: 3.5
+  dynamicGraspPregraspAlignmentRewScale: 4.0
+  dynamicGraspPregraspHoldRewScale: 8.0
+  dynamicGraspPreContactSlowRewScale: 2.0
+  dynamicGraspPreContactRelVelPenaltyScale: 1.5
+
+  # Keep early episodes almost static/slow while the reach behavior bootstraps.
+  dynamicGraspStartSpeedRange: [0.0, 0.020]
+  dynamicGraspStartYawRateRange: [-0.08, 0.08]
+  dynamicGraspSpeedCurriculumSteps: 6000000

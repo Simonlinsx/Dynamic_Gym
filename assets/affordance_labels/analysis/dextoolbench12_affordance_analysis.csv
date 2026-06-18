@@ -1,0 +1,13 @@
+asset_id,label,category,status,num_vertices,primary_labeled_vertices,multilabel_labeled_vertices,primary_coverage,multilabel_coverage,overlap_vertices,positive_grasp_vertices,negative_grasp_vertices,tool_use_surface_vertices,safe_contact_vertices,warnings
+dextoolbench/brush/blue_brush,blue_brush,brush,labeled,5983,3756,3756,0.627779,0.627779,3260,674,3260,3260,0,tool_use_hidden_by_primary_overlap
+dextoolbench/brush/red_brush,red_brush,brush,labeled,11953,4798,4798,0.401406,0.401406,4638,700,4638,4638,0,tool_use_hidden_by_primary_overlap
+dextoolbench/eraser/flat_eraser,flat_eraser,eraser,labeled,5434,4893,4893,0.900442,0.900442,4893,2726,4893,4893,0,tool_use_hidden_by_primary_overlap
+dextoolbench/eraser/handle_eraser,handle_eraser,eraser,labeled,15098,9696,9696,0.642204,0.642204,8216,1480,8216,8216,0,tool_use_hidden_by_primary_overlap
+dextoolbench/hammer/claw_hammer,claw_hammer,hammer,labeled,2012,1872,1872,0.930417,0.930417,1798,1293,1285,1801,0,
+dextoolbench/hammer/mallet_hammer,mallet_hammer,hammer,labeled,9909,7375,7375,0.744273,0.744273,7175,4074,6872,7341,0,
+dextoolbench/marker/sharpie_marker,sharpie_marker,marker,labeled,2134,1776,1776,0.832240,0.832240,1775,1765,1775,1775,0,tool_use_hidden_by_primary_overlap
+dextoolbench/marker/staples_marker,staples_marker,marker,labeled,2455,1501,1501,0.611405,0.611405,1397,1497,1397,1397,0,tool_use_hidden_by_primary_overlap
+dextoolbench/screwdriver/long_screwdriver,long_screwdriver,screwdriver,labeled,5449,4204,4204,0.771518,0.771518,4000,4187,4007,577,0,tool_use_hidden_by_primary_overlap
+dextoolbench/screwdriver/short_screwdriver,short_screwdriver,screwdriver,labeled,2262,2049,2049,0.905836,0.905836,1809,1928,1816,233,0,
+dextoolbench/spatula/flat_spatula,flat_spatula,spatula,labeled,1567,895,895,0.571155,0.571155,879,446,879,879,0,tool_use_hidden_by_primary_overlap
+dextoolbench/spatula/spoon_spatula,spoon_spatula,spatula,labeled,1524,1307,1307,0.857612,0.857612,1306,610,1306,1306,0,tool_use_hidden_by_primary_overlap

@@ -1,0 +1,67 @@
+defaults:
+  - SimToolRealFallingBatonV77FrankaBrainCoRevo2PrivPointCloud
+  - _self_
+
+env:
+  # V85: make the first curriculum stage genuinely catchable.  The object still
+  # spawns in the front workspace, but starts closer to the home catch center
+  # and with much smaller initial linear/angular velocity.
+  episodeLength: 200
+
+  fallingBatonSpawnZRange: [0.76, 0.90]
+  fallingBatonForwardWorkspaceXRange: [-0.16, 0.16]
+  fallingBatonForwardWorkspaceYRange: [0.12, 0.34]
+  fallingBatonSpawnAvoidArmMinXYDistance: 0.14
+  fallingBatonSpawnAvoidArmIters: 3
+  fallingBatonSpawnAbovePalmRange: [0.16, 0.28]
+
+  fallingBatonCatchCenterFingerWeight: 0.75
+  fallingBatonCatchCenterForwardOffset: 0.055
+  fallingBatonCatchCenterWorldOffset: [0.0, 0.02, 0.0]
+  fallingBatonPalmRelativeStartXRange: [-0.015, 0.015]
+  fallingBatonPalmRelativeStartYRange: [0.015, 0.045]
+  fallingBatonPalmRelativeXRange: [-0.055, 0.055]
+  fallingBatonPalmRelativeYRange: [0.00, 0.11]
+
+  fallingBatonInitialXYSpeedRange: [0.00, 0.08]
+  fallingBatonStartInitialXYSpeedRange: [0.00, 0.005]
+  fallingBatonInitialZSpeedRange: [0.05, 0.32]
+  fallingBatonStartInitialZSpeedRange: [0.00, 0.015]
+  fallingBatonInitialAngVelRange: [-1.5, 1.5]
+  fallingBatonStartInitialAngVelRange: [-0.08, 0.08]
+
+  fallingBatonCatchMinHeight: 0.46
+  fallingBatonStableObjectSpeed: 0.55
+  fallingBatonStableObjectAngSpeed: 6.0
+
+  dynamicGraspSpeedCurriculumMetric: "true_grasp"
+  dynamicGraspSpeedCurriculumStartSuccess: 0.02
+  dynamicGraspSpeedCurriculumFullSuccess: 0.20
+  dynamicGraspSpeedCurriculumEmaAlpha: 0.02
+  dynamicGraspSpeedCurriculumAlphaRise: 0.003
+  dynamicGraspSpeedCurriculumSteps: 18_000_000
+
+  dynamicGraspPalmReachRewScale: 24.0
+  dynamicGraspPalmReachDistanceScale: 0.42
+  dynamicGraspFingertipReachRewScale: 34.0
+  dynamicGraspFingertipReachDistanceScale: 0.30
+  dynamicGraspContactProgressRewScale: 90.0
+  dynamicGraspContactProgressVelScale: 0.42
+  dynamicGraspSurfaceContactDistance: 0.085
+  dynamicGraspTrueGraspQualityRewScale: 55.0
+  dynamicGraspOpposingContactRewScale: 90.0
+  dynamicGraspThumbOppositionRewScale: 45.0
+  dynamicGraspTrueGraspBonusRewScale: 260.0
+
+  dynamicGraspBinaryAffordancePositiveContactRewScale: 16.0
+  dynamicGraspBinaryAffordanceNegativeContactPenaltyScale: 3.0
+
+  dynamicGraspSuccessSteps: 6
+  dynamicGraspStableFingertipDistance: 0.11
+  dynamicGraspStableObjectPalmVel: 0.32
+  dynamicGraspStableHoldRewScale: 260.0
+  dynamicGraspStableProgressRewScale: 360.0
+  dynamicGraspHoldObjectVelRewScale: 110.0
+  dynamicGraspDroppedPenaltyScale: 80.0
+  dynamicGraspTimeoutPenaltyScale: 5.0
+  dynamicGraspSuccessBonus: 3500.0

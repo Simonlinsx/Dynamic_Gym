@@ -1,0 +1,29 @@
+defaults:
+  - SimToolRealDynamicGraspV42FrankaInspireHandZ180RgbdPointCloudBootstrap
+  - _self_
+
+env:
+  # V45 keeps V42's deployable RGB-D render + object-mask point cloud, but feeds
+  # the policy a centroid-aligned temporal fusion of recent object crops. This
+  # approximates a real robot pipeline that tracks an object mask over time and
+  # fuses RGB-D observations before grasping.
+  objectPointCloudNumPoints: 256
+  objectPointCloudTemporalFusion: True
+  objectPointCloudTemporalHistoryFrames: 8
+  objectPointCloudTemporalRandomSample: True
+
+  # The fused cloud should summarize the observed geometry, so derive centroid
+  # and velocity from the fused point cloud rather than simulator object state.
+  objectPointCloudCentroidFromPoints: True
+  objectPointCloudVelocityFromCentroid: True
+  objectPointCloudVelocityNoiseStd: 0.01
+  objectPointCloudVelocityClip: 1.2
+
+  # Keep corruption low for the first temporal-fusion run. It is already partial
+  # and history-fused, so extra dropout/noise can be restored later if needed.
+  objectPointCloudNoiseStd: 0.001
+  objectPointCloudDepthNoiseStd: 0.0015
+  objectPointCloudDropoutProb: 0.01
+  objectPointCloudOutlierProb: 0.0
+  objectPointCloudOutlierScale: 0.0
+  objectPointCloudRandomizeOrder: True

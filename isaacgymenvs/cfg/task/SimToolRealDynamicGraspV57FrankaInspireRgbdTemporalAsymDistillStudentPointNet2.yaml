@@ -1,0 +1,8 @@
+defaults:
+  - SimToolRealDynamicGraspV56FrankaInspireRgbdTemporalAsymDistillStudent
+  - _self_
+
+env:
+  # Same task/reward/observation source as V56. Only the train config swaps the
+  # student point encoder, so this is a clean encoder ablation.
+  objectPointCloudNumPoints: 128

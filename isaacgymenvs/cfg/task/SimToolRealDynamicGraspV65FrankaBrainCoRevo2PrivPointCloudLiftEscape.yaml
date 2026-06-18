@@ -1,0 +1,50 @@
+defaults:
+  - SimToolRealDynamicGraspV64FrankaBrainCoRevo2PrivPointCloudRewardBridge
+  - _self_
+
+env:
+  # V65 keeps the V64 no-label Revo2 teacher, but changes the reward balance
+  # away from "touch/hold on table" and toward "closed contact -> upward motion
+  # -> lifted true grasp".
+
+  # Keep enough approach shaping to rediscover contact, but do not let contact
+  # alone dominate the return.
+  dynamicGraspContactProgressRewScale: 16.0
+  dynamicGraspClosedContactBonusRewScale: 24.0
+  dynamicGraspControlledContactRewScale: 5.0
+  dynamicGraspTrueGraspQualityRewScale: 6.0
+  dynamicGraspOpposingContactRewScale: 8.0
+
+  # Once the hand has closed around the object without lifting it, fade the
+  # contact-only rewards. This directly attacks the V64 local optimum.
+  dynamicGraspContactNoLiftProgressMargin: 0.035
+  dynamicGraspContactRewardDecayGraceSteps: 10
+  dynamicGraspContactRewardDecaySteps: 45
+  dynamicGraspContactRewardDecayMinFraction: 0.12
+
+  # Give immediate credit for upward object velocity under closed contact,
+  # before the slower height-based lift_progress terms have time to accumulate.
+  dynamicGraspContactLiftVelocityRewScale: 180.0
+  dynamicGraspContactLiftVelocityScale: 0.18
+  dynamicGraspContactLiftProgressRewScale: 950.0
+  liftingRewScale: 180.0
+  liftingBonus: 1200.0
+  dynamicGraspLiftProgressRewScale: 210.0
+  dynamicGraspQualityLiftProgressRewScale: 760.0
+  dynamicGraspLiftedTrueGraspRewScale: 950.0
+
+  # Penalize settling into stable closed contact with no height progress.
+  dynamicGraspContactNoLiftPenaltyScale: 85.0
+  dynamicGraspContactNoLiftPenaltyGraceSteps: 18
+  dynamicGraspContactNoLiftPenaltyRampSteps: 55
+
+  # Lift reward should still prefer real finger/thumb grasp, but avoid making
+  # early lift exploration vanish completely.
+  dynamicGraspGateLiftRewardByGraspQuality: True
+  dynamicGraspLiftRewardMinGraspQualityMultiplier: 0.60
+
+  # Keep movement possible while retaining a small smoothness bias.
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.001
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 0.35
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 0.30
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.04

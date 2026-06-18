@@ -1,0 +1,53 @@
+defaults:
+  - SimToolRealDynamicGraspV69FrankaBrainCoRevo2PrivPointCloudOppositionLiftBridge
+  - _self_
+
+env:
+  # V70 keeps the V69 true-contact / thumb-opposition / lift bridge reward, but
+  # restores the Revo2-specific lower home pose from V66. V67-V69 fixed the
+  # touch links and action interface, but accidentally skipped this lower,
+  # contact-ready reset pose.
+  defaultArmDofPos:
+    [0.0, -0.85, 0.0, -2.55, 0.0, 1.20, 0.7853981633974483]
+
+  # Keep resets tight around the contact-ready home. This avoids early
+  # hand-object collisions while not starting the palm too high above the table.
+  resetDofPosRandomIntervalArm: 0.003
+  resetDofPosRandomIntervalFingers: 0.0
+  resetDofVelRandomInterval: 0.0
+
+  # The Franka+Inspire runs that learned reliably used a less aggressive arm
+  # target update than the base dynamic-grasp config. Revo2 was frequently
+  # drifting into hand_far_from_object resets with the inherited faster arm.
+  dofSpeedScale: 2.4
+  armMovingAverage: 0.34
+  handMovingAverage: 0.45
+
+  # Preserve the V64/V69 generic reach bootstrap, but keep it alive a bit closer
+  # to pregrasp so the lower home pose reliably enters the contact regime before
+  # the stricter thumb/opposition terms take over.
+  dynamicGraspPalmReachRewScale: 18.0
+  dynamicGraspPalmReachDistanceScale: 0.34
+  dynamicGraspFingertipReachRewScale: 16.0
+  dynamicGraspFingertipReachDistanceScale: 0.22
+  dynamicGraspReachReadyCutoff: 0.10
+  dynamicGraspReachReadyFadeDistance: 0.22
+  dynamicGraspReachReadyKeepFraction: 0.35
+  dynamicGraspReadyBonusRewScale: 28.0
+
+  # Give the lower-pose bootstrap a slower initial object stage. Once success
+  # appears, the inherited step curriculum still ramps toward the dynamic task.
+  dynamicGraspStartSpeedRange: [0.0, 0.025]
+  dynamicGraspStartYawRateRange: [-0.10, 0.10]
+  dynamicGraspInitialSpeedRange: [0.04, 0.14]
+  dynamicGraspInitialYawRateRange: [-0.6, 0.6]
+  dynamicGraspSpeedCurriculumSteps: 5000000
+
+  # Keep Revo2 fingers strong and grippy at the real touch pads.
+  robotHandStiffness: 90.0
+  robotHandDamping: 8.0
+  robotHandEffort: 35.0
+  robotHandJointFriction: 0.015
+  fingerTipFriction: 3.0
+  objectFriction: 0.5
+  tableFriction: 0.2

@@ -1,0 +1,72 @@
+defaults:
+  - SimToolRealDynamicGraspV50FrankaInspirePrivPointCloudLiftBridgeSoftHoldTeacher
+  - _self_
+
+env:
+  # V51 isolates the five objects that already show meaningful lift in V50.
+  # This keeps hammer/screwdriver/drill from dominating early gradients while
+  # we teach the hand to convert lift into a stable suspended hold.
+  dominoObjectVariants:
+    - label: "mug"
+      asset_modelname: "039_mug"
+      asset_model_id: 0
+      quat: [0.70710678, 0.70710678, 0.0, 0.0]
+      mass: 0.035
+    - label: "cup"
+      asset_modelname: "021_cup"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.025
+    - label: "bottle"
+      asset_modelname: "001_bottle"
+      asset_model_id: 13
+      quat: [0.70710678, 0.0, 0.0, 0.70710678]
+      mass: 0.025
+      random_yaw: False
+    - label: "can"
+      asset_modelname: "071_can"
+      asset_model_id: 0
+      quat: [0.707225, 0.706849, -0.0100455, -0.00982061]
+      mass: 0.020
+    - label: "dumbbell"
+      asset_modelname: "052_dumbbell"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.035
+
+  # Keep the gate soft enough to bootstrap from scratch, but bias the objective
+  # toward stable hold instead of repeated lift-only episodes.
+  dynamicGraspSuccessSteps: 16
+  dynamicGraspStableCounterDecay: 1
+  dynamicGraspStableObjectPalmVel: 0.32
+  dynamicGraspHoldObjectVelSuccessThreshold: 0.30
+  dynamicGraspHoldHeightOffset: 0.14
+  dynamicGraspHoldHeightTolerance: 0.08
+
+  # Slightly reduce lift-only incentives compared with V50 and raise stable
+  # hold terms. V50 already proves the lift bridge works; V51 should spend more
+  # gradient on keeping the object suspended.
+  liftingBonus: 800.0
+  dynamicGraspLiftedTrueGraspRewScale: 620.0
+  dynamicGraspLiftedRelVelRewScale: 70.0
+  dynamicGraspLiftedHeightHoldRewScale: 60.0
+  dynamicGraspLiftedEnclosureVelRewScale: 110.0
+  dynamicGraspQualityLiftProgressRewScale: 360.0
+
+  dynamicGraspHoldHeightRewScale: 320.0
+  dynamicGraspHoldObjectVelRewScale: 240.0
+  dynamicGraspHoldObjectAngVelPenaltyScale: 3.0
+  dynamicGraspHoldPalmUprightRewScale: 70.0
+  dynamicGraspStableHoldRewScale: 900.0
+  dynamicGraspStableProgressRewScale: 1150.0
+  dynamicGraspSuccessBonus: 10000.0
+
+  # Train-video debug overlay only affects saved frames: red current XY velocity
+  # direction, blue recent trajectory, and green future XY positions.
+  videoDebugOverlayEnabled: True
+  videoDebugOverlayPointRadius: 2
+  videoDebugOverlayTrajectoryHistory: 36
+  videoDebugOverlayFutureSteps: 3
+  videoDebugOverlayFutureDt: 0.2
+  videoDebugOverlayVelocityArrowLength: 0.10
+  videoDebugOverlayMinVisibleHistorySpan: 0.02

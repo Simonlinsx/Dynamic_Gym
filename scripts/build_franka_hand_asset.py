@@ -22,14 +22,82 @@ def _parse_vec3(values: Iterable[str], name: str) -> str:
     return " ".join(f"{v:.9g}" for v in vals)
 
 
-def _rewrite_mesh_filenames(root: ET.Element, prefix_dir: str) -> None:
+def _parse_color(values: Iterable[str] | None, name: str) -> tuple[float, float, float, float] | None:
+    if values is None:
+        return None
+    vals = [float(v) for v in values]
+    if len(vals) != 4:
+        raise ValueError(f"{name} must contain exactly 4 rgba values")
+    return tuple(vals)
+
+
+def _format_color(color: tuple[float, float, float, float]) -> str:
+    return " ".join(f"{max(0.0, min(1.0, v)):.4g}" for v in color)
+
+
+def _package_name(package_root: Path) -> str | None:
+    package_xml = package_root / "package.xml"
+    if not package_xml.exists():
+        return None
+    package = ET.parse(package_xml).getroot()
+    name_elem = package.find("name")
+    return name_elem.text.strip() if name_elem is not None and name_elem.text else None
+
+
+def _infer_package_root(urdf_path: Path, package_root_arg: str | None) -> Path:
+    if package_root_arg:
+        return Path(package_root_arg).expanduser().resolve()
+    for parent in [urdf_path.parent, *urdf_path.parents]:
+        if (parent / "package.xml").exists():
+            return parent
+    return urdf_path.parent
+
+
+def _rewrite_mesh_filenames(
+    root: ET.Element,
+    prefix_dir: str,
+    package_name: str | None = None,
+) -> None:
     for mesh in root.findall(".//mesh"):
         filename = mesh.attrib.get("filename")
         if not filename:
             continue
-        if filename.startswith(("package://", "file://")) or Path(filename).is_absolute():
+        if filename.startswith("package://"):
+            package_path = filename[len("package://") :]
+            if "/" in package_path:
+                mesh_package, package_rel_path = package_path.split("/", 1)
+                if package_name is None or mesh_package == package_name:
+                    mesh.set("filename", f"{prefix_dir}/{package_rel_path}")
+                    continue
+            raise ValueError(
+                f"Unsupported package mesh path {filename}; expected package "
+                f"{package_name!r}. Pass --hand-package-root if needed."
+            )
+        if filename.startswith("file://") or Path(filename).is_absolute():
             continue
         mesh.set("filename", f"{prefix_dir}/{filename}")
+
+
+def _set_visual_material_colors(
+    root: ET.Element,
+    main_color: tuple[float, float, float, float] | None,
+    touch_color: tuple[float, float, float, float] | None,
+) -> None:
+    if main_color is None and touch_color is None:
+        return
+    for link in root.findall("link"):
+        link_name = link.attrib.get("name", "").lower()
+        color = touch_color if touch_color is not None and "touch" in link_name else main_color
+        if color is None:
+            continue
+        for visual in link.findall("visual"):
+            material = visual.find("material")
+            if material is None:
+                material = ET.SubElement(visual, "material", name="")
+            color_elem = material.find("color")
+            if color_elem is None:
+                color_elem = ET.SubElement(material, "color")
+            color_elem.set("rgba", _format_color(color))
 
 
 def _remove_links_and_descendants(root: ET.Element, link_names: set[str]) -> None:
@@ -63,6 +131,68 @@ def _remove_links_and_descendants(root: ET.Element, link_names: set[str]) -> Non
             child_name = child.attrib.get("link") if child is not None else None
             if parent_name in to_remove or child_name in to_remove:
                 root.remove(elem)
+
+
+def _clear_link_visual_collision(root: ET.Element, link_names: set[str]) -> None:
+    for link in root.findall("link"):
+        if link.attrib.get("name") not in link_names:
+            continue
+        for child in list(link):
+            if child.tag in {"visual", "collision"}:
+                link.remove(child)
+
+
+def _ensure_material(root: ET.Element, name: str, rgba: str) -> None:
+    for material in root.findall("material"):
+        if material.attrib.get("name") == name:
+            return
+    material = ET.Element("material", name=name)
+    ET.SubElement(material, "color", rgba=rgba)
+    root.insert(0, material)
+
+
+def _replace_panda_hand_with_inspire_adapter(root: ET.Element) -> None:
+    link = root.find("./link[@name='panda_hand']")
+    if link is None:
+        raise ValueError("Cannot add adapter: link 'panda_hand' was not found")
+
+    _ensure_material(root, "franka_custom_adapter_gray", "0.35 0.35 0.35 1.0")
+
+    for child in list(link):
+        if child.tag in {"inertial", "visual", "collision"}:
+            link.remove(child)
+
+    inertial = ET.SubElement(link, "inertial")
+    ET.SubElement(inertial, "origin", xyz="0 0 0.0292", rpy="0 0 0")
+    ET.SubElement(inertial, "mass", value="0.035")
+    ET.SubElement(
+        inertial,
+        "inertia",
+        ixx="0.000006",
+        ixy="0",
+        ixz="0",
+        iyy="0.000006",
+        iyz="0",
+        izz="0.000008",
+    )
+
+    adapter_cylinders = [
+        ("0 0 0.004", "0.008", "0.034"),
+        ("0 0 0.0292", "0.0424", "0.018"),
+        ("0 0 0.0544", "0.008", "0.028"),
+    ]
+    for xyz, length, radius in adapter_cylinders:
+        visual = ET.SubElement(link, "visual")
+        ET.SubElement(visual, "origin", xyz=xyz, rpy="0 0 0")
+        geometry = ET.SubElement(visual, "geometry")
+        ET.SubElement(geometry, "cylinder", length=length, radius=radius)
+        ET.SubElement(visual, "material", name="franka_custom_adapter_gray")
+
+    for xyz, length, radius in adapter_cylinders:
+        collision = ET.SubElement(link, "collision")
+        ET.SubElement(collision, "origin", xyz=xyz, rpy="0 0 0")
+        geometry = ET.SubElement(collision, "geometry")
+        ET.SubElement(geometry, "cylinder", length=length, radius=radius)
 
 
 def _prefix_hand_names(root: ET.Element, prefix: str) -> None:
@@ -102,6 +232,7 @@ def _root_link_name(root: ET.Element) -> str:
 def build_asset(args: argparse.Namespace) -> None:
     franka_urdf = Path(args.franka_urdf).expanduser().resolve()
     hand_urdf = Path(args.hand_urdf).expanduser().resolve()
+    hand_package_root = _infer_package_root(hand_urdf, args.hand_package_root)
     output_dir = Path(args.output_dir).expanduser().resolve()
     output_urdf = output_dir / args.output_name
 
@@ -109,6 +240,15 @@ def build_asset(args: argparse.Namespace) -> None:
         raise FileNotFoundError(franka_urdf)
     if not hand_urdf.exists():
         raise FileNotFoundError(hand_urdf)
+    if not hand_package_root.exists():
+        raise FileNotFoundError(hand_package_root)
+    try:
+        hand_urdf.relative_to(hand_package_root)
+    except ValueError as exc:
+        raise ValueError(
+            f"hand URDF {hand_urdf} must be inside hand package root "
+            f"{hand_package_root}"
+        ) from exc
     if output_dir.exists():
         if not args.force:
             raise FileExistsError(f"{output_dir} exists; pass --force to overwrite")
@@ -116,7 +256,7 @@ def build_asset(args: argparse.Namespace) -> None:
     output_dir.mkdir(parents=True)
 
     shutil.copytree(franka_urdf.parent, output_dir / "franka")
-    shutil.copytree(hand_urdf.parent, output_dir / "hand")
+    shutil.copytree(hand_package_root, output_dir / "hand")
 
     franka_root = ET.parse(franka_urdf).getroot()
     hand_root = ET.parse(hand_urdf).getroot()
@@ -127,9 +267,21 @@ def build_asset(args: argparse.Namespace) -> None:
             franka_root,
             {"panda_leftfinger", "panda_rightfinger"},
         )
+    if args.franka_hand_adapter_style == "inspire_cylinders":
+        _replace_panda_hand_with_inspire_adapter(franka_root)
+    elif args.strip_franka_hand_geometry:
+        _clear_link_visual_collision(franka_root, {"panda_hand"})
+    if args.strip_franka_wrist_camera_geometry:
+        _clear_link_visual_collision(franka_root, {"camera_base", "camera"})
 
+    hand_package_name = _package_name(hand_package_root)
     _rewrite_mesh_filenames(franka_root, "franka")
-    _rewrite_mesh_filenames(hand_root, "hand")
+    _rewrite_mesh_filenames(hand_root, "hand", package_name=hand_package_name)
+    _set_visual_material_colors(
+        hand_root,
+        main_color=args.hand_visual_color,
+        touch_color=args.hand_touch_visual_color,
+    )
     _prefix_hand_names(hand_root, args.hand_prefix)
 
     prefixed_hand_root = _root_link_name(hand_root)
@@ -148,6 +300,7 @@ def build_asset(args: argparse.Namespace) -> None:
     print(f"Wrote {output_urdf}")
     print(f"Set robotAssetRoot: {output_dir}")
     print(f"Set asset.robot: {args.output_name}")
+    print(f"Copied hand package root: {hand_package_root}")
 
 
 def main() -> None:
@@ -162,6 +315,14 @@ def main() -> None:
         help="Path to the dexterous hand URDF to mount on panda_hand.",
     )
     parser.add_argument(
+        "--hand-package-root",
+        default=None,
+        help=(
+            "Root directory for the hand package. If omitted, the nearest parent "
+            "with package.xml is used; otherwise the URDF directory is copied."
+        ),
+    )
+    parser.add_argument(
         "--output-dir",
         default="/data1/linsixu/simtoolreal/assets/generated/franka_custom_hand",
     )
@@ -172,12 +333,38 @@ def main() -> None:
     parser.add_argument("--mount-joint-name", default="hand_mount_joint")
     parser.add_argument("--mount-xyz", nargs=3, default=["0", "0", "0.02"])
     parser.add_argument("--mount-rpy", nargs=3, default=["0", "0", "0"])
+    parser.add_argument(
+        "--hand-visual-color",
+        nargs=4,
+        default=None,
+        metavar=("R", "G", "B", "A"),
+        help="Optional RGBA override for hand visual materials.",
+    )
+    parser.add_argument(
+        "--hand-touch-visual-color",
+        nargs=4,
+        default=None,
+        metavar=("R", "G", "B", "A"),
+        help="Optional RGBA override for links whose name contains 'touch'.",
+    )
     parser.add_argument("--strip-franka-fingers", action="store_true", default=True)
     parser.add_argument("--keep-franka-fingers", dest="strip_franka_fingers", action="store_false")
+    parser.add_argument(
+        "--franka-hand-adapter-style",
+        choices=["none", "inspire_cylinders"],
+        default="none",
+    )
+    parser.add_argument("--strip-franka-hand-geometry", action="store_true")
+    parser.add_argument("--strip-franka-wrist-camera-geometry", action="store_true")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     args.mount_xyz = _parse_vec3(args.mount_xyz, "mount_xyz")
     args.mount_rpy = _parse_vec3(args.mount_rpy, "mount_rpy")
+    args.hand_visual_color = _parse_color(args.hand_visual_color, "hand_visual_color")
+    args.hand_touch_visual_color = _parse_color(
+        args.hand_touch_visual_color,
+        "hand_touch_visual_color",
+    )
     build_asset(args)
 
 

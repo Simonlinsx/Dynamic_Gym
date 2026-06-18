@@ -1,0 +1,946 @@
+{
+  "asset_id": "dextoolbench/screwdriver/short_screwdriver",
+  "label": "short_screwdriver",
+  "mesh_path": "/data1/linsixu/simtoolreal/assets/urdf/dextoolbench/screwdriver/short_screwdriver/short_screwdriver.obj",
+  "annotation_dir": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver",
+  "positive_prompt": "short screwdriver handle",
+  "positive_prompt_variants": [
+    "short screwdriver handle",
+    "handle"
+  ],
+  "views": [
+    "front",
+    "back",
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "iso1",
+    "iso2",
+    "iso3",
+    "iso4",
+    "front_top",
+    "back_top"
+  ],
+  "render_dir": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views",
+  "render_only": false,
+  "prompt_infos": {
+    "front": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 3,
+          "kept_masks": 3,
+          "scores": [
+            0.6243102550506592,
+            0.23592934012413025,
+            0.22045458853244781
+          ],
+          "boxes_xyxy": [
+            [
+              66.9122085571289,
+              325.3351135253906,
+              458.6336975097656,
+              442.2726745605469
+            ],
+            [
+              62.553199768066406,
+              324.6004333496094,
+              703.6063842773438,
+              443.01336669921875
+            ],
+            [
+              456.8617858886719,
+              371.6064453125,
+              706.1138305664062,
+              386.78424072265625
+            ]
+          ],
+          "mask_pixels": 42169
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.4167836010456085,
+            0.2321557104587555
+          ],
+          "boxes_xyxy": [
+            [
+              68.42951202392578,
+              325.5218505859375,
+              458.505615234375,
+              441.90728759765625
+            ],
+            [
+              457.42474365234375,
+              371.6422119140625,
+              706.1259155273438,
+              386.93438720703125
+            ]
+          ],
+          "mask_pixels": 40944
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "short screwdriver handle",
+          "score": 0.6243102550506592,
+          "mask_pixels": 38310,
+          "box_xyxy": [
+            66.9122085571289,
+            325.3351135253906,
+            458.6336975097656,
+            442.2726745605469
+          ]
+        }
+      ],
+      "best_score": 0.6243102550506592,
+      "mask_pixels": 38310,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/front_positive_grasp_mask.png",
+      "voted_faces": 1588
+    },
+    "back": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.6834830045700073
+          ],
+          "boxes_xyxy": [
+            [
+              308.819091796875,
+              325.1523742675781,
+              704.9434814453125,
+              442.91949462890625
+            ]
+          ],
+          "mask_pixels": 38798
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.4741953909397125,
+            0.21783851087093353
+          ],
+          "boxes_xyxy": [
+            [
+              309.46661376953125,
+              326.6036376953125,
+              701.7410888671875,
+              442.75091552734375
+            ],
+            [
+              61.52376937866211,
+              371.87481689453125,
+              311.55364990234375,
+              387.45751953125
+            ]
+          ],
+          "mask_pixels": 41136
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "short screwdriver handle",
+          "score": 0.6834830045700073,
+          "mask_pixels": 38798,
+          "box_xyxy": [
+            308.819091796875,
+            325.1523742675781,
+            704.9434814453125,
+            442.91949462890625
+          ]
+        }
+      ],
+      "best_score": 0.6834830045700073,
+      "mask_pixels": 38798,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/back_positive_grasp_mask.png",
+      "voted_faces": 1574
+    },
+    "left": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "selected": [],
+      "best_score": 0.0,
+      "mask_pixels": 0,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/left_positive_grasp_mask.png",
+      "voted_faces": 0
+    },
+    "right": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.4025861620903015
+          ],
+          "boxes_xyxy": [
+            [
+              229.67361450195312,
+              315.8414001464844,
+              456.20928955078125,
+              399.986572265625
+            ]
+          ],
+          "mask_pixels": 9256
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "handle",
+          "score": 0.4025861620903015,
+          "mask_pixels": 9256,
+          "box_xyxy": [
+            229.67361450195312,
+            315.8414001464844,
+            456.20928955078125,
+            399.986572265625
+          ]
+        }
+      ],
+      "best_score": 0.4025861620903015,
+      "mask_pixels": 9256,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/right_positive_grasp_mask.png",
+      "voted_faces": 95
+    },
+    "top": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 3,
+          "kept_masks": 3,
+          "scores": [
+            0.7539805769920349,
+            0.2614048719406128,
+            0.20115934312343597
+          ],
+          "boxes_xyxy": [
+            [
+              65.03739166259766,
+              324.9934997558594,
+              457.8853454589844,
+              442.83013916015625
+            ],
+            [
+              62.404563903808594,
+              324.6474609375,
+              706.3082885742188,
+              443.5000305175781
+            ],
+            [
+              456.7349853515625,
+              355.6935729980469,
+              706.7615966796875,
+              397.08612060546875
+            ]
+          ],
+          "mask_pixels": 41841
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 3,
+          "kept_masks": 3,
+          "scores": [
+            0.3758614659309387,
+            0.5950839519500732,
+            0.21834872663021088
+          ],
+          "boxes_xyxy": [
+            [
+              457.3378601074219,
+              355.62115478515625,
+              706.9422607421875,
+              396.94549560546875
+            ],
+            [
+              66.13595581054688,
+              325.192626953125,
+              457.68804931640625,
+              442.5579833984375
+            ],
+            [
+              61.928123474121094,
+              325.20794677734375,
+              705.430908203125,
+              443.2777404785156
+            ]
+          ],
+          "mask_pixels": 41769
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "short screwdriver handle",
+          "score": 0.7539805769920349,
+          "mask_pixels": 36181,
+          "box_xyxy": [
+            65.03739166259766,
+            324.9934997558594,
+            457.8853454589844,
+            442.83013916015625
+          ]
+        }
+      ],
+      "best_score": 0.7539805769920349,
+      "mask_pixels": 36181,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/top_positive_grasp_mask.png",
+      "voted_faces": 1495
+    },
+    "bottom": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.8308098316192627
+          ],
+          "boxes_xyxy": [
+            [
+              66.83123016357422,
+              324.6602478027344,
+              458.19818115234375,
+              443.0063781738281
+            ]
+          ],
+          "mask_pixels": 36213
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 3,
+          "kept_masks": 3,
+          "scores": [
+            0.3509645164012909,
+            0.6761157512664795,
+            0.21878041326999664
+          ],
+          "boxes_xyxy": [
+            [
+              457.3891296386719,
+              371.2750549316406,
+              706.9224243164062,
+              412.6661376953125
+            ],
+            [
+              69.40489196777344,
+              324.6999206542969,
+              458.224365234375,
+              442.78973388671875
+            ],
+            [
+              63.89696502685547,
+              324.36480712890625,
+              705.7128295898438,
+              443.3284606933594
+            ]
+          ],
+          "mask_pixels": 41875
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "short screwdriver handle",
+          "score": 0.8308098316192627,
+          "mask_pixels": 36213,
+          "box_xyxy": [
+            66.83123016357422,
+            324.6602478027344,
+            458.19818115234375,
+            443.0063781738281
+          ]
+        }
+      ],
+      "best_score": 0.8308098316192627,
+      "mask_pixels": 36213,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/bottom_positive_grasp_mask.png",
+      "voted_faces": 1538
+    },
+    "iso1": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.8990360498428345
+          ],
+          "boxes_xyxy": [
+            [
+              62.65312957763672,
+              268.16986083984375,
+              492.3886413574219,
+              588.9876708984375
+            ]
+          ],
+          "mask_pixels": 63561
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.3224344551563263,
+            0.7535139322280884
+          ],
+          "boxes_xyxy": [
+            [
+              118.8516845703125,
+              428.1713562011719,
+              366.394287109375,
+              586.6212158203125
+            ],
+            [
+              62.53367614746094,
+              267.951904296875,
+              492.6850891113281,
+              588.9326171875
+            ]
+          ],
+          "mask_pixels": 63221
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "short screwdriver handle",
+          "score": 0.8990360498428345,
+          "mask_pixels": 63561,
+          "box_xyxy": [
+            62.65312957763672,
+            268.16986083984375,
+            492.3886413574219,
+            588.9876708984375
+          ]
+        }
+      ],
+      "best_score": 0.8990360498428345,
+      "mask_pixels": 63561,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/iso1_positive_grasp_mask.png",
+      "voted_faces": 1522
+    },
+    "iso2": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.8986052870750427,
+            0.227675661444664
+          ],
+          "boxes_xyxy": [
+            [
+              275.899169921875,
+              186.23489379882812,
+              705.609130859375,
+              494.187744140625
+            ],
+            [
+              59.8575439453125,
+              185.74545288085938,
+              705.7308349609375,
+              580.96875
+            ]
+          ],
+          "mask_pixels": 66939
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.7335608005523682
+          ],
+          "boxes_xyxy": [
+            [
+              275.9230651855469,
+              186.17581176757812,
+              705.2114868164062,
+              494.2686767578125
+            ]
+          ],
+          "mask_pixels": 61831
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "short screwdriver handle",
+          "score": 0.8986052870750427,
+          "mask_pixels": 62071,
+          "box_xyxy": [
+            275.899169921875,
+            186.23489379882812,
+            705.609130859375,
+            494.187744140625
+          ]
+        }
+      ],
+      "best_score": 0.8986052870750427,
+      "mask_pixels": 62071,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/iso2_positive_grasp_mask.png",
+      "voted_faces": 1510
+    },
+    "iso3": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 4,
+          "kept_masks": 4,
+          "scores": [
+            0.21254341304302216,
+            0.6836955547332764,
+            0.33579304814338684,
+            0.30211684107780457
+          ],
+          "boxes_xyxy": [
+            [
+              458.1123962402344,
+              185.259033203125,
+              706.4974365234375,
+              327.6297912597656
+            ],
+            [
+              62.60016632080078,
+              270.5913391113281,
+              491.8263244628906,
+              581.037841796875
+            ],
+            [
+              116.74342346191406,
+              422.33056640625,
+              360.3192138671875,
+              578.340576171875
+            ],
+            [
+              62.499778747558594,
+              186.38885498046875,
+              705.099609375,
+              581.390869140625
+            ]
+          ],
+          "mask_pixels": 70575
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 3,
+          "kept_masks": 3,
+          "scores": [
+            0.4104141891002655,
+            0.27197322249412537,
+            0.3524925112724304
+          ],
+          "boxes_xyxy": [
+            [
+              117.92589569091797,
+              422.830078125,
+              359.1181945800781,
+              578.087646484375
+            ],
+            [
+              458.031982421875,
+              185.68209838867188,
+              706.148193359375,
+              327.97674560546875
+            ],
+            [
+              62.39330291748047,
+              270.8621826171875,
+              490.8254699707031,
+              581.0059814453125
+            ]
+          ],
+          "mask_pixels": 69955
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "short screwdriver handle",
+          "score": 0.6836955547332764,
+          "mask_pixels": 62534,
+          "box_xyxy": [
+            62.60016632080078,
+            270.5913391113281,
+            491.8263244628906,
+            581.037841796875
+          ]
+        }
+      ],
+      "best_score": 0.6836955547332764,
+      "mask_pixels": 62534,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/iso3_positive_grasp_mask.png",
+      "voted_faces": 1557
+    },
+    "iso4": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.8444742560386658,
+            0.20752133429050446
+          ],
+          "boxes_xyxy": [
+            [
+              62.54978942871094,
+              177.4451904296875,
+              492.916259765625,
+              495.429931640625
+            ],
+            [
+              61.74151611328125,
+              177.81597900390625,
+              707.576416015625,
+              590.7335205078125
+            ]
+          ],
+          "mask_pixels": 72677
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 2,
+          "kept_masks": 2,
+          "scores": [
+            0.4498882591724396,
+            0.22834987938404083
+          ],
+          "boxes_xyxy": [
+            [
+              62.722503662109375,
+              177.4748992919922,
+              493.1926574707031,
+              495.26983642578125
+            ],
+            [
+              483.5737609863281,
+              448.07928466796875,
+              706.5221557617188,
+              589.3063354492188
+            ]
+          ],
+          "mask_pixels": 72776
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "short screwdriver handle",
+          "score": 0.8444742560386658,
+          "mask_pixels": 65384,
+          "box_xyxy": [
+            62.54978942871094,
+            177.4451904296875,
+            492.916259765625,
+            495.429931640625
+          ]
+        }
+      ],
+      "best_score": 0.8444742560386658,
+      "mask_pixels": 65384,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/iso4_positive_grasp_mask.png",
+      "voted_faces": 1621
+    },
+    "front_top": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 3,
+          "kept_masks": 3,
+          "scores": [
+            0.7645049095153809,
+            0.24866990745067596,
+            0.20089615881443024
+          ],
+          "boxes_xyxy": [
+            [
+              65.27881622314453,
+              323.9716796875,
+              458.80133056640625,
+              444.13067626953125
+            ],
+            [
+              62.46025085449219,
+              323.72637939453125,
+              705.4307250976562,
+              444.31427001953125
+            ],
+            [
+              457.28076171875,
+              363.5538635253906,
+              706.3070678710938,
+              386.68597412109375
+            ]
+          ],
+          "mask_pixels": 42972
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 5,
+          "kept_masks": 5,
+          "scores": [
+            0.624002993106842,
+            0.220259889960289,
+            0.27010488510131836,
+            0.22395917773246765,
+            0.3286625146865845
+          ],
+          "boxes_xyxy": [
+            [
+              66.37898254394531,
+              324.01837158203125,
+              458.719970703125,
+              443.933837890625
+            ],
+            [
+              340.24798583984375,
+              332.1186828613281,
+              458.03125,
+              427.2779846191406
+            ],
+            [
+              101.16703033447266,
+              326.7375793457031,
+              333.8688049316406,
+              360.5828552246094
+            ],
+            [
+              62.485382080078125,
+              323.906982421875,
+              705.3478393554688,
+              444.2999267578125
+            ],
+            [
+              457.60430908203125,
+              363.6617736816406,
+              706.5394287109375,
+              386.96484375
+            ]
+          ],
+          "mask_pixels": 42947
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "short screwdriver handle",
+          "score": 0.7645049095153809,
+          "mask_pixels": 39196,
+          "box_xyxy": [
+            65.27881622314453,
+            323.9716796875,
+            458.80133056640625,
+            444.13067626953125
+          ]
+        }
+      ],
+      "best_score": 0.7645049095153809,
+      "mask_pixels": 39196,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/front_top_positive_grasp_mask.png",
+      "voted_faces": 1445
+    },
+    "back_top": {
+      "variants": [
+        {
+          "prompt": "short screwdriver handle",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.8276807069778442
+          ],
+          "boxes_xyxy": [
+            [
+              308.85418701171875,
+              322.3459167480469,
+              705.2225952148438,
+              445.328369140625
+            ]
+          ],
+          "mask_pixels": 39957
+        },
+        {
+          "prompt": "handle",
+          "num_masks": 3,
+          "kept_masks": 3,
+          "scores": [
+            0.7026317715644836,
+            0.3094886541366577,
+            0.27865397930145264
+          ],
+          "boxes_xyxy": [
+            [
+              309.4627685546875,
+              322.4764404296875,
+              704.7000732421875,
+              445.30902099609375
+            ],
+            [
+              61.36376953125,
+              369.1703186035156,
+              311.2330627441406,
+              405.045166015625
+            ],
+            [
+              433.64898681640625,
+              328.9627685546875,
+              666.2460327148438,
+              364.0999755859375
+            ]
+          ],
+          "mask_pixels": 44919
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": true,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "short screwdriver handle",
+          "score": 0.8276807069778442,
+          "mask_pixels": 39957,
+          "box_xyxy": [
+            308.85418701171875,
+            322.3459167480469,
+            705.2225952148438,
+            445.328369140625
+          ]
+        }
+      ],
+      "best_score": 0.8276807069778442,
+      "mask_pixels": 39957,
+      "prompt": "short screwdriver handle",
+      "prompt_variants": [
+        "short screwdriver handle",
+        "handle"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_only_views/back_top_positive_grasp_mask.png",
+      "voted_faces": 1428
+    }
+  },
+  "num_vertices": 2262,
+  "raw_positive_vertices": 2128,
+  "connected_positive_vertices": 1930,
+  "filled_positive_vertices": 1930,
+  "kept_component_sizes": [
+    648,
+    522,
+    377,
+    225,
+    81,
+    77
+  ],
+  "dilation_steps": 1,
+  "hole_fill_steps": 2,
+  "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/positive_grasp_only.npz",
+  "clean_v2_positive_vertices": 1930,
+  "clean_v2_negative_vertices": 223,
+  "clean_v2_ignore_vertices": 109,
+  "clean_binary_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/grasp_affordance_clean_v2.npz"
+}

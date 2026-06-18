@@ -33,12 +33,14 @@ import os
 import random
 import tempfile
 import time
+import xml.etree.ElementTree as ET
 from copy import copy
 from os.path import join
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 import numpy as np
+from gym import spaces
 
 # NOTE: torch must be imported AFTER isaacgym imports
 # isort: off
@@ -71,6 +73,7 @@ from isaacgymenvs.utils.observation_action_utils_sharpa import (
 )
 from isaacgymenvs.utils.torch_jit_utils import (
     get_axis_params,
+    quat_axis,
     quat_rotate,
     scale,
     tensor_clamp,
@@ -281,12 +284,20 @@ class SimToolReal(VecTask):
     ):
         self.cfg = cfg
         self.task_mode = cfg["env"].get("taskMode", "goal_pose_reaching")
-        valid_task_modes = {"goal_pose_reaching", "dynamic_tabletop_grasp"}
+        valid_task_modes = {
+            "goal_pose_reaching",
+            "dynamic_tabletop_grasp",
+            "falling_baton_grasp",
+        }
         if self.task_mode not in valid_task_modes:
             raise ValueError(
                 f"Unknown taskMode {self.task_mode}; expected one of {valid_task_modes}"
             )
         self.dynamic_tabletop_grasp = self.task_mode == "dynamic_tabletop_grasp"
+        self.falling_baton_grasp = self.task_mode == "falling_baton_grasp"
+        self.create_table = bool(
+            cfg["env"].get("createTable", not self.falling_baton_grasp)
+        )
         self.create_goal_object = bool(cfg["env"].get("createGoalObject", True))
 
         # Goal related variables
@@ -343,12 +354,39 @@ class SimToolReal(VecTask):
         self.num_hand_dofs = int(
             self.cfg["env"].get("handDofs", 22 if self.use_sharpa else 16)
         )
+        self.hand_action_mode = str(
+            self.cfg["env"].get("handActionMode", "physical_joint")
+        )
+        valid_hand_action_modes = {"physical_joint", "revo2_coupled"}
+        if self.hand_action_mode not in valid_hand_action_modes:
+            raise NotImplementedError(
+                f"handActionMode={self.hand_action_mode} is not implemented; "
+                f"expected one of {sorted(valid_hand_action_modes)}."
+            )
+        default_policy_hand_dofs = 6 if self.hand_action_mode == "revo2_coupled" else self.num_hand_dofs
+        self.num_policy_hand_dofs = int(
+            self.cfg["env"].get("handActionDofs", default_policy_hand_dofs)
+        )
+        if self.hand_action_mode == "physical_joint" and (
+            self.num_policy_hand_dofs != self.num_hand_dofs
+        ):
+            raise ValueError(
+                "handActionMode=physical_joint requires handActionDofs to match "
+                f"handDofs ({self.num_hand_dofs}), got {self.num_policy_hand_dofs}."
+            )
+        if self.hand_action_mode == "revo2_coupled" and self.num_policy_hand_dofs != 6:
+            raise ValueError(
+                "handActionMode=revo2_coupled expects 6 policy hand actions "
+                f"(thumb metacarpal, thumb flex, index, middle, ring, pinky), got "
+                f"{self.num_policy_hand_dofs}."
+            )
         self.num_finger_dofs = (
             None if self.num_fingertips == 0 else self.num_hand_dofs / self.num_fingertips
         )
         self.num_hand_arm_dofs = self.num_hand_dofs + self.num_arm_dofs
 
-        self.num_robot_actions = self.num_hand_arm_dofs
+        self.num_robot_control_actions = self.num_arm_dofs + self.num_policy_hand_dofs
+        self.num_robot_actions = self.num_robot_control_actions
         if self.privileged_actions:
             self.num_robot_actions += 3
 
@@ -376,6 +414,27 @@ class SimToolReal(VecTask):
         self.dynamic_grasp_speed_curriculum = self.cfg["env"].get(
             "dynamicGraspSpeedCurriculum", False
         )
+        self.dynamic_grasp_speed_curriculum_mode = str(
+            self.cfg["env"].get("dynamicGraspSpeedCurriculumMode", "steps")
+        ).lower()
+        self.dynamic_grasp_speed_curriculum_metric = str(
+            self.cfg["env"].get("dynamicGraspSpeedCurriculumMetric", "success")
+        ).lower()
+        self.dynamic_grasp_speed_curriculum_start_success = float(
+            self.cfg["env"].get("dynamicGraspSpeedCurriculumStartSuccess", 0.2)
+        )
+        self.dynamic_grasp_speed_curriculum_full_success = float(
+            self.cfg["env"].get("dynamicGraspSpeedCurriculumFullSuccess", 0.6)
+        )
+        self.dynamic_grasp_speed_curriculum_ema_alpha = float(
+            self.cfg["env"].get("dynamicGraspSpeedCurriculumEmaAlpha", 0.02)
+        )
+        self.dynamic_grasp_speed_curriculum_alpha_rise = float(
+            self.cfg["env"].get("dynamicGraspSpeedCurriculumAlphaRise", 1.0)
+        )
+        self.dynamic_grasp_speed_curriculum_allow_decrease = bool(
+            self.cfg["env"].get("dynamicGraspSpeedCurriculumAllowDecrease", False)
+        )
         self.dynamic_grasp_start_speed_range = self.cfg["env"].get(
             "dynamicGraspStartSpeedRange", self.dynamic_grasp_initial_speed_range
         )
@@ -391,6 +450,12 @@ class SimToolReal(VecTask):
         )
         self.dynamic_grasp_bounce_at_workspace = self.cfg["env"].get(
             "dynamicGraspBounceAtWorkspace", True
+        )
+        self.dynamic_grasp_release_motion_on_contact = bool(
+            self.cfg["env"].get("dynamicGraspReleaseMotionOnContact", False)
+        )
+        self.dynamic_grasp_release_motion_on_lift = bool(
+            self.cfg["env"].get("dynamicGraspReleaseMotionOnLift", True)
         )
         self.dynamic_grasp_workspace_x = self.cfg["env"].get(
             "dynamicGraspWorkspaceX", [-0.45, 0.45]
@@ -427,6 +492,18 @@ class SimToolReal(VecTask):
         )
         self.dynamic_grasp_success_steps_required = self.cfg["env"].get(
             "dynamicGraspSuccessSteps", 30
+        )
+        self.dynamic_grasp_legacy_success_steps_required = int(
+            self.cfg["env"].get("dynamicGraspLegacySuccessSteps", 8)
+        )
+        self.dynamic_grasp_legacy_stable_object_palm_vel = float(
+            self.cfg["env"].get("dynamicGraspLegacyStableObjectPalmVel", 0.34)
+        )
+        self.dynamic_grasp_legacy_stable_fingertip_distance = float(
+            self.cfg["env"].get(
+                "dynamicGraspLegacyStableFingertipDistance",
+                self.dynamic_grasp_stable_fingertip_distance,
+            )
         )
         self.dynamic_grasp_velocity_match_rew_scale = self.cfg["env"].get(
             "dynamicGraspVelocityMatchRewScale", 2.0
@@ -474,6 +551,65 @@ class SimToolReal(VecTask):
         )
         self.dynamic_grasp_lifted_enclosure_vel_rew_scale = self.cfg["env"].get(
             "dynamicGraspLiftedEnclosureVelRewScale", 0.0
+        )
+        self.dynamic_grasp_lift_hold_enabled = bool(
+            self.cfg["env"].get("dynamicGraspLiftHoldEnabled", False)
+        )
+        self.dynamic_grasp_hold_height_offset = float(
+            self.cfg["env"].get(
+                "dynamicGraspHoldHeightOffset", self.lifting_bonus_threshold
+            )
+        )
+        self.dynamic_grasp_hold_height_tolerance = float(
+            self.cfg["env"].get("dynamicGraspHoldHeightTolerance", 0.04)
+        )
+        self.dynamic_grasp_hold_height_scale = float(
+            self.cfg["env"].get(
+                "dynamicGraspHoldHeightScale",
+                max(self.dynamic_grasp_hold_height_tolerance, 1e-3),
+            )
+        )
+        self.dynamic_grasp_hold_height_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspHoldHeightRewScale", 0.0)
+        )
+        self.dynamic_grasp_hold_object_vel_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspHoldObjectVelRewScale", 0.0)
+        )
+        self.dynamic_grasp_hold_object_vel_scale = float(
+            self.cfg["env"].get("dynamicGraspHoldObjectVelScale", 0.20)
+        )
+        self.dynamic_grasp_hold_object_vel_success_threshold = float(
+            self.cfg["env"].get(
+                "dynamicGraspHoldObjectVelSuccessThreshold",
+                self.dynamic_grasp_stable_object_palm_vel,
+            )
+        )
+        self.dynamic_grasp_hold_object_ang_vel_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspHoldObjectAngVelPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_hold_object_ang_vel_margin = float(
+            self.cfg["env"].get("dynamicGraspHoldObjectAngVelMargin", 1.2)
+        )
+        self.dynamic_grasp_hold_palm_upright_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspHoldPalmUprightRewScale", 0.0)
+        )
+        self.dynamic_grasp_hold_palm_upright_axis = max(
+            0, min(2, int(self.cfg["env"].get("dynamicGraspHoldPalmUprightAxis", 2)))
+        )
+        self.dynamic_grasp_hold_palm_upright_sign = float(
+            self.cfg["env"].get("dynamicGraspHoldPalmUprightSign", 1.0)
+        )
+        self.dynamic_grasp_hold_palm_upright_min_dot = float(
+            self.cfg["env"].get("dynamicGraspHoldPalmUprightMinDot", 0.2)
+        )
+        self.dynamic_grasp_hold_success_requires_height = bool(
+            self.cfg["env"].get("dynamicGraspHoldSuccessRequiresHeight", False)
+        )
+        self.dynamic_grasp_hold_success_requires_low_object_vel = bool(
+            self.cfg["env"].get("dynamicGraspHoldSuccessRequiresLowObjectVel", False)
+        )
+        self.dynamic_grasp_hold_success_requires_palm_upright = bool(
+            self.cfg["env"].get("dynamicGraspHoldSuccessRequiresPalmUpright", False)
         )
         self.dynamic_grasp_stable_counter_decay = int(
             self.cfg["env"].get("dynamicGraspStableCounterDecay", 0)
@@ -537,6 +673,9 @@ class SimToolReal(VecTask):
         self.dynamic_grasp_safe_arm_target_accel_penalty_scale = float(
             self.cfg["env"].get("dynamicGraspSafeArmTargetAccelPenaltyScale", 0.0)
         )
+        self.dynamic_grasp_safe_arm_home_posture_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspSafeArmHomePosturePenaltyScale", 0.0)
+        )
         self.dynamic_grasp_safe_hand_target_delta_penalty_scale = float(
             self.cfg["env"].get("dynamicGraspSafeHandTargetDeltaPenaltyScale", 0.0)
         )
@@ -548,6 +687,27 @@ class SimToolReal(VecTask):
         )
         self.dynamic_grasp_pregrasp_ready_distance = float(
             self.cfg["env"].get("dynamicGraspPregraspReadyDistance", 0.08)
+        )
+        self.dynamic_grasp_pregrasp_topdown_height_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspPregraspTopdownHeightRewScale", 0.0)
+        )
+        self.dynamic_grasp_pregrasp_topdown_height_offset = float(
+            self.cfg["env"].get("dynamicGraspPregraspTopdownHeightOffset", 0.14)
+        )
+        self.dynamic_grasp_pregrasp_topdown_height_scale = float(
+            self.cfg["env"].get("dynamicGraspPregraspTopdownHeightScale", 0.05)
+        )
+        self.dynamic_grasp_pregrasp_low_palm_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspPregraspLowPalmPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_pregrasp_min_palm_height_offset = float(
+            self.cfg["env"].get("dynamicGraspPregraspMinPalmHeightOffset", 0.08)
+        )
+        self.dynamic_grasp_pregrasp_low_palm_height_scale = float(
+            self.cfg["env"].get("dynamicGraspPregraspLowPalmHeightScale", 0.04)
+        )
+        self.dynamic_grasp_pregrasp_low_palm_max_penalty = float(
+            self.cfg["env"].get("dynamicGraspPregraspLowPalmMaxPenalty", 4.0)
         )
         self.dynamic_grasp_early_contact_penalty_scale = float(
             self.cfg["env"].get("dynamicGraspEarlyContactPenaltyScale", 0.0)
@@ -576,11 +736,63 @@ class SimToolReal(VecTask):
                 self.dynamic_grasp_controlled_contact_vel_scale,
             )
         )
+        self.dynamic_grasp_table_clearance_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspTableClearancePenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_table_clearance_margin = float(
+            self.cfg["env"].get("dynamicGraspTableClearanceMargin", 0.03)
+        )
+        self.dynamic_grasp_table_clearance_scale = float(
+            self.cfg["env"].get(
+                "dynamicGraspTableClearanceScale",
+                max(self.dynamic_grasp_table_clearance_margin, 1e-3),
+            )
+        )
+        self.dynamic_grasp_table_clearance_reference_offset = float(
+            self.cfg["env"].get("dynamicGraspTableClearanceReferenceOffset", 0.06)
+        )
+        self.dynamic_grasp_table_clearance_max_penalty = float(
+            self.cfg["env"].get("dynamicGraspTableClearanceMaxPenalty", 8.0)
+        )
+        self.dynamic_grasp_table_clearance_body_name_contains = list(
+            self.cfg["env"].get(
+                "dynamicGraspTableClearanceBodyNameContains",
+                [
+                    "panda_link6",
+                    "panda_link7",
+                    "panda_hand",
+                    "revo2_right_base_link",
+                ],
+            )
+        )
+        self.dynamic_grasp_table_clearance_body_name_excludes = list(
+            self.cfg["env"].get(
+                "dynamicGraspTableClearanceBodyNameExcludes",
+                [
+                    "thumb",
+                    "index",
+                    "middle",
+                    "ring",
+                    "pinky",
+                    "touch",
+                    "tip",
+                ],
+            )
+        )
         self.dynamic_grasp_surface_contact_distance = float(
             self.cfg["env"].get(
                 "dynamicGraspSurfaceContactDistance",
                 self.dynamic_grasp_stable_fingertip_distance,
             )
+        )
+        self.dynamic_grasp_release_motion_contact_distance = float(
+            self.cfg["env"].get(
+                "dynamicGraspReleaseMotionContactDistance",
+                self.dynamic_grasp_surface_contact_distance,
+            )
+        )
+        self.dynamic_grasp_release_motion_min_finger_contacts = int(
+            self.cfg["env"].get("dynamicGraspReleaseMotionMinFingerContacts", 1)
         )
         self.dynamic_grasp_min_finger_contacts = int(
             self.cfg["env"].get("dynamicGraspMinFingerContacts", 2)
@@ -593,6 +805,12 @@ class SimToolReal(VecTask):
         )
         self.dynamic_grasp_require_true_grasp_for_success = bool(
             self.cfg["env"].get("dynamicGraspRequireTrueGraspForSuccess", False)
+        )
+        self.dynamic_grasp_legacy_require_true_grasp_for_success = bool(
+            self.cfg["env"].get(
+                "dynamicGraspLegacyRequireTrueGraspForSuccess",
+                self.dynamic_grasp_require_true_grasp_for_success,
+            )
         )
         self.dynamic_grasp_gate_lift_reward_by_grasp_quality = bool(
             self.cfg["env"].get("dynamicGraspGateLiftRewardByGraspQuality", False)
@@ -613,6 +831,27 @@ class SimToolReal(VecTask):
         )
         self.dynamic_grasp_opposing_contact_rew_scale = float(
             self.cfg["env"].get("dynamicGraspOpposingContactRewScale", 0.0)
+        )
+        self.dynamic_grasp_thumb_opposition_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspThumbOppositionRewScale", 0.0)
+        )
+        self.dynamic_grasp_true_grasp_bonus_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspTrueGraspBonusRewScale", 0.0)
+        )
+        self.dynamic_grasp_contact_palm_lift_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspContactPalmLiftRewScale", 0.0)
+        )
+        self.dynamic_grasp_contact_palm_lift_vel_scale = float(
+            self.cfg["env"].get("dynamicGraspContactPalmLiftVelScale", 0.12)
+        )
+        self.dynamic_grasp_contact_progress_finger_weight = float(
+            self.cfg["env"].get("dynamicGraspContactProgressFingerWeight", 0.60)
+        )
+        self.dynamic_grasp_contact_progress_non_thumb_weight = float(
+            self.cfg["env"].get("dynamicGraspContactProgressNonThumbWeight", 0.25)
+        )
+        self.dynamic_grasp_contact_progress_thumb_weight = float(
+            self.cfg["env"].get("dynamicGraspContactProgressThumbWeight", 0.15)
         )
         self.dynamic_grasp_scoop_lift_penalty_scale = float(
             self.cfg["env"].get("dynamicGraspScoopLiftPenaltyScale", 0.0)
@@ -656,6 +895,144 @@ class SimToolReal(VecTask):
         self.dynamic_grasp_affordance_target_rew_scale = float(
             self.cfg["env"].get("dynamicGraspAffordanceTargetRewScale", 0.0)
         )
+        self.dynamic_grasp_use_binary_affordance_labels = bool(
+            self.cfg["env"].get("dynamicGraspUseBinaryAffordanceLabels", False)
+        )
+        self.dynamic_grasp_binary_affordance_label_root = str(
+            self.cfg["env"].get(
+                "dynamicGraspBinaryAffordanceLabelRoot",
+                "assets/affordance_labels",
+            )
+        )
+        self.dynamic_grasp_binary_affordance_label_dataset = str(
+            self.cfg["env"].get(
+                "dynamicGraspBinaryAffordanceLabelDataset", "domino20"
+            )
+        )
+        self.dynamic_grasp_binary_affordance_label_file = str(
+            self.cfg["env"].get(
+                "dynamicGraspBinaryAffordanceLabelFile",
+                "grasp_affordance_clean_v2.npz",
+            )
+        )
+        self.dynamic_grasp_binary_affordance_map_max_distance = float(
+            self.cfg["env"].get("dynamicGraspBinaryAffordanceMapMaxDistance", 0.0)
+        )
+        self.dynamic_grasp_binary_affordance_num_surface_samples = int(
+            self.cfg["env"].get("dynamicGraspBinaryAffordanceNumSurfaceSamples", 0)
+        )
+        self.dynamic_grasp_binary_affordance_contact_distance = float(
+            self.cfg["env"].get(
+                "dynamicGraspBinaryAffordanceContactDistance",
+                self.dynamic_grasp_surface_contact_distance,
+            )
+        )
+        self.dynamic_grasp_binary_affordance_positive_contact_rew_scale = float(
+            self.cfg["env"].get(
+                "dynamicGraspBinaryAffordancePositiveContactRewScale", 0.0
+            )
+        )
+        self.dynamic_grasp_binary_affordance_negative_contact_penalty_scale = float(
+            self.cfg["env"].get(
+                "dynamicGraspBinaryAffordanceNegativeContactPenaltyScale", 0.0
+            )
+        )
+        self.dynamic_grasp_binary_affordance_lift_gate_scale = float(
+            self.cfg["env"].get("dynamicGraspBinaryAffordanceLiftGateScale", 2.5)
+        )
+        self.dynamic_grasp_binary_affordance_lift_progress_rew_scale = float(
+            self.cfg["env"].get(
+                "dynamicGraspBinaryAffordanceLiftProgressRewScale", 0.0
+            )
+        )
+        self.dynamic_grasp_binary_affordance_lifted_true_grasp_rew_scale = float(
+            self.cfg["env"].get(
+                "dynamicGraspBinaryAffordanceLiftedTrueGraspRewScale", 0.0
+            )
+        )
+        self.dynamic_grasp_binary_affordance_negative_lift_penalty_scale = float(
+            self.cfg["env"].get(
+                "dynamicGraspBinaryAffordanceNegativeLiftPenaltyScale", 0.0
+            )
+        )
+        self.dynamic_grasp_palm_reach_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspPalmReachRewScale", 0.0)
+        )
+        self.dynamic_grasp_palm_reach_distance_scale = float(
+            self.cfg["env"].get("dynamicGraspPalmReachDistanceScale", 0.28)
+        )
+        self.dynamic_grasp_fingertip_reach_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspFingertipReachRewScale", 0.0)
+        )
+        self.dynamic_grasp_fingertip_reach_distance_scale = float(
+            self.cfg["env"].get("dynamicGraspFingertipReachDistanceScale", 0.18)
+        )
+        self.dynamic_grasp_reach_ready_cutoff = float(
+            self.cfg["env"].get("dynamicGraspReachReadyCutoff", 0.0)
+        )
+        self.dynamic_grasp_reach_ready_fade_distance = float(
+            self.cfg["env"].get("dynamicGraspReachReadyFadeDistance", 0.10)
+        )
+        self.dynamic_grasp_reach_ready_keep_fraction = float(
+            self.cfg["env"].get("dynamicGraspReachReadyKeepFraction", 0.0)
+        )
+        self.dynamic_grasp_ready_bonus_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspReadyBonusRewScale", 0.0)
+        )
+        self.dynamic_grasp_contact_progress_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspContactProgressRewScale", 0.0)
+        )
+        self.dynamic_grasp_contact_progress_vel_scale = float(
+            self.cfg["env"].get("dynamicGraspContactProgressVelScale", 0.25)
+        )
+        self.dynamic_grasp_closed_contact_bonus_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspClosedContactBonusRewScale", 0.0)
+        )
+        self.dynamic_grasp_contact_lift_progress_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspContactLiftProgressRewScale", 0.0)
+        )
+        self.dynamic_grasp_contact_lift_velocity_rew_scale = float(
+            self.cfg["env"].get("dynamicGraspContactLiftVelocityRewScale", 0.0)
+        )
+        self.dynamic_grasp_contact_lift_velocity_scale = float(
+            self.cfg["env"].get("dynamicGraspContactLiftVelocityScale", 0.20)
+        )
+        self.dynamic_grasp_contact_no_lift_progress_margin = float(
+            self.cfg["env"].get("dynamicGraspContactNoLiftProgressMargin", 0.03)
+        )
+        self.dynamic_grasp_contact_reward_decay_grace_steps = int(
+            self.cfg["env"].get("dynamicGraspContactRewardDecayGraceSteps", 0)
+        )
+        self.dynamic_grasp_contact_reward_decay_steps = int(
+            self.cfg["env"].get("dynamicGraspContactRewardDecaySteps", 0)
+        )
+        self.dynamic_grasp_contact_reward_decay_min_fraction = float(
+            self.cfg["env"].get("dynamicGraspContactRewardDecayMinFraction", 1.0)
+        )
+        self.dynamic_grasp_decay_contact_rewards_near_lift_threshold = bool(
+            self.cfg["env"].get(
+                "dynamicGraspDecayContactRewardsNearLiftThreshold", False
+            )
+        )
+        self.dynamic_grasp_contact_reward_lift_progress_decay_power = float(
+            self.cfg["env"].get(
+                "dynamicGraspContactRewardLiftProgressDecayPower", 1.0
+            )
+        )
+        self.dynamic_grasp_contact_reward_lift_progress_decay_min_fraction = float(
+            self.cfg["env"].get(
+                "dynamicGraspContactRewardLiftProgressDecayMinFraction", 0.0
+            )
+        )
+        self.dynamic_grasp_contact_no_lift_penalty_scale = float(
+            self.cfg["env"].get("dynamicGraspContactNoLiftPenaltyScale", 0.0)
+        )
+        self.dynamic_grasp_contact_no_lift_penalty_grace_steps = int(
+            self.cfg["env"].get("dynamicGraspContactNoLiftPenaltyGraceSteps", 0)
+        )
+        self.dynamic_grasp_contact_no_lift_penalty_ramp_steps = int(
+            self.cfg["env"].get("dynamicGraspContactNoLiftPenaltyRampSteps", 30)
+        )
         self.dynamic_grasp_affordance_surface_offsets_by_label = dict(
             DEFAULT_DYNAMIC_GRASP_AFFORDANCE_SURFACE_OFFSETS
         )
@@ -669,6 +1046,81 @@ class SimToolReal(VecTask):
         )
         self.object_pointcloud_num_points = int(
             self.cfg["env"].get("objectPointCloudNumPoints", 0)
+        )
+        self.object_pointcloud_source = str(
+            self.cfg["env"].get("objectPointCloudSource", "mesh_surface")
+        ).lower()
+        valid_object_pointcloud_sources = {"mesh_surface", "rgbd_render"}
+        if self.object_pointcloud_source not in valid_object_pointcloud_sources:
+            raise ValueError(
+                "objectPointCloudSource must be one of "
+                f"{sorted(valid_object_pointcloud_sources)}, got "
+                f"{self.object_pointcloud_source}"
+            )
+        self.object_pointcloud_use_rgbd_render = (
+            self.object_pointcloud_source == "rgbd_render"
+        )
+        self.object_pointcloud_render_width = int(
+            self.cfg["env"].get("objectPointCloudRenderWidth", 128)
+        )
+        self.object_pointcloud_render_height = int(
+            self.cfg["env"].get("objectPointCloudRenderHeight", 96)
+        )
+        self.object_pointcloud_render_horizontal_fov = float(
+            self.cfg["env"].get("objectPointCloudRenderHorizontalFov", 60.0)
+        )
+        self.object_pointcloud_render_max_depth = float(
+            self.cfg["env"].get("objectPointCloudRenderMaxDepth", 3.0)
+        )
+        self.object_pointcloud_render_camera_pos_cfg = self.cfg["env"].get(
+            "objectPointCloudRenderCameraPos",
+            self.cfg["env"].get("objectPointCloudCameraPos", [0.45, -0.75, 0.75]),
+        )
+        self.object_pointcloud_render_camera_target_cfg = self.cfg["env"].get(
+            "objectPointCloudRenderCameraTarget", [0.0, 0.0, 0.63]
+        )
+        self.object_pointcloud_render_env_limit = int(
+            self.cfg["env"].get("objectPointCloudRenderEnvLimit", 1024)
+        )
+        self.object_pointcloud_render_allow_large = bool(
+            self.cfg["env"].get("objectPointCloudRenderAllowLarge", False)
+        )
+        if self.object_pointcloud_use_rgbd_render:
+            num_envs_requested = int(self.cfg["env"].get("numEnvs", 0))
+            if (
+                num_envs_requested > self.object_pointcloud_render_env_limit
+                and not self.object_pointcloud_render_allow_large
+            ):
+                raise ValueError(
+                    "RGB-D rendered point clouds require one depth/segmentation "
+                    f"camera per env. Requested numEnvs={num_envs_requested}, "
+                    f"limit={self.object_pointcloud_render_env_limit}. Reduce "
+                    "numEnvs or set objectPointCloudRenderAllowLarge=True after "
+                    "checking performance."
+                )
+        self.robot_segmentation_id = int(
+            self.cfg["env"].get(
+                "robotSegmentationId",
+                1 if self.object_pointcloud_use_rgbd_render else 0,
+            )
+        )
+        self.object_segmentation_id = int(
+            self.cfg["env"].get(
+                "objectSegmentationId",
+                2 if self.object_pointcloud_use_rgbd_render else 0,
+            )
+        )
+        self.table_segmentation_id = int(
+            self.cfg["env"].get(
+                "tableSegmentationId",
+                3 if self.object_pointcloud_use_rgbd_render else 0,
+            )
+        )
+        self.goal_object_segmentation_id = int(
+            self.cfg["env"].get(
+                "goalObjectSegmentationId",
+                4 if self.object_pointcloud_use_rgbd_render else 0,
+            )
         )
         self.object_pointcloud_noise_std = float(
             self.cfg["env"].get("objectPointCloudNoiseStd", 0.0)
@@ -720,6 +1172,20 @@ class SimToolReal(VecTask):
         self.object_pointcloud_velocity_clip = float(
             self.cfg["env"].get("objectPointCloudVelocityClip", 2.0)
         )
+        self.object_pointcloud_temporal_fusion = bool(
+            self.cfg["env"].get("objectPointCloudTemporalFusion", False)
+        )
+        self.object_pointcloud_temporal_history_frames = max(
+            1, int(self.cfg["env"].get("objectPointCloudTemporalHistoryFrames", 1))
+        )
+        self.object_pointcloud_temporal_random_sample = bool(
+            self.cfg["env"].get("objectPointCloudTemporalRandomSample", True)
+        )
+        if self.object_pointcloud_temporal_fusion and not self.object_pointcloud_use_rgbd_render:
+            raise ValueError(
+                "objectPointCloudTemporalFusion currently requires "
+                "objectPointCloudSource=rgbd_render"
+            )
         self.object_pointcloud_use_mesh_surface = bool(
             self.cfg["env"].get("objectPointCloudUseMeshSurface", False)
         )
@@ -746,6 +1212,184 @@ class SimToolReal(VecTask):
         )
         self.domino_object_variants = self.cfg["env"].get(
             "dominoObjectVariants", DEFAULT_DOMINO_OBJECT_VARIANTS
+        )
+        self.dextoolbench_object_asset_root = self.cfg["env"].get(
+            "dextoolbenchObjectAssetRoot",
+            "assets/urdf/dextoolbench",
+        )
+        self.dextoolbench_object_variants = self.cfg["env"].get(
+            "dextoolbenchObjectVariants", []
+        )
+        self.dextoolbench_object_need_vhacd = bool(
+            self.cfg["env"].get("dextoolbenchObjectNeedVhacd", False)
+        )
+        self.falling_baton_spawn_x_range = self.cfg["env"].get(
+            "fallingBatonSpawnXRange", [-0.16, 0.16]
+        )
+        self.falling_baton_spawn_y_range = self.cfg["env"].get(
+            "fallingBatonSpawnYRange", [0.05, 0.35]
+        )
+        self.falling_baton_spawn_z_range = self.cfg["env"].get(
+            "fallingBatonSpawnZRange", [1.05, 1.25]
+        )
+        self.falling_baton_spawn_above_palm_enabled = bool(
+            self.cfg["env"].get("fallingBatonSpawnAbovePalmEnabled", True)
+        )
+        self.falling_baton_spawn_above_palm_range = self.cfg["env"].get(
+            "fallingBatonSpawnAbovePalmRange", [0.30, 0.50]
+        )
+        self.falling_baton_palm_relative_xy_spawn_enabled = bool(
+            self.cfg["env"].get("fallingBatonPalmRelativeXYSpawnEnabled", False)
+        )
+        self.falling_baton_palm_relative_start_x_range = self.cfg["env"].get(
+            "fallingBatonPalmRelativeStartXRange", [-0.03, 0.03]
+        )
+        self.falling_baton_palm_relative_start_y_range = self.cfg["env"].get(
+            "fallingBatonPalmRelativeStartYRange", [-0.03, 0.03]
+        )
+        self.falling_baton_palm_relative_x_range = self.cfg["env"].get(
+            "fallingBatonPalmRelativeXRange", [-0.12, 0.12]
+        )
+        self.falling_baton_palm_relative_y_range = self.cfg["env"].get(
+            "fallingBatonPalmRelativeYRange", [-0.10, 0.14]
+        )
+        self.falling_baton_palm_relative_xy_clamp_to_global_range = bool(
+            self.cfg["env"].get("fallingBatonPalmRelativeXYClampToGlobalRange", False)
+        )
+        self.falling_baton_palm_relative_xy_reference = str(
+            self.cfg["env"].get(
+                "fallingBatonPalmRelativeXYReference", "current_palm"
+            )
+        ).lower()
+        self.falling_baton_catch_center_finger_weight = float(
+            self.cfg["env"].get("fallingBatonCatchCenterFingerWeight", 0.55)
+        )
+        self.falling_baton_catch_center_forward_offset = float(
+            self.cfg["env"].get("fallingBatonCatchCenterForwardOffset", 0.03)
+        )
+        self.falling_baton_catch_center_world_offset = self.cfg["env"].get(
+            "fallingBatonCatchCenterWorldOffset", [0.0, 0.0, 0.0]
+        )
+        self.falling_baton_initial_xy_speed_range = self.cfg["env"].get(
+            "fallingBatonInitialXYSpeedRange", [0.0, 0.18]
+        )
+        self.falling_baton_start_initial_xy_speed_range = self.cfg["env"].get(
+            "fallingBatonStartInitialXYSpeedRange",
+            self.falling_baton_initial_xy_speed_range,
+        )
+        self.falling_baton_initial_z_speed_range = self.cfg["env"].get(
+            "fallingBatonInitialZSpeedRange", [0.25, 0.75]
+        )
+        self.falling_baton_start_initial_z_speed_range = self.cfg["env"].get(
+            "fallingBatonStartInitialZSpeedRange",
+            self.falling_baton_initial_z_speed_range,
+        )
+        self.falling_baton_initial_ang_vel_range = self.cfg["env"].get(
+            "fallingBatonInitialAngVelRange", [-5.0, 5.0]
+        )
+        self.falling_baton_start_initial_ang_vel_range = self.cfg["env"].get(
+            "fallingBatonStartInitialAngVelRange",
+            self.falling_baton_initial_ang_vel_range,
+        )
+        self.falling_baton_random_orientation = bool(
+            self.cfg["env"].get("fallingBatonRandomOrientation", True)
+        )
+        self.falling_baton_catch_min_height = float(
+            self.cfg["env"].get("fallingBatonCatchMinHeight", 0.55)
+        )
+        self.falling_baton_drop_reset_z = float(
+            self.cfg["env"].get("fallingBatonDropResetZ", 0.25)
+        )
+        self.falling_baton_stable_object_speed = float(
+            self.cfg["env"].get("fallingBatonStableObjectSpeed", 0.45)
+        )
+        self.falling_baton_stable_object_ang_speed = float(
+            self.cfg["env"].get("fallingBatonStableObjectAngSpeed", 5.0)
+        )
+        self.falling_baton_geometric_affordance = bool(
+            self.cfg["env"].get("fallingBatonGeometricAffordance", True)
+        )
+        self.falling_baton_disable_object_arm_collision = bool(
+            self.cfg["env"].get("fallingBatonDisableObjectArmCollision", False)
+        )
+        self.falling_baton_object_arm_collision_filter_bit = int(
+            self.cfg["env"].get(
+                "fallingBatonObjectArmCollisionFilterBit", 1 << 29
+            )
+        )
+        self.falling_baton_object_collision_keep_body_name_contains = list(
+            self.cfg["env"].get(
+                "fallingBatonObjectCollisionKeepBodyNameContains",
+                self.cfg["env"].get("robotHandColorBodyNameContains", []),
+            )
+        )
+        self.falling_baton_forward_workspace_enabled = bool(
+            self.cfg["env"].get("fallingBatonForwardWorkspaceEnabled", False)
+        )
+        self.falling_baton_forward_workspace_x_range = self.cfg["env"].get(
+            "fallingBatonForwardWorkspaceXRange",
+            self.falling_baton_spawn_x_range,
+        )
+        self.falling_baton_forward_workspace_y_range = self.cfg["env"].get(
+            "fallingBatonForwardWorkspaceYRange",
+            self.falling_baton_spawn_y_range,
+        )
+        self.falling_baton_spawn_avoid_arm_enabled = bool(
+            self.cfg["env"].get("fallingBatonSpawnAvoidArmEnabled", False)
+        )
+        self.falling_baton_spawn_avoid_arm_min_xy_distance = float(
+            self.cfg["env"].get("fallingBatonSpawnAvoidArmMinXYDistance", 0.18)
+        )
+        self.falling_baton_spawn_avoid_arm_iters = max(
+            1, int(self.cfg["env"].get("fallingBatonSpawnAvoidArmIters", 3))
+        )
+        self.falling_baton_spawn_avoid_arm_body_name_contains = list(
+            self.cfg["env"].get(
+                "fallingBatonSpawnAvoidArmBodyNameContains",
+                ["panda_link", "panda_hand"],
+            )
+        )
+        self.falling_baton_spawn_avoid_arm_body_name_excludes = list(
+            self.cfg["env"].get(
+                "fallingBatonSpawnAvoidArmBodyNameExcludes",
+                self.cfg["env"].get("robotHandColorBodyNameContains", []),
+            )
+        )
+        self.falling_baton_spawn_avoid_arm_fallback_direction = self.cfg["env"].get(
+            "fallingBatonSpawnAvoidArmFallbackDirection", [0.0, 1.0]
+        )
+        self.falling_baton_affordance_positive_half_fraction = float(
+            self.cfg["env"].get("fallingBatonAffordancePositiveHalfFraction", 0.35)
+        )
+        self.falling_baton_affordance_negative_end_fraction = float(
+            self.cfg["env"].get("fallingBatonAffordanceNegativeEndFraction", 0.70)
+        )
+        self.falling_baton_intercept_rew_scale = float(
+            self.cfg["env"].get("fallingBatonInterceptRewScale", 0.0)
+        )
+        self.falling_baton_intercept_distance_scale = float(
+            self.cfg["env"].get("fallingBatonInterceptDistanceScale", 0.18)
+        )
+        self.falling_baton_intercept_max_time = float(
+            self.cfg["env"].get("fallingBatonInterceptMaxTime", 0.35)
+        )
+        self.falling_baton_intercept_target_z_offset = float(
+            self.cfg["env"].get("fallingBatonInterceptTargetZOffset", 0.02)
+        )
+        self.falling_baton_catch_window_rew_scale = float(
+            self.cfg["env"].get("fallingBatonCatchWindowRewScale", 0.0)
+        )
+        self.falling_baton_catch_window_distance_scale = float(
+            self.cfg["env"].get("fallingBatonCatchWindowDistanceScale", 0.12)
+        )
+        self.falling_baton_catch_window_z_band = float(
+            self.cfg["env"].get("fallingBatonCatchWindowZBand", 0.14)
+        )
+        self.falling_baton_post_contact_rel_vel_penalty_scale = float(
+            self.cfg["env"].get("fallingBatonPostContactRelVelPenaltyScale", 0.0)
+        )
+        self.falling_baton_post_contact_ang_vel_penalty_scale = float(
+            self.cfg["env"].get("fallingBatonPostContactAngVelPenaltyScale", 0.0)
         )
         self.log_dynamic_object_pool_metrics = bool(
             self.cfg["env"].get("logDynamicObjectPoolMetrics", True)
@@ -836,7 +1480,9 @@ class SimToolReal(VecTask):
         self.with_dof_force_sensors = False
         # create fingertip force-torque sensors
         self.with_fingertip_force_sensors = False
-        self.with_table_force_sensor = self.cfg["env"]["withTableForceSensor"]
+        self.with_table_force_sensor = (
+            self.cfg["env"]["withTableForceSensor"] and self.create_table
+        )
 
         if self.reset_time > 0.0:
             self.max_episode_length = int(
@@ -966,6 +1612,11 @@ class SimToolReal(VecTask):
             "object_pointcloud_centroid_rel_palm": 3,
             "object_pointcloud_vel_rel_palm": 3,
             "object_pointcloud_tracking_confidence": 1,
+            "teacher_object_pointcloud_rel_palm": 3
+            * self.object_pointcloud_num_points,
+            "teacher_object_pointcloud_centroid_rel_palm": 3,
+            "teacher_object_pointcloud_vel_rel_palm": 3,
+            "teacher_object_pointcloud_tracking_confidence": 1,
             "affordance_pos_rel_palm": 3,
             "future_affordance_pos_rel_palm": 3,
             "affordance_axis_rel_palm": 3,
@@ -981,9 +1632,32 @@ class SimToolReal(VecTask):
 
         self.state_list = self.cfg["env"]["stateList"]
         self.obs_list = self.cfg["env"]["obsList"]
+        self.distillation_teacher_obs_enabled = bool(
+            self.cfg["env"].get("distillationTeacherObsEnabled", False)
+        )
+        self.distillation_teacher_obs_list = list(
+            self.cfg["env"].get("distillationTeacherObsList", [])
+        )
+        self.distillation_weight_base = float(
+            self.cfg["env"].get("distillationWeightBase", 1.0)
+        )
+        self.distillation_weight_lifted = float(
+            self.cfg["env"].get("distillationWeightLifted", 0.0)
+        )
+        self.distillation_weight_true_grasp = float(
+            self.cfg["env"].get("distillationWeightTrueGrasp", 0.0)
+        )
+        self.distillation_weight_stable_grasp = float(
+            self.cfg["env"].get("distillationWeightStableGrasp", 0.0)
+        )
+        self.distillation_weight_max = float(
+            self.cfg["env"].get("distillationWeightMax", 8.0)
+        )
 
         # assert that all obs in state_list and obs_list are keys of self.obs_type_size_dict
-        for obs_type in self.state_list + self.obs_list:
+        for obs_type in (
+            self.state_list + self.obs_list + self.distillation_teacher_obs_list
+        ):
             assert obs_type in self.obs_type_size_dict, (
                 f"Obs type {obs_type} not found in obs_type_size_dict"
             )
@@ -999,6 +1673,12 @@ class SimToolReal(VecTask):
         )
         self.full_obs_size = sum(
             [self.obs_type_size_dict[obs_type] for obs_type in self.obs_list]
+        )
+        self.distillation_teacher_obs_size = sum(
+            [
+                self.obs_type_size_dict[obs_type]
+                for obs_type in self.distillation_teacher_obs_list
+            ]
         )
 
         self.up_axis = "z"
@@ -1039,24 +1719,211 @@ class SimToolReal(VecTask):
             dtype=torch.float,
             device=self.device,
         )
+        if hasattr(self, "object_pointcloud_grasp_labels_np"):
+            self.object_pointcloud_grasp_labels = to_torch(
+                self.object_pointcloud_grasp_labels_np,
+                dtype=torch.long,
+                device=self.device,
+            )
+            self.object_pointcloud_grasp_label_distances = to_torch(
+                self.object_pointcloud_grasp_label_distances_np,
+                dtype=torch.float,
+                device=self.device,
+            )
+        else:
+            self.object_pointcloud_grasp_labels = torch.full(
+                (
+                    self.num_envs,
+                    max(int(self.object_pointcloud_num_points), 0),
+                ),
+                -1,
+                dtype=torch.long,
+                device=self.device,
+            )
+            self.object_pointcloud_grasp_label_distances = torch.full(
+                (
+                    self.num_envs,
+                    max(int(self.object_pointcloud_num_points), 0),
+                ),
+                float("inf"),
+                dtype=torch.float,
+                device=self.device,
+            )
+        if hasattr(self, "binary_affordance_surface_points_np"):
+            self.binary_affordance_surface_points = to_torch(
+                self.binary_affordance_surface_points_np,
+                dtype=torch.float,
+                device=self.device,
+            )
+            self.binary_affordance_surface_labels = to_torch(
+                self.binary_affordance_surface_labels_np,
+                dtype=torch.long,
+                device=self.device,
+            )
+            self.binary_affordance_surface_label_distances = to_torch(
+                self.binary_affordance_surface_label_distances_np,
+                dtype=torch.float,
+                device=self.device,
+            )
+        else:
+            self.binary_affordance_surface_points = torch.zeros(
+                (self.num_envs, 0, 3), dtype=torch.float, device=self.device
+            )
+            self.binary_affordance_surface_labels = torch.full(
+                (self.num_envs, 0), -1, dtype=torch.long, device=self.device
+            )
+            self.binary_affordance_surface_label_distances = torch.full(
+                (self.num_envs, 0),
+                float("inf"),
+                dtype=torch.float,
+                device=self.device,
+            )
         self.object_pointcloud_camera_pos = to_torch(
             self.object_pointcloud_camera_pos_cfg,
             dtype=torch.float,
             device=self.device,
         )
+        self.object_pointcloud_render_camera_pos = to_torch(
+            self.object_pointcloud_render_camera_pos_cfg,
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.object_pointcloud_render_camera_target = to_torch(
+            self.object_pointcloud_render_camera_target_cfg,
+            dtype=torch.float,
+            device=self.device,
+        )
+        self._object_pointcloud_rgbd_cache_step = -1
+        self._object_pointcloud_rgbd_cache_num_points = -1
+        self._object_pointcloud_rgbd_cache = None
+        self._object_pointcloud_temporal_cache_step = -1
+        self._object_pointcloud_temporal_cache_num_points = -1
+        self._object_pointcloud_temporal_cache = None
+        self._object_pointcloud_temporal_history_fill = 0.0
+        if self.object_pointcloud_temporal_fusion:
+            history_frames = self.object_pointcloud_temporal_history_frames
+            num_points = self.object_pointcloud_num_points
+            self.object_pointcloud_history_points = torch.zeros(
+                (self.num_envs, history_frames, num_points, 3),
+                dtype=torch.float,
+                device=self.device,
+            )
+            self.object_pointcloud_history_centroids = torch.zeros(
+                (self.num_envs, history_frames, 3),
+                dtype=torch.float,
+                device=self.device,
+            )
+            self.object_pointcloud_history_confidence = torch.zeros(
+                (self.num_envs, history_frames, 1),
+                dtype=torch.float,
+                device=self.device,
+            )
+            self.object_pointcloud_history_valid = torch.zeros(
+                (self.num_envs, history_frames),
+                dtype=torch.bool,
+                device=self.device,
+            )
         self.prev_object_pointcloud_centroid_rel_palm = torch.zeros(
             (self.num_envs, 3), dtype=torch.float, device=self.device
         )
         self.object_pointcloud_velocity_initialized = torch.zeros(
             self.num_envs, dtype=torch.bool, device=self.device
         )
+        self.teacher_obs_buf = None
+        self.teacher_observation_space = None
+        self.distillation_weight_buf = None
+        if self.distillation_teacher_obs_enabled:
+            assert self.distillation_teacher_obs_size > 0, (
+                "distillationTeacherObsEnabled=True requires a non-empty "
+                "distillationTeacherObsList"
+            )
+            self.teacher_obs_buf = torch.zeros(
+                (self.num_envs, self.distillation_teacher_obs_size),
+                dtype=torch.float,
+                device=self.device,
+            )
+            self.teacher_observation_space = spaces.Box(
+                low=np.ones(self.distillation_teacher_obs_size) * -np.Inf,
+                high=np.ones(self.distillation_teacher_obs_size) * np.Inf,
+                dtype=np.float32,
+            )
+            self.distillation_weight_buf = torch.ones(
+                (self.num_envs, 1),
+                dtype=torch.float,
+                device=self.device,
+            )
 
         # Index of environment to view in viewer and camera
         self.index_to_view = 0
 
-        # Camera position and target for viewer
-        cam_target = gymapi.Vec3(0.0, 0.0, 0.53)
-        cam_pos = cam_target + gymapi.Vec3(0.0, -1.0, 0.5)
+        # Camera position and target for viewer/video logging.
+        video_camera_target = self.cfg["env"].get("videoCameraTarget", [0.0, 0.0, 0.53])
+        video_camera_pos = self.cfg["env"].get("videoCameraPos", None)
+        if video_camera_pos is None:
+            video_camera_offset = self.cfg["env"].get("videoCameraOffset", [0.0, -1.0, 0.5])
+            video_camera_pos = [
+                float(video_camera_target[i]) + float(video_camera_offset[i])
+                for i in range(3)
+            ]
+        self.video_camera_base_pos_np = np.asarray(video_camera_pos, dtype=np.float32)
+        self.video_camera_base_target_np = np.asarray(
+            video_camera_target, dtype=np.float32
+        )
+        self.video_debug_overlay_enabled = bool(
+            self.cfg["env"].get("videoDebugOverlayEnabled", False)
+        )
+        self.video_debug_overlay_mode = str(
+            self.cfg["env"].get("videoDebugOverlayMode", "auto")
+        ).lower()
+        self.video_debug_overlay_point_radius = max(
+            1, int(self.cfg["env"].get("videoDebugOverlayPointRadius", 2))
+        )
+        self.video_debug_overlay_trajectory_history = max(
+            2, int(self.cfg["env"].get("videoDebugOverlayTrajectoryHistory", 30))
+        )
+        self.video_debug_overlay_future_steps = max(
+            0, int(self.cfg["env"].get("videoDebugOverlayFutureSteps", 5))
+        )
+        self.video_debug_overlay_future_dt = max(
+            0.0, float(self.cfg["env"].get("videoDebugOverlayFutureDt", 0.15))
+        )
+        self.video_debug_overlay_velocity_arrow_length = max(
+            0.0, float(self.cfg["env"].get("videoDebugOverlayVelocityArrowLength", 0.10))
+        )
+        self.video_debug_overlay_min_visible_history_span = max(
+            0.0,
+            float(self.cfg["env"].get("videoDebugOverlayMinVisibleHistorySpan", 0.02)),
+        )
+        self.video_debug_overlay_use_gravity_prediction = bool(
+            self.cfg["env"].get(
+                "videoDebugOverlayUseGravityPrediction",
+                self.video_debug_overlay_mode in {"falling", "falling_3d", "3d"},
+            )
+        )
+        self.video_debug_overlay_gravity_np = np.asarray(
+            self.cfg["env"].get("videoDebugOverlayGravity", [0.0, 0.0, -9.81]),
+            dtype=np.float32,
+        )
+        self.video_debug_overlay_current_cam_pos_np = (
+            self.video_camera_base_pos_np.copy()
+        )
+        self.video_debug_overlay_current_cam_target_np = (
+            self.video_camera_base_target_np.copy()
+        )
+        self.capture_video_at_step_zero = bool(
+            self.cfg["env"].get("captureVideoAtStepZero", True)
+        )
+        self.video_debug_overlay_object_history: List[np.ndarray] = []
+        cam_target = gymapi.Vec3(
+            float(video_camera_target[0]),
+            float(video_camera_target[1]),
+            float(video_camera_target[2]),
+        )
+        cam_pos = gymapi.Vec3(
+            float(video_camera_pos[0]),
+            float(video_camera_pos[1]),
+            float(video_camera_pos[2]),
+        )
         if self.viewer is not None:
             self.gym.viewer_camera_look_at(
                 self.viewer, self.envs[self.index_to_view], cam_pos, cam_target
@@ -1064,6 +1931,8 @@ class SimToolReal(VecTask):
 
         # Init camera for wandb logging
         self._initialize_camera_sensor(cam_pos=cam_pos, cam_target=cam_target)
+        if self.object_pointcloud_use_rgbd_render:
+            self._initialize_object_pointcloud_render_cameras()
         self._modify_render_settings_if_headless()
 
         # volume to sample target position from
@@ -1367,11 +2236,21 @@ class SimToolReal(VecTask):
         self.dynamic_grasp_success_steps = torch.zeros(
             self.num_envs, dtype=torch.int, device=self.device
         )
+        self.dynamic_grasp_legacy_success_steps = torch.zeros(
+            self.num_envs, dtype=torch.int, device=self.device
+        )
         self.dynamic_grasp_object_xy_velocity = torch.zeros(
             (self.num_envs, 2), dtype=torch.float, device=self.device
         )
         self.dynamic_grasp_object_yaw_rate = torch.zeros(
             self.num_envs, dtype=torch.float, device=self.device
+        )
+        self.dynamic_grasp_speed_curriculum_metric_value = 0.0
+        self.dynamic_grasp_speed_curriculum_metric_ema = 0.0
+        self.dynamic_grasp_speed_curriculum_success_alpha = 0.0
+        self.dynamic_grasp_speed_curriculum_metric_initialized = False
+        self.dynamic_grasp_motion_released = torch.zeros(
+            self.num_envs, dtype=torch.bool, device=self.device
         )
         self.object_affordance_surface_offsets = torch.full(
             (self.num_envs,),
@@ -1381,6 +2260,9 @@ class SimToolReal(VecTask):
         )
         self.prev_dynamic_grasp_contact_like = torch.zeros(
             self.num_envs, dtype=torch.bool, device=self.device
+        )
+        self.dynamic_grasp_closed_contact_no_lift_steps = torch.zeros(
+            self.num_envs, dtype=torch.int, device=self.device
         )
         self.closest_keypoint_max_dist = -torch.ones(
             self.num_envs, dtype=torch.float, device=self.device
@@ -1416,6 +2298,18 @@ class SimToolReal(VecTask):
             "raw_keypoint_rew",
             "raw_dynamic_velocity_match_rew",
             "raw_dynamic_intercept_rew",
+            "raw_dynamic_palm_reach_rew",
+            "raw_dynamic_fingertip_reach_rew",
+            "raw_falling_baton_intercept_rew",
+            "raw_falling_baton_catch_window_rew",
+            "raw_falling_baton_post_contact_rel_vel_penalty",
+            "raw_falling_baton_post_contact_ang_vel_penalty",
+            "raw_dynamic_ready_bonus_rew",
+            "raw_dynamic_contact_progress_rew",
+            "raw_dynamic_closed_contact_bonus_rew",
+            "raw_dynamic_contact_lift_progress_rew",
+            "raw_dynamic_contact_lift_velocity_rew",
+            "raw_dynamic_contact_no_lift_penalty",
             "raw_dynamic_pregrasp_alignment_rew",
             "raw_dynamic_affordance_target_rew",
             "raw_dynamic_enclosure_rew",
@@ -1426,6 +2320,10 @@ class SimToolReal(VecTask):
             "raw_dynamic_lifted_centering_rew",
             "raw_dynamic_lifted_height_hold_rew",
             "raw_dynamic_lifted_enclosure_vel_rew",
+            "raw_dynamic_hold_height_rew",
+            "raw_dynamic_hold_object_vel_rew",
+            "raw_dynamic_hold_object_ang_vel_penalty",
+            "raw_dynamic_hold_palm_upright_rew",
             "raw_dynamic_pre_contact_slow_rew",
             "raw_dynamic_controlled_contact_rew",
             "raw_dynamic_impact_penalty",
@@ -1437,8 +2335,12 @@ class SimToolReal(VecTask):
             "raw_dynamic_safe_action_delta_penalty",
             "raw_dynamic_safe_arm_target_delta_penalty",
             "raw_dynamic_safe_arm_target_accel_penalty",
+            "raw_dynamic_safe_arm_home_posture_penalty",
             "raw_dynamic_safe_hand_target_delta_penalty",
             "raw_dynamic_pregrasp_hold_rew",
+            "raw_dynamic_pregrasp_topdown_height_rew",
+            "raw_dynamic_pregrasp_low_palm_penalty",
+            "raw_dynamic_table_clearance_penalty",
             "raw_dynamic_early_contact_penalty",
             "raw_dynamic_pre_contact_rel_vel_penalty",
             "raw_dynamic_ready_enclosure_rew",
@@ -1448,6 +2350,14 @@ class SimToolReal(VecTask):
             "raw_dynamic_lifted_true_grasp_rew",
             "raw_dynamic_quality_lift_progress_rew",
             "raw_dynamic_opposing_contact_rew",
+            "raw_dynamic_thumb_opposition_rew",
+            "raw_dynamic_true_grasp_bonus_rew",
+            "raw_dynamic_contact_palm_lift_rew",
+            "raw_dynamic_binary_affordance_positive_contact_rew",
+            "raw_dynamic_binary_affordance_negative_contact_penalty",
+            "raw_dynamic_binary_affordance_lift_progress_rew",
+            "raw_dynamic_binary_affordance_lifted_true_grasp_rew",
+            "raw_dynamic_binary_affordance_negative_lift_penalty",
             "raw_dynamic_scoop_lift_penalty",
             "raw_dynamic_palm_only_lift_penalty",
             "fingertip_delta_rew",
@@ -1457,6 +2367,18 @@ class SimToolReal(VecTask):
             "keypoint_rew",
             "dynamic_velocity_match_rew",
             "dynamic_intercept_rew",
+            "dynamic_palm_reach_rew",
+            "dynamic_fingertip_reach_rew",
+            "falling_baton_intercept_rew",
+            "falling_baton_catch_window_rew",
+            "falling_baton_post_contact_rel_vel_penalty",
+            "falling_baton_post_contact_ang_vel_penalty",
+            "dynamic_ready_bonus_rew",
+            "dynamic_contact_progress_rew",
+            "dynamic_closed_contact_bonus_rew",
+            "dynamic_contact_lift_progress_rew",
+            "dynamic_contact_lift_velocity_rew",
+            "dynamic_contact_no_lift_penalty",
             "dynamic_pregrasp_alignment_rew",
             "dynamic_affordance_target_rew",
             "dynamic_enclosure_rew",
@@ -1468,6 +2390,10 @@ class SimToolReal(VecTask):
             "dynamic_lifted_centering_rew",
             "dynamic_lifted_height_hold_rew",
             "dynamic_lifted_enclosure_vel_rew",
+            "dynamic_hold_height_rew",
+            "dynamic_hold_object_vel_rew",
+            "dynamic_hold_object_ang_vel_penalty",
+            "dynamic_hold_palm_upright_rew",
             "dynamic_pre_contact_slow_rew",
             "dynamic_controlled_contact_rew",
             "dynamic_impact_penalty",
@@ -1479,8 +2405,12 @@ class SimToolReal(VecTask):
             "dynamic_safe_action_delta_penalty",
             "dynamic_safe_arm_target_delta_penalty",
             "dynamic_safe_arm_target_accel_penalty",
+            "dynamic_safe_arm_home_posture_penalty",
             "dynamic_safe_hand_target_delta_penalty",
             "dynamic_pregrasp_hold_rew",
+            "dynamic_pregrasp_topdown_height_rew",
+            "dynamic_pregrasp_low_palm_penalty",
+            "dynamic_table_clearance_penalty",
             "dynamic_early_contact_penalty",
             "dynamic_pre_contact_rel_vel_penalty",
             "dynamic_ready_enclosure_rew",
@@ -1490,6 +2420,14 @@ class SimToolReal(VecTask):
             "dynamic_lifted_true_grasp_rew",
             "dynamic_quality_lift_progress_rew",
             "dynamic_opposing_contact_rew",
+            "dynamic_thumb_opposition_rew",
+            "dynamic_true_grasp_bonus_rew",
+            "dynamic_contact_palm_lift_rew",
+            "dynamic_binary_affordance_positive_contact_rew",
+            "dynamic_binary_affordance_negative_contact_penalty",
+            "dynamic_binary_affordance_lift_progress_rew",
+            "dynamic_binary_affordance_lifted_true_grasp_rew",
+            "dynamic_binary_affordance_negative_lift_penalty",
             "dynamic_scoop_lift_penalty",
             "dynamic_palm_only_lift_penalty",
             "dynamic_success_bonus",
@@ -2141,6 +3079,407 @@ class SimToolReal(VecTask):
         normals = np.asarray(mesh.face_normals[face_ids], dtype=np.float32)
         return points.astype(np.float32), normals.astype(np.float32)
 
+    def _resolve_asset_path(self, path_cfg) -> Path:
+        path = Path(str(path_cfg)).expanduser()
+        if path.is_absolute():
+            return path
+        return (Path(__file__).resolve().parents[3] / path).resolve()
+
+    def _load_urdf_mesh(self, urdf_path: Path, prefer_visual: bool = True):
+        mesh_tags = (
+            [".//visual/geometry/mesh", ".//collision/geometry/mesh"]
+            if prefer_visual
+            else [".//collision/geometry/mesh", ".//visual/geometry/mesh"]
+        )
+        root = ET.parse(urdf_path).getroot()
+        mesh_elem = None
+        for tag in mesh_tags:
+            mesh_elem = root.find(tag)
+            if mesh_elem is not None:
+                break
+        if mesh_elem is None or "filename" not in mesh_elem.attrib:
+            raise RuntimeError(f"No mesh tag found in URDF: {urdf_path}")
+
+        filename = str(mesh_elem.attrib["filename"])
+        if filename.startswith("file://"):
+            filename = filename[len("file://") :]
+        if filename.startswith("package://"):
+            raise RuntimeError(
+                f"package:// mesh paths are not supported for {urdf_path}: {filename}"
+            )
+        mesh_path = Path(filename)
+        if not mesh_path.is_absolute():
+            mesh_path = urdf_path.parent / mesh_path
+
+        scale_attr = mesh_elem.attrib.get("scale", "1 1 1")
+        mesh_scale = np.asarray(
+            [float(v) for v in str(scale_attr).split()], dtype=np.float64
+        )
+        if mesh_scale.size == 1:
+            mesh_scale = np.repeat(mesh_scale, 3)
+        elif mesh_scale.size < 3:
+            mesh_scale = np.pad(mesh_scale, (0, 3 - mesh_scale.size), constant_values=1.0)
+        else:
+            mesh_scale = mesh_scale[:3]
+        mesh = self._load_domino_mesh(mesh_path, mesh_scale)
+        return mesh, mesh_scale
+
+    def _geometric_baton_affordance_labels(
+        self, surface_points: np.ndarray, mesh
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        labels = np.full(surface_points.shape[0], -1, dtype=np.int8)
+        distances = np.zeros(surface_points.shape[0], dtype=np.float32)
+        if surface_points.shape[0] == 0:
+            return labels, distances
+
+        bounds = np.asarray(mesh.bounds, dtype=np.float64)
+        extents = np.maximum(bounds[1] - bounds[0], 1e-6)
+        axis = int(np.argmax(extents))
+        center = float(0.5 * (bounds[0, axis] + bounds[1, axis]))
+        half_len = max(float(extents[axis]) * 0.5, 1e-6)
+        axis_coord = np.abs((surface_points[:, axis] - center) / half_len)
+
+        pos_half = np.clip(
+            float(self.falling_baton_affordance_positive_half_fraction), 0.0, 1.0
+        )
+        neg_start = np.clip(
+            float(self.falling_baton_affordance_negative_end_fraction), 0.0, 1.0
+        )
+        labels[axis_coord <= pos_half] = 1
+        labels[axis_coord >= neg_start] = 0
+        return labels, distances
+
+    def _dextoolbench_object_assets(self, tmp_assets_dir: str):
+        del tmp_assets_dir
+        asset_root = self._resolve_asset_path(self.dextoolbench_object_asset_root)
+        if not asset_root.exists():
+            raise FileNotFoundError(
+                f"DextoolBench object asset root not found: {asset_root}"
+            )
+
+        variants = list(self.dextoolbench_object_variants or [])
+        if len(variants) == 0:
+            variants = [
+                {
+                    "label": "marker/sharpie_marker",
+                    "urdf": "marker/sharpie_marker/sharpie_marker.urdf",
+                },
+                {
+                    "label": "marker/staples_marker",
+                    "urdf": "marker/staples_marker/staples_marker.urdf",
+                },
+                {
+                    "label": "screwdriver/long_screwdriver",
+                    "urdf": "screwdriver/long_screwdriver/long_screwdriver.urdf",
+                },
+                {
+                    "label": "screwdriver/short_screwdriver",
+                    "urdf": "screwdriver/short_screwdriver/short_screwdriver.urdf",
+                },
+            ]
+
+        object_asset_files = []
+        object_asset_scales = []
+        need_vhacds = []
+        pointcloud_points = []
+        pointcloud_normals = []
+        pointcloud_grasp_labels = []
+        pointcloud_grasp_label_distances = []
+        binary_affordance_surface_points = []
+        binary_affordance_surface_labels = []
+        binary_affordance_surface_label_distances = []
+        default_quats_xyzw = []
+        random_yaw_flags = []
+        table_z_offsets = []
+        labels = []
+
+        candidate_points = self.object_pointcloud_candidate_num_points
+        affordance_num_points = int(
+            self.dynamic_grasp_binary_affordance_num_surface_samples
+        )
+
+        for asset_idx, variant in enumerate(variants):
+            label = str(
+                self._domino_variant_value(
+                    variant, ["label", "name", "asset_label"], f"object_{asset_idx}"
+                )
+            ).strip("/")
+            urdf_rel = self._domino_variant_value(variant, ["urdf", "asset", "path"])
+            if urdf_rel is None:
+                raise ValueError(
+                    f"dextoolbenchObjectVariants[{asset_idx}] is missing 'urdf'"
+                )
+            urdf_path = Path(str(urdf_rel)).expanduser()
+            if not urdf_path.is_absolute():
+                urdf_path = asset_root / urdf_path
+            if not urdf_path.exists():
+                raise FileNotFoundError(f"DextoolBench URDF not found: {urdf_path}")
+
+            visual_mesh, mesh_scale = self._load_urdf_mesh(urdf_path, prefer_visual=True)
+            bounds = np.asarray(visual_mesh.bounds, dtype=np.float64)
+            extents = np.maximum(bounds[1] - bounds[0], 1e-4)
+            scale_for_policy = tuple((extents / self.object_base_size).tolist())
+
+            if "quat_xyzw" in variant:
+                quat_xyzw = np.asarray(variant["quat_xyzw"], dtype=np.float32).reshape(4)
+            else:
+                quat_wxyz = self._domino_variant_value(
+                    variant,
+                    ["quat", "anydex_object_orientation_quat"],
+                    [1.0, 0.0, 0.0, 0.0],
+                )
+                quat_xyzw = self._quat_wxyz_to_xyzw(quat_wxyz)
+            quat_xyzw = quat_xyzw / max(float(np.linalg.norm(quat_xyzw)), 1e-8)
+
+            rotation = self._quat_xyzw_to_matrix_np(quat_xyzw)
+            corners = np.asarray(
+                [
+                    [x, y, z]
+                    for x in (bounds[0, 0], bounds[1, 0])
+                    for y in (bounds[0, 1], bounds[1, 1])
+                    for z in (bounds[0, 2], bounds[1, 2])
+                ],
+                dtype=np.float64,
+            )
+            rotated_corners = (rotation @ corners.T).T
+            half_height = max(0.0, float(-rotated_corners[:, 2].min()))
+
+            points, normals = self._sample_mesh_surface_points(
+                visual_mesh, candidate_points, seed=20260615 + asset_idx
+            )
+            if self.dynamic_grasp_use_binary_affordance_labels:
+                grasp_labels, grasp_label_distances = (
+                    self._load_binary_affordance_labels_for_surface_points(
+                        label=label,
+                        surface_points=points,
+                        mesh_scale=mesh_scale,
+                        recenter=np.zeros(3, dtype=np.float64),
+                    )
+                )
+                if (
+                    self.falling_baton_geometric_affordance
+                    and points.shape[0] > 0
+                    and np.all(grasp_labels < 0)
+                ):
+                    grasp_labels, grasp_label_distances = (
+                        self._geometric_baton_affordance_labels(points, visual_mesh)
+                    )
+            else:
+                grasp_labels = np.full(points.shape[0], -1, dtype=np.int8)
+                grasp_label_distances = np.full(
+                    points.shape[0], np.inf, dtype=np.float32
+                )
+
+            if (
+                self.dynamic_grasp_use_binary_affordance_labels
+                and affordance_num_points > 0
+            ):
+                affordance_points, _ = self._sample_mesh_surface_points(
+                    visual_mesh, affordance_num_points, seed=20260630 + asset_idx
+                )
+                affordance_labels, affordance_label_distances = (
+                    self._load_binary_affordance_labels_for_surface_points(
+                        label=label,
+                        surface_points=affordance_points,
+                        mesh_scale=mesh_scale,
+                        recenter=np.zeros(3, dtype=np.float64),
+                    )
+                )
+                if (
+                    self.falling_baton_geometric_affordance
+                    and affordance_points.shape[0] > 0
+                    and np.all(affordance_labels < 0)
+                ):
+                    affordance_labels, affordance_label_distances = (
+                        self._geometric_baton_affordance_labels(
+                            affordance_points, visual_mesh
+                        )
+                    )
+            else:
+                affordance_points = points
+                affordance_labels = grasp_labels
+                affordance_label_distances = grasp_label_distances
+
+            object_asset_files.append(urdf_path)
+            object_asset_scales.append(scale_for_policy)
+            need_vhacds.append(
+                bool(
+                    self._domino_variant_value(
+                        variant, ["need_vhacd", "vhacd"], self.dextoolbench_object_need_vhacd
+                    )
+                )
+            )
+            pointcloud_points.append(points)
+            pointcloud_normals.append(normals)
+            pointcloud_grasp_labels.append(grasp_labels)
+            pointcloud_grasp_label_distances.append(grasp_label_distances)
+            binary_affordance_surface_points.append(affordance_points)
+            binary_affordance_surface_labels.append(affordance_labels)
+            binary_affordance_surface_label_distances.append(
+                affordance_label_distances
+            )
+            default_quats_xyzw.append(quat_xyzw)
+            random_yaw_flags.append(
+                bool(
+                    self._domino_variant_value(
+                        variant, ["random_yaw", "anydex_object_random_yaw"], False
+                    )
+                )
+            )
+            table_z_offsets.append(
+                self.domino_object_table_top_offset
+                + half_height
+                + self.domino_object_spawn_z_margin
+            )
+            labels.append(label)
+
+        self.object_asset_pointcloud_points_np = np.stack(pointcloud_points, axis=0)
+        self.object_asset_pointcloud_normals_np = np.stack(pointcloud_normals, axis=0)
+        self.object_asset_pointcloud_grasp_labels_np = np.stack(
+            pointcloud_grasp_labels, axis=0
+        ).astype(np.int8)
+        self.object_asset_pointcloud_grasp_label_distances_np = np.stack(
+            pointcloud_grasp_label_distances, axis=0
+        ).astype(np.float32)
+        self.object_asset_binary_affordance_surface_points_np = np.stack(
+            binary_affordance_surface_points, axis=0
+        ).astype(np.float32)
+        self.object_asset_binary_affordance_surface_labels_np = np.stack(
+            binary_affordance_surface_labels, axis=0
+        ).astype(np.int8)
+        self.object_asset_binary_affordance_surface_label_distances_np = np.stack(
+            binary_affordance_surface_label_distances, axis=0
+        ).astype(np.float32)
+        self.object_asset_default_quats_xyzw_np = np.stack(
+            default_quats_xyzw, axis=0
+        ).astype(np.float32)
+        self.object_asset_random_yaw_np = np.asarray(random_yaw_flags, dtype=np.bool_)
+        self.object_asset_table_z_offsets_np = np.asarray(
+            table_z_offsets, dtype=np.float32
+        )
+        self.object_asset_labels = labels
+
+        print(f"Loaded DextoolBench object pool ({len(labels)} objects): {labels}")
+        if self.dynamic_grasp_use_binary_affordance_labels:
+            label_stats = []
+            for asset_idx, label in enumerate(labels):
+                mapped = self.object_asset_binary_affordance_surface_labels_np[
+                    asset_idx
+                ]
+                pos = float(np.mean(mapped == 1))
+                neg = float(np.mean(mapped == 0))
+                ignore = float(np.mean(mapped < 0))
+                finite_dist = (
+                    self.object_asset_binary_affordance_surface_label_distances_np[
+                        asset_idx
+                    ]
+                )
+                finite_dist = finite_dist[np.isfinite(finite_dist)]
+                mean_dist = float(np.mean(finite_dist)) if finite_dist.size else float("inf")
+                label_stats.append(
+                    f"{label}: pos={pos:.2f}, neg={neg:.2f}, "
+                    f"ignore={ignore:.2f}, nn_dist={mean_dist:.4f}"
+                )
+            print(
+                "Loaded DextoolBench binary grasp affordance labels: "
+                + "; ".join(label_stats)
+            )
+        return object_asset_files, object_asset_scales, need_vhacds
+
+    def _binary_affordance_label_path(self, label: str) -> Path:
+        label_root = Path(
+            self.dynamic_grasp_binary_affordance_label_root
+        ).expanduser()
+        if not label_root.is_absolute():
+            label_root = Path(__file__).resolve().parents[3] / label_root
+        return (
+            label_root
+            / self.dynamic_grasp_binary_affordance_label_dataset
+            / str(label)
+            / self.dynamic_grasp_binary_affordance_label_file
+        )
+
+    def _binary_affordance_label_path_candidates(self, label: str) -> List[Path]:
+        primary = self._binary_affordance_label_path(label)
+        fallback_names = self.cfg["env"].get(
+            "dynamicGraspBinaryAffordanceFallbackLabelFiles",
+            ["grasp_affordance_binary.npz"],
+        )
+        candidates = [primary]
+        for fallback_name in fallback_names:
+            fallback_path = primary.with_name(str(fallback_name))
+            if fallback_path not in candidates:
+                candidates.append(fallback_path)
+        return candidates
+
+    def _map_binary_affordance_labels_to_points(
+        self,
+        surface_points: np.ndarray,
+        label_vertices_metric: np.ndarray,
+        grasp_labels: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        num_points = int(surface_points.shape[0])
+        mapped_labels = np.full(num_points, -1, dtype=np.int8)
+        mapped_dist = np.full(num_points, np.inf, dtype=np.float32)
+        if num_points == 0 or label_vertices_metric.shape[0] == 0:
+            return mapped_labels, mapped_dist
+
+        label_vertices_metric = np.asarray(label_vertices_metric, dtype=np.float32)
+        grasp_labels = np.asarray(grasp_labels, dtype=np.int8).reshape(-1)
+        best_d2 = np.full(num_points, np.inf, dtype=np.float32)
+        best_labels = np.full(num_points, -1, dtype=np.int8)
+        chunk_size = 4096
+        for start in range(0, label_vertices_metric.shape[0], chunk_size):
+            vertices_chunk = label_vertices_metric[start : start + chunk_size]
+            diff = surface_points[:, None, :] - vertices_chunk[None, :, :]
+            dist2 = np.einsum("npc,npc->np", diff, diff)
+            nearest_in_chunk = np.argmin(dist2, axis=1)
+            nearest_d2 = dist2[np.arange(num_points), nearest_in_chunk]
+            better = nearest_d2 < best_d2
+            if np.any(better):
+                best_d2[better] = nearest_d2[better]
+                best_labels[better] = grasp_labels[start + nearest_in_chunk[better]]
+
+        max_dist = float(self.dynamic_grasp_binary_affordance_map_max_distance)
+        if max_dist > 0.0:
+            best_labels[best_d2 > max_dist * max_dist] = -1
+        mapped_labels[:] = best_labels
+        mapped_dist[:] = np.sqrt(best_d2)
+        return mapped_labels, mapped_dist
+
+    def _load_binary_affordance_labels_for_surface_points(
+        self,
+        label: str,
+        surface_points: np.ndarray,
+        mesh_scale: np.ndarray,
+        recenter: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        path = None
+        for candidate in self._binary_affordance_label_path_candidates(label):
+            if candidate.exists():
+                path = candidate
+                break
+        primary_path = self._binary_affordance_label_path(label)
+        if path is None:
+            print(f"Binary affordance label missing for {label}: {primary_path}")
+            return (
+                np.full(surface_points.shape[0], -1, dtype=np.int8),
+                np.full(surface_points.shape[0], np.inf, dtype=np.float32),
+            )
+
+        label_npz = np.load(path)
+        vertices_raw = np.asarray(label_npz["vertices_obj"], dtype=np.float32)
+        grasp_labels = np.asarray(label_npz["grasp_label"], dtype=np.int8)
+        label_vertices_metric = (
+            vertices_raw * np.asarray(mesh_scale, dtype=np.float32)[None, :]
+            - np.asarray(recenter, dtype=np.float32)[None, :]
+        )
+        return self._map_binary_affordance_labels_to_points(
+            surface_points=surface_points.astype(np.float32),
+            label_vertices_metric=label_vertices_metric,
+            grasp_labels=grasp_labels,
+        )
+
     def _write_domino_object_urdf(
         self,
         urdf_path: Path,
@@ -2201,6 +3540,11 @@ class SimToolReal(VecTask):
         need_vhacds = []
         pointcloud_points = []
         pointcloud_normals = []
+        pointcloud_grasp_labels = []
+        pointcloud_grasp_label_distances = []
+        binary_affordance_surface_points = []
+        binary_affordance_surface_labels = []
+        binary_affordance_surface_label_distances = []
         default_quats_xyzw = []
         random_yaw_flags = []
         table_z_offsets = []
@@ -2285,11 +3629,56 @@ class SimToolReal(VecTask):
             points, normals = self._sample_mesh_surface_points(
                 visual_mesh, candidate_points, seed=20260525 + asset_idx
             )
+            if self.dynamic_grasp_use_binary_affordance_labels:
+                grasp_labels, grasp_label_distances = (
+                    self._load_binary_affordance_labels_for_surface_points(
+                        label=label,
+                        surface_points=points,
+                        mesh_scale=mesh_scale,
+                        recenter=center,
+                    )
+                )
+            else:
+                grasp_labels = np.full(points.shape[0], -1, dtype=np.int8)
+                grasp_label_distances = np.full(
+                    points.shape[0], np.inf, dtype=np.float32
+                )
+            affordance_num_points = int(
+                self.dynamic_grasp_binary_affordance_num_surface_samples
+            )
+            if (
+                self.dynamic_grasp_use_binary_affordance_labels
+                and affordance_num_points > 0
+            ):
+                affordance_points, _ = self._sample_mesh_surface_points(
+                    visual_mesh,
+                    affordance_num_points,
+                    seed=20260611 + asset_idx,
+                )
+                affordance_labels, affordance_label_distances = (
+                    self._load_binary_affordance_labels_for_surface_points(
+                        label=label,
+                        surface_points=affordance_points,
+                        mesh_scale=mesh_scale,
+                        recenter=center,
+                    )
+                )
+            else:
+                affordance_points = points
+                affordance_labels = grasp_labels
+                affordance_label_distances = grasp_label_distances
             object_asset_files.append(urdf_path)
             object_asset_scales.append(scale_for_policy)
             need_vhacds.append(self.domino_object_need_vhacd)
             pointcloud_points.append(points)
             pointcloud_normals.append(normals)
+            pointcloud_grasp_labels.append(grasp_labels)
+            pointcloud_grasp_label_distances.append(grasp_label_distances)
+            binary_affordance_surface_points.append(affordance_points)
+            binary_affordance_surface_labels.append(affordance_labels)
+            binary_affordance_surface_label_distances.append(
+                affordance_label_distances
+            )
             default_quats_xyzw.append(quat_xyzw)
             random_yaw_flags.append(
                 bool(
@@ -2309,6 +3698,21 @@ class SimToolReal(VecTask):
 
         self.object_asset_pointcloud_points_np = np.stack(pointcloud_points, axis=0)
         self.object_asset_pointcloud_normals_np = np.stack(pointcloud_normals, axis=0)
+        self.object_asset_pointcloud_grasp_labels_np = np.stack(
+            pointcloud_grasp_labels, axis=0
+        ).astype(np.int8)
+        self.object_asset_pointcloud_grasp_label_distances_np = np.stack(
+            pointcloud_grasp_label_distances, axis=0
+        ).astype(np.float32)
+        self.object_asset_binary_affordance_surface_points_np = np.stack(
+            binary_affordance_surface_points, axis=0
+        ).astype(np.float32)
+        self.object_asset_binary_affordance_surface_labels_np = np.stack(
+            binary_affordance_surface_labels, axis=0
+        ).astype(np.int8)
+        self.object_asset_binary_affordance_surface_label_distances_np = np.stack(
+            binary_affordance_surface_label_distances, axis=0
+        ).astype(np.float32)
         self.object_asset_default_quats_xyzw_np = np.stack(
             default_quats_xyzw, axis=0
         ).astype(np.float32)
@@ -2319,6 +3723,27 @@ class SimToolReal(VecTask):
         self.object_asset_labels = labels
 
         print(f"Loaded DOMINO object pool ({len(labels)} objects): {labels}")
+        if self.dynamic_grasp_use_binary_affordance_labels:
+            label_stats = []
+            for asset_idx, label in enumerate(labels):
+                mapped = self.object_asset_binary_affordance_surface_labels_np[
+                    asset_idx
+                ]
+                pos = float(np.mean(mapped == 1))
+                neg = float(np.mean(mapped == 0))
+                ignore = float(np.mean(mapped < 0))
+                mean_dist = float(
+                    np.mean(
+                        self.object_asset_binary_affordance_surface_label_distances_np[
+                            asset_idx
+                        ]
+                    )
+                )
+                label_stats.append(
+                    f"{label}: pos={pos:.2f}, neg={neg:.2f}, "
+                    f"ignore={ignore:.2f}, nn_dist={mean_dist:.4f}"
+                )
+            print("Loaded binary grasp affordance labels: " + "; ".join(label_stats))
         return object_asset_files, object_asset_scales, need_vhacds
 
     def _dynamic_affordance_surface_offsets_for_assets(
@@ -2509,6 +3934,67 @@ class SimToolReal(VecTask):
             confidence = torch.ones((self.num_envs, 1), device=self.device)
             return empty_cloud, empty_vec, empty_vec, confidence
 
+        if self.object_pointcloud_use_rgbd_render:
+            return self._object_pointcloud_observation_from_rgbd(
+                object_pos=object_pos,
+                object_vel=object_vel,
+                palm_pos=palm_pos,
+                palm_rot=palm_rot,
+                palm_vel=palm_vel,
+                add_noise=add_noise,
+            )
+
+        return self._mesh_surface_object_pointcloud_observation(
+            object_pos=object_pos,
+            object_rot=object_rot,
+            object_vel=object_vel,
+            palm_pos=palm_pos,
+            palm_rot=palm_rot,
+            palm_vel=palm_vel,
+            add_noise=add_noise,
+        )
+
+    def _teacher_object_pointcloud_observation(
+        self,
+        object_pos: Tensor,
+        object_rot: Tensor,
+        object_vel: Tensor,
+        palm_pos: Tensor,
+        palm_rot: Tensor,
+        palm_vel: Tensor,
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        """Clean mesh-surface point cloud used only by the frozen teacher."""
+        return self._mesh_surface_object_pointcloud_observation(
+            object_pos=object_pos,
+            object_rot=object_rot,
+            object_vel=object_vel,
+            palm_pos=palm_pos,
+            palm_rot=palm_rot,
+            palm_vel=palm_vel,
+            add_noise=False,
+            use_partial_view=False,
+            centroid_from_points=False,
+        )
+
+    def _mesh_surface_object_pointcloud_observation(
+        self,
+        object_pos: Tensor,
+        object_rot: Tensor,
+        object_vel: Tensor,
+        palm_pos: Tensor,
+        palm_rot: Tensor,
+        palm_vel: Tensor,
+        add_noise: bool,
+        use_partial_view: Optional[bool] = None,
+        centroid_from_points: Optional[bool] = None,
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        num_points = self.object_pointcloud_num_points
+        if num_points <= 0:
+            empty_cloud = torch.zeros((self.num_envs, 0), device=self.device)
+            empty_vec = torch.zeros((self.num_envs, 3), device=self.device)
+            confidence = torch.ones((self.num_envs, 1), device=self.device)
+            return empty_cloud, empty_vec, empty_vec, confidence
+
         if self.object_pointcloud_unit_points.dim() == 3:
             candidate_num_points = self.object_pointcloud_unit_points.shape[1]
             local_points = self.object_pointcloud_unit_points
@@ -2535,7 +4021,9 @@ class SimToolReal(VecTask):
         ).reshape(self.num_envs, candidate_num_points, 3)
 
         tracking_confidence = torch.ones((self.num_envs, 1), device=self.device)
-        if self.object_pointcloud_use_partial_view:
+        if use_partial_view is None:
+            use_partial_view = self.object_pointcloud_use_partial_view
+        if use_partial_view:
             flat_local_normals = local_normals_for_env.reshape(-1, 3)
             world_normals = quat_rotate(
                 object_rot[:, None, :].expand(-1, candidate_num_points, -1).reshape(
@@ -2574,10 +4062,38 @@ class SimToolReal(VecTask):
         else:
             world_points = world_points[:, :num_points, :]
 
+        return self._finalize_object_pointcloud_observation(
+            world_points=world_points,
+            tracking_confidence=tracking_confidence,
+            object_pos=object_pos,
+            object_vel=object_vel,
+            palm_pos=palm_pos,
+            palm_rot=palm_rot,
+            palm_vel=palm_vel,
+            add_noise=add_noise,
+            depth_camera_pos=self.object_pointcloud_camera_pos,
+            centroid_from_points=centroid_from_points,
+        )
+
+    def _finalize_object_pointcloud_observation(
+        self,
+        world_points: Tensor,
+        tracking_confidence: Tensor,
+        object_pos: Tensor,
+        object_vel: Tensor,
+        palm_pos: Tensor,
+        palm_rot: Tensor,
+        palm_vel: Tensor,
+        add_noise: bool,
+        depth_camera_pos: Tensor,
+        centroid_from_points: Optional[bool] = None,
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        num_points = self.object_pointcloud_num_points
         if add_noise and self.object_pointcloud_depth_noise_std > 0.0:
-            camera_pos = self.object_pointcloud_camera_pos.unsqueeze(0).expand(
-                self.num_envs, -1
-            )
+            if depth_camera_pos.dim() == 1:
+                camera_pos = depth_camera_pos.unsqueeze(0).expand(self.num_envs, -1)
+            else:
+                camera_pos = depth_camera_pos
             camera_ray = world_points - camera_pos[:, None, :]
             camera_ray_unit = camera_ray / torch.clamp(
                 torch.norm(camera_ray, dim=-1, keepdim=True), min=1e-6
@@ -2595,7 +4111,9 @@ class SimToolReal(VecTask):
             repeated_palm_rot.reshape(-1, 4), rel_world_points.reshape(-1, 3)
         ).reshape(self.num_envs, num_points, 3)
 
-        if self.object_pointcloud_centroid_from_points:
+        if centroid_from_points is None:
+            centroid_from_points = self.object_pointcloud_centroid_from_points
+        if centroid_from_points:
             centroid_rel_palm = points_rel_palm.mean(dim=1)
         else:
             centroid_rel_world = object_pos - palm_pos
@@ -2676,6 +4194,286 @@ class SimToolReal(VecTask):
             tracking_confidence,
         )
 
+    def _object_pointcloud_observation_from_rgbd(
+        self,
+        object_pos: Tensor,
+        object_vel: Tensor,
+        palm_pos: Tensor,
+        palm_rot: Tensor,
+        palm_vel: Tensor,
+        add_noise: bool,
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        num_points = self.object_pointcloud_num_points
+        world_points, tracking_confidence, valid_env_mask = (
+            self._render_object_pointcloud_world_from_rgbd(num_points)
+        )
+        if self.object_pointcloud_temporal_fusion:
+            world_points, tracking_confidence, valid_env_mask = (
+                self._fuse_rgbd_object_pointcloud_temporal(
+                    world_points=world_points,
+                    tracking_confidence=tracking_confidence,
+                    valid_env_mask=valid_env_mask,
+                )
+            )
+        fallback_world_points = palm_pos[:, None, :].expand(-1, num_points, -1)
+        world_points = torch.where(
+            valid_env_mask[:, :, None], world_points, fallback_world_points
+        )
+        tracking_confidence = tracking_confidence * valid_env_mask.float()
+        return self._finalize_object_pointcloud_observation(
+            world_points=world_points,
+            tracking_confidence=tracking_confidence,
+            object_pos=object_pos,
+            object_vel=object_vel,
+            palm_pos=palm_pos,
+            palm_rot=palm_rot,
+            palm_vel=palm_vel,
+            add_noise=add_noise,
+            depth_camera_pos=self.object_pointcloud_render_camera_pos,
+        )
+
+    def _fuse_rgbd_object_pointcloud_temporal(
+        self,
+        world_points: Tensor,
+        tracking_confidence: Tensor,
+        valid_env_mask: Tensor,
+    ) -> Tuple[Tensor, Tensor, Tensor]:
+        num_points = self.object_pointcloud_num_points
+        cache_step = int(getattr(self, "control_steps", -1))
+        if (
+            self._object_pointcloud_temporal_cache is not None
+            and self._object_pointcloud_temporal_cache_step == cache_step
+            and self._object_pointcloud_temporal_cache_num_points == num_points
+        ):
+            return self._object_pointcloud_temporal_cache
+
+        valid_env = valid_env_mask.squeeze(-1)
+        current_centroid = world_points.mean(dim=1)
+        previous_centroid = self.object_pointcloud_history_centroids[:, 0, :]
+        current_centroid = torch.where(
+            valid_env[:, None], current_centroid, previous_centroid
+        )
+
+        history_frames = self.object_pointcloud_temporal_history_frames
+        if history_frames > 1:
+            self.object_pointcloud_history_points[:, 1:] = (
+                self.object_pointcloud_history_points[:, :-1].clone()
+            )
+            self.object_pointcloud_history_centroids[:, 1:] = (
+                self.object_pointcloud_history_centroids[:, :-1].clone()
+            )
+            self.object_pointcloud_history_confidence[:, 1:] = (
+                self.object_pointcloud_history_confidence[:, :-1].clone()
+            )
+            self.object_pointcloud_history_valid[:, 1:] = (
+                self.object_pointcloud_history_valid[:, :-1].clone()
+            )
+        self.object_pointcloud_history_points[:, 0] = world_points.detach()
+        self.object_pointcloud_history_centroids[:, 0] = current_centroid.detach()
+        self.object_pointcloud_history_confidence[:, 0] = tracking_confidence.detach()
+        self.object_pointcloud_history_valid[:, 0] = valid_env.detach()
+
+        centroid_offsets = (
+            current_centroid[:, None, None, :]
+            - self.object_pointcloud_history_centroids[:, :, None, :]
+        )
+        aligned_points = self.object_pointcloud_history_points + centroid_offsets
+        point_pool = aligned_points.reshape(self.num_envs, history_frames * num_points, 3)
+        valid_pool = (
+            self.object_pointcloud_history_valid[:, :, None]
+            .expand(-1, -1, num_points)
+            .reshape(self.num_envs, history_frames * num_points)
+        )
+        confidence_pool = (
+            self.object_pointcloud_history_confidence[:, :, None, :]
+            .expand(-1, -1, num_points, -1)
+            .reshape(self.num_envs, history_frames * num_points, 1)
+        )
+
+        sample_scores = valid_pool.float()
+        if self.object_pointcloud_temporal_random_sample:
+            sample_scores = sample_scores + 0.01 * torch.rand_like(sample_scores)
+        selected_ids = torch.topk(
+            sample_scores, k=num_points, dim=1, largest=True, sorted=False
+        ).indices
+        fused_points = torch.gather(
+            point_pool, 1, selected_ids[:, :, None].expand(-1, -1, 3)
+        )
+        selected_valid = torch.gather(valid_pool, 1, selected_ids)
+        selected_confidence = torch.gather(
+            confidence_pool, 1, selected_ids[:, :, None]
+        ).squeeze(-1)
+        fused_valid = selected_valid.any(dim=1, keepdim=True)
+        fused_confidence = (
+            selected_confidence * selected_valid.float()
+        ).mean(dim=1, keepdim=True)
+
+        self._object_pointcloud_temporal_history_fill = (
+            self.object_pointcloud_history_valid.float().mean().item()
+        )
+        self._object_pointcloud_temporal_cache_step = cache_step
+        self._object_pointcloud_temporal_cache_num_points = num_points
+        self._object_pointcloud_temporal_cache = (
+            fused_points,
+            fused_confidence,
+            fused_valid,
+        )
+        return self._object_pointcloud_temporal_cache
+
+    def _render_object_pointcloud_world_from_rgbd(
+        self, num_points: int
+    ) -> Tuple[Tensor, Tensor, Tensor]:
+        cache_step = int(getattr(self, "control_steps", -1))
+        if (
+            self._object_pointcloud_rgbd_cache is not None
+            and self._object_pointcloud_rgbd_cache_step == cache_step
+            and self._object_pointcloud_rgbd_cache_num_points == num_points
+        ):
+            return self._object_pointcloud_rgbd_cache
+
+        if not hasattr(self, "object_pointcloud_render_camera_handles"):
+            raise RuntimeError(
+                "RGB-D pointcloud source is enabled, but render cameras were "
+                "not initialized."
+            )
+
+        if hasattr(self, "object_pointcloud_render_camera_pos_world_np"):
+            for env_idx, camera_handle in enumerate(
+                self.object_pointcloud_render_camera_handles
+            ):
+                cam_pos_np = self.object_pointcloud_render_camera_pos_world_np[env_idx]
+                cam_target_np = self.object_pointcloud_render_camera_target_world_np[
+                    env_idx
+                ]
+                self.gym.set_camera_location(
+                    camera_handle,
+                    self.envs[env_idx],
+                    gymapi.Vec3(
+                        float(cam_pos_np[0]),
+                        float(cam_pos_np[1]),
+                        float(cam_pos_np[2]),
+                    ),
+                    gymapi.Vec3(
+                        float(cam_target_np[0]),
+                        float(cam_target_np[1]),
+                        float(cam_target_np[2]),
+                    ),
+                )
+        self.gym.render_all_camera_sensors(self.sim)
+        width = int(self.object_pointcloud_render_width)
+        height = int(self.object_pointcloud_render_height)
+        world_points = torch.zeros(
+            (self.num_envs, num_points, 3), dtype=torch.float, device=self.device
+        )
+        tracking_confidence = torch.zeros(
+            (self.num_envs, 1), dtype=torch.float, device=self.device
+        )
+        valid_env_mask = torch.zeros(
+            (self.num_envs, 1), dtype=torch.bool, device=self.device
+        )
+
+        camera_pos_local_np = np.asarray(
+            self.object_pointcloud_render_camera_pos_cfg, dtype=np.float32
+        )
+        camera_target_local_np = np.asarray(
+            self.object_pointcloud_render_camera_target_cfg, dtype=np.float32
+        )
+        camera_forward = camera_target_local_np - camera_pos_local_np
+        camera_forward = camera_forward / max(
+            float(np.linalg.norm(camera_forward)), 1e-6
+        )
+        world_up = np.asarray([0.0, 0.0, 1.0], dtype=np.float32)
+        camera_right = np.cross(camera_forward, world_up)
+        if float(np.linalg.norm(camera_right)) < 1e-6:
+            world_up = np.asarray([0.0, 1.0, 0.0], dtype=np.float32)
+            camera_right = np.cross(camera_forward, world_up)
+        camera_right = camera_right / max(float(np.linalg.norm(camera_right)), 1e-6)
+        camera_up = np.cross(camera_right, camera_forward)
+        camera_up = camera_up / max(float(np.linalg.norm(camera_up)), 1e-6)
+
+        horizontal_fov_rad = math.radians(
+            float(self.object_pointcloud_render_horizontal_fov)
+        )
+        focal_x = width / (2.0 * math.tan(horizontal_fov_rad / 2.0))
+        focal_y = focal_x
+        center_x = (width - 1) * 0.5
+        center_y = (height - 1) * 0.5
+
+        for env_idx, camera_handle in enumerate(
+            self.object_pointcloud_render_camera_handles
+        ):
+            # The render camera must be placed in simulation/world coordinates,
+            # but Isaac Gym root/rigid-body state tensors used by observations
+            # are env-local. Back-project into the same env-local frame as
+            # object_pos and palm_pos.
+            camera_pos_np = camera_pos_local_np
+            depth_image = self.gym.get_camera_image(
+                self.sim,
+                self.envs[env_idx],
+                camera_handle,
+                gymapi.IMAGE_DEPTH,
+            )
+            segmentation_image = self.gym.get_camera_image(
+                self.sim,
+                self.envs[env_idx],
+                camera_handle,
+                gymapi.IMAGE_SEGMENTATION,
+            )
+            if depth_image.size == 0 or segmentation_image.size == 0:
+                continue
+
+            depth = np.asarray(depth_image, dtype=np.float32).reshape(height, width)
+            segmentation = np.asarray(segmentation_image, dtype=np.int32).reshape(
+                height, width
+            )
+            z = np.where(depth < 0.0, -depth, depth)
+            valid_mask = (
+                (segmentation == self.object_segmentation_id)
+                & np.isfinite(z)
+                & (z > 1e-4)
+                & (z < self.object_pointcloud_render_max_depth)
+            )
+            valid_count = int(np.count_nonzero(valid_mask))
+            if valid_count <= 0:
+                continue
+
+            pixel_y, pixel_x = np.nonzero(valid_mask)
+            if valid_count >= num_points:
+                selected_ids = np.linspace(
+                    0, valid_count - 1, num_points, dtype=np.int64
+                )
+            else:
+                selected_ids = np.resize(np.arange(valid_count), num_points)
+            pixel_x = pixel_x[selected_ids].astype(np.float32)
+            pixel_y = pixel_y[selected_ids].astype(np.float32)
+            selected_z = z[valid_mask][selected_ids].astype(np.float32)
+
+            camera_x = (pixel_x - center_x) / focal_x * selected_z
+            camera_y = -(pixel_y - center_y) / focal_y * selected_z
+            points_np = (
+                camera_pos_np[None, :]
+                + camera_forward[None, :] * selected_z[:, None]
+                + camera_right[None, :] * camera_x[:, None]
+                + camera_up[None, :] * camera_y[:, None]
+            ).astype(np.float32)
+
+            world_points[env_idx] = torch.as_tensor(
+                points_np, dtype=torch.float, device=self.device
+            )
+            tracking_confidence[env_idx, 0] = min(
+                1.0, float(valid_count) / max(float(num_points), 1.0)
+            )
+            valid_env_mask[env_idx, 0] = True
+
+        self._object_pointcloud_rgbd_cache_step = cache_step
+        self._object_pointcloud_rgbd_cache_num_points = num_points
+        self._object_pointcloud_rgbd_cache = (
+            world_points,
+            tracking_confidence,
+            valid_env_mask,
+        )
+        return self._object_pointcloud_rgbd_cache
+
     def _object_surface_points_world(self) -> Tensor:
         num_points = int(self.object_pointcloud_num_points)
         if num_points <= 0:
@@ -2707,11 +4505,14 @@ class SimToolReal(VecTask):
         self, object_palm_dist: Tensor, lifted_object: Tensor
     ) -> dict:
         surface_points = self._object_surface_points_world()
-        fingertip_surface_dist = torch.norm(
+        fingertip_surface_dist_all = torch.norm(
             self.fingertip_pos_offset[:, :, None, :]
             - surface_points[:, None, :, :],
             dim=-1,
-        ).min(dim=-1).values
+        )
+        fingertip_surface_dist, fingertip_surface_point_idx = (
+            fingertip_surface_dist_all.min(dim=-1)
+        )
 
         contact_scale = max(float(self.dynamic_grasp_surface_contact_distance), 1e-6)
         contact_scores = torch.exp(-fingertip_surface_dist / contact_scale)
@@ -2796,6 +4597,11 @@ class SimToolReal(VecTask):
 
         return {
             "fingertip_surface_dist": fingertip_surface_dist,
+            "fingertip_surface_point_idx": fingertip_surface_point_idx,
+            "contact_scores": contact_scores,
+            "thumb_score": thumb_score,
+            "non_thumb_quality": non_thumb_quality,
+            "finger_count_quality": finger_count_quality,
             "finger_contact_count": finger_contact_count,
             "non_thumb_contact_count": non_thumb_contact_count,
             "thumb_contact": thumb_contact,
@@ -2805,6 +4611,89 @@ class SimToolReal(VecTask):
             "true_grasp": true_grasp,
             "scoop_lift": scoop_lift,
             "palm_only_lift": palm_only_lift,
+        }
+
+    def _dynamic_binary_affordance_contact_metrics(
+        self, true_grasp_metrics: dict
+    ) -> dict:
+        zeros = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+        if (
+            not self.dynamic_grasp_use_binary_affordance_labels
+            or (
+                not hasattr(self, "binary_affordance_surface_labels")
+                and not hasattr(self, "object_pointcloud_grasp_labels")
+            )
+        ):
+            return {
+                "positive_contact_rew": zeros,
+                "negative_contact_penalty": zeros,
+                "valid_contact_fraction": zeros,
+                "positive_contact_fraction": zeros,
+                "negative_contact_fraction": zeros,
+                "positive_contact_score": zeros,
+                "negative_contact_score": zeros,
+            }
+
+        if (
+            hasattr(self, "binary_affordance_surface_labels")
+            and self.binary_affordance_surface_labels.numel() > 0
+        ):
+            surface_points = self.binary_affordance_surface_points
+            num_points = surface_points.shape[1]
+            repeated_object_rot = self.object_rot[:, None, :].expand(
+                -1, num_points, -1
+            )
+            world_points = self.object_pos[:, None, :] + quat_rotate(
+                repeated_object_rot.reshape(-1, 4),
+                surface_points.reshape(-1, 3),
+            ).reshape(self.num_envs, num_points, 3)
+            fingertip_surface_dist_all = torch.norm(
+                self.fingertip_pos_offset[:, :, None, :]
+                - world_points[:, None, :, :],
+                dim=-1,
+            )
+            fingertip_surface_dist, nearest_ids = fingertip_surface_dist_all.min(
+                dim=-1
+            )
+            nearest_labels = torch.gather(
+                self.binary_affordance_surface_labels, 1, nearest_ids
+            )
+            contact_scale = max(
+                float(self.dynamic_grasp_binary_affordance_contact_distance), 1e-6
+            )
+            contact_scores = torch.exp(-fingertip_surface_dist / contact_scale)
+        else:
+            nearest_ids = true_grasp_metrics["fingertip_surface_point_idx"].clamp(
+                min=0,
+                max=max(self.object_pointcloud_grasp_labels.shape[1] - 1, 0),
+            )
+            nearest_labels = torch.gather(
+                self.object_pointcloud_grasp_labels, 1, nearest_ids
+            )
+            fingertip_surface_dist = true_grasp_metrics["fingertip_surface_dist"]
+            contact_scores = true_grasp_metrics["contact_scores"]
+        contact_mask = (
+            fingertip_surface_dist
+            < max(float(self.dynamic_grasp_binary_affordance_contact_distance), 1e-6)
+        )
+        valid_mask = contact_mask & (nearest_labels >= 0)
+        positive_mask = valid_mask & (nearest_labels == 1)
+        negative_mask = valid_mask & (nearest_labels == 0)
+
+        positive_scores = contact_scores * positive_mask.float()
+        negative_scores = contact_scores * negative_mask.float()
+        denom = max(float(self.num_fingertips), 1.0)
+        positive_contact_rew = positive_scores.sum(dim=-1) / denom
+        negative_contact_penalty = negative_scores.sum(dim=-1) / denom
+
+        return {
+            "positive_contact_rew": positive_contact_rew,
+            "negative_contact_penalty": negative_contact_penalty,
+            "valid_contact_fraction": valid_mask.float().sum(dim=-1) / denom,
+            "positive_contact_fraction": positive_mask.float().sum(dim=-1) / denom,
+            "negative_contact_fraction": negative_mask.float().sum(dim=-1) / denom,
+            "positive_contact_score": positive_scores.sum(dim=-1) / denom,
+            "negative_contact_score": negative_scores.sum(dim=-1) / denom,
         }
 
     def _object_pointcloud_centroid_velocity_observation(
@@ -2886,6 +4775,11 @@ class SimToolReal(VecTask):
         elif object_name in {"domino_20", "domino_object_pool"}:
             object_asset_files, object_asset_scales, need_vhacds = (
                 self._domino_object_assets(tmp_assets_dir)
+            )
+
+        elif object_name in {"dextoolbench_baton_pool", "falling_baton_pool"}:
+            object_asset_files, object_asset_scales, need_vhacds = (
+                self._dextoolbench_object_assets(tmp_assets_dir)
             )
 
         else:
@@ -3016,7 +4910,7 @@ class SimToolReal(VecTask):
             "goal_object",
             env_idx + self.num_envs,
             0,
-            0,
+            self.goal_object_segmentation_id,
         )
         goal_object_idx = self.gym.get_actor_index(
             env_ptr, goal_handle, gymapi.DOMAIN_SIM
@@ -3570,6 +5464,11 @@ class SimToolReal(VecTask):
         ]
         print(f"Robot num rigid bodies: {self.num_hand_arm_bodies}")
         print(f"Robot rigid bodies: {robot_rigid_body_names}")
+        robot_dof_names = [
+            self.gym.get_asset_dof_name(robot_asset, i)
+            for i in range(self.num_hand_arm_dofs)
+        ]
+        print(f"Robot DOF names: {robot_dof_names}")
 
         robot_dof_props = self.gym.get_asset_dof_properties(robot_asset)
 
@@ -3586,6 +5485,7 @@ class SimToolReal(VecTask):
         self.arm_hand_dof_upper_limits = to_torch(
             self.arm_hand_dof_upper_limits, device=self.device
         )
+        self._setup_hand_action_mapping(robot_dof_names)
 
         robot_start_pose_cfg = self.cfg["env"].get("robotStartPose", None)
         if robot_start_pose_cfg is None:
@@ -3604,14 +5504,16 @@ class SimToolReal(VecTask):
         max_agg_shapes += object_shapes_count
 
         # load auxiliary objects
-        table_asset_options = gymapi.AssetOptions()
-        table_asset_options.disable_gravity = True
-        table_asset_options.fix_base_link = True
-        table_asset = self.gym.load_asset(
-            self.sim, asset_root, self.asset_files_dict["table"], table_asset_options
-        )
+        table_asset = None
+        if self.create_table:
+            table_asset_options = gymapi.AssetOptions()
+            table_asset_options.disable_gravity = True
+            table_asset_options.fix_base_link = True
+            table_asset = self.gym.load_asset(
+                self.sim, asset_root, self.asset_files_dict["table"], table_asset_options
+            )
 
-        if self.with_table_force_sensor:
+        if self.with_table_force_sensor and table_asset is not None:
             table_sensor_pose = gymapi.Transform()
             table_sensor_props = gymapi.ForceSensorProperties()
             # If both enable_constraint_solver_forces=False and enable_forward_dynamics_forces=False, always will have a force of 0.0
@@ -3640,8 +5542,12 @@ class SimToolReal(VecTask):
             table_pose_dy = table_pose.p.y - robot_pose.p.y
             table_pose_dz = table_pose.p.z - robot_pose.p.z
 
-        table_rb_count = self.gym.get_asset_rigid_body_count(table_asset)
-        table_shapes_count = self.gym.get_asset_rigid_shape_count(table_asset)
+        if self.create_table and table_asset is not None:
+            table_rb_count = self.gym.get_asset_rigid_body_count(table_asset)
+            table_shapes_count = self.gym.get_asset_rigid_shape_count(table_asset)
+        else:
+            table_rb_count = 0
+            table_shapes_count = 0
         max_agg_bodies += table_rb_count
         max_agg_shapes += table_shapes_count
 
@@ -3658,6 +5564,7 @@ class SimToolReal(VecTask):
 
         self.robots = []
         self.envs = []
+        env_origins = []
         if self.VISUALIZE_PD_TARGET_AS_BLUE_ROBOT:
             self.blue_robots = []
         self.objects = []
@@ -3693,6 +5600,47 @@ class SimToolReal(VecTask):
             self.gym.find_asset_rigid_body_index(robot_asset, name)
             for name in self.fingertips
         ]
+        self.falling_baton_spawn_avoid_arm_body_handles = []
+        if getattr(self, "falling_baton_spawn_avoid_arm_enabled", False):
+            include_tokens = tuple(self.falling_baton_spawn_avoid_arm_body_name_contains)
+            exclude_tokens = tuple(self.falling_baton_spawn_avoid_arm_body_name_excludes)
+            self.falling_baton_spawn_avoid_arm_body_handles = [
+                self.gym.find_asset_rigid_body_index(robot_asset, name)
+                for name in body_names
+                if (
+                    any(token in name for token in include_tokens)
+                    and not any(token in name for token in exclude_tokens)
+                )
+            ]
+            print(
+                "Falling baton spawn arm-clearance bodies:",
+                [
+                    body_names[handle]
+                    for handle in self.falling_baton_spawn_avoid_arm_body_handles
+                ],
+            )
+        table_clearance_include_tokens = tuple(
+            self.dynamic_grasp_table_clearance_body_name_contains
+        )
+        table_clearance_exclude_tokens = tuple(
+            self.dynamic_grasp_table_clearance_body_name_excludes
+        )
+        self.dynamic_grasp_table_clearance_body_handles = [
+            self.gym.find_asset_rigid_body_index(robot_asset, name)
+            for name in body_names
+            if (
+                any(token in name for token in table_clearance_include_tokens)
+                and not any(token in name for token in table_clearance_exclude_tokens)
+            )
+        ]
+        if self.dynamic_grasp_table_clearance_penalty_scale > 0.0:
+            print(
+                "Dynamic grasp table-clearance bodies:",
+                [
+                    body_names[handle]
+                    for handle in self.dynamic_grasp_table_clearance_body_handles
+                ],
+            )
 
         if self.with_fingertip_force_sensors:
             finger_sensor_pose = gymapi.Transform()
@@ -3730,10 +5678,11 @@ class SimToolReal(VecTask):
                 friction=self.cfg["env"]["robotFriction"],
                 fingertip_friction=self.cfg["env"]["fingerTipFriction"],
             )
-            self.set_table_asset_rigid_shape_properties(
-                table_asset=table_asset,
-                friction=self.cfg["env"]["tableFriction"],
-            )
+            if self.create_table and table_asset is not None:
+                self.set_table_asset_rigid_shape_properties(
+                    table_asset=table_asset,
+                    friction=self.cfg["env"]["tableFriction"],
+                )
             for object_asset_idx_to_modify in range(len(object_assets)):
                 self.set_object_asset_rigid_shape_properties(
                     object_asset=object_assets[object_asset_idx_to_modify],
@@ -3746,10 +5695,21 @@ class SimToolReal(VecTask):
                 friction=None,
                 fingertip_friction=None,
             )
+        if self.falling_baton_disable_object_arm_collision:
+            self.set_falling_baton_object_arm_collision_filters(
+                robot_asset=robot_asset,
+                object_assets=object_assets,
+                filter_bit=self.falling_baton_object_arm_collision_filter_bit,
+                keep_body_name_contains=(
+                    self.falling_baton_object_collision_keep_body_name_contains
+                ),
+            )
 
         for i in range(self.num_envs):
             # create env instance
             env_ptr = self.gym.create_env(self.sim, lower, upper, num_per_row)
+            env_origin = self.gym.get_env_origin(env_ptr)
+            env_origins.append([env_origin.x, env_origin.y, env_origin.z])
 
             self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
 
@@ -3757,7 +5717,7 @@ class SimToolReal(VecTask):
             collision_filter = -1  # -1 = use asset collision filters set in mjcf loader (for URDF, enable all self-collisions)
             # 0 = enable all self-collisions
             # >0 = disable all self-collisions
-            segmentation_id = 0
+            segmentation_id = self.robot_segmentation_id
             robot_actor = self.gym.create_actor(
                 env_ptr,
                 robot_asset,
@@ -3793,6 +5753,7 @@ class SimToolReal(VecTask):
                 )
 
             self.gym.set_actor_dof_properties(env_ptr, robot_actor, robot_dof_props)
+            self._set_robot_actor_visual_colors(env_ptr, robot_actor)
             robot_idx = self.gym.get_actor_index(
                 env_ptr, robot_actor, gymapi.DOMAIN_SIM
             )
@@ -3815,7 +5776,7 @@ class SimToolReal(VecTask):
                     "blue_robot",
                     i + self.num_envs * 2,
                     -1,
-                    0,
+                    self.robot_segmentation_id,
                 )
                 self.gym.set_actor_dof_properties(
                     env_ptr,
@@ -3848,7 +5809,7 @@ class SimToolReal(VecTask):
                 self.object_start_pose.r.z,
                 self.object_start_pose.r.w,
             )
-            if hasattr(self, "object_asset_table_z_offsets_np"):
+            if self.create_table and hasattr(self, "object_asset_table_z_offsets_np"):
                 object_start_pose_for_env.p.z = table_pose.p.z + float(
                     self.object_asset_table_z_offsets_np[object_asset_idx]
                 )
@@ -3870,7 +5831,7 @@ class SimToolReal(VecTask):
                 "object",
                 i,
                 0,
-                0,
+                self.object_segmentation_id,
             )
             object_init_state.append(
                 [
@@ -3931,36 +5892,43 @@ class SimToolReal(VecTask):
             object_keypoint_offsets_fixed_size.append(object_offsets_fixed_size)
 
             # table object
-            table_handle = self.gym.create_actor(
-                env_ptr, table_asset, table_pose, "table_object", i, 0, 0
-            )
-            table_init_state.append(
-                [
-                    table_pose.p.x,
-                    table_pose.p.y,
-                    table_pose.p.z,
-                    table_pose.r.x,
-                    table_pose.r.y,
-                    table_pose.r.z,
-                    table_pose.r.w,
+            if self.create_table and table_asset is not None:
+                table_handle = self.gym.create_actor(
+                    env_ptr,
+                    table_asset,
+                    table_pose,
+                    "table_object",
+                    i,
                     0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                ]
-            )
-            table_object_idx = self.gym.get_actor_index(
-                env_ptr, table_handle, gymapi.DOMAIN_SIM
-            )
-            table_indices.append(table_object_idx)
-            for name in self.gym.get_actor_rigid_body_names(env_ptr, table_handle):
-                self.rigid_body_name_to_idx["table/" + name] = (
-                    self.gym.find_actor_rigid_body_index(
-                        env_ptr, table_handle, name, gymapi.DOMAIN_ENV
-                    )
+                    self.table_segmentation_id,
                 )
+                table_init_state.append(
+                    [
+                        table_pose.p.x,
+                        table_pose.p.y,
+                        table_pose.p.z,
+                        table_pose.r.x,
+                        table_pose.r.y,
+                        table_pose.r.z,
+                        table_pose.r.w,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                    ]
+                )
+                table_object_idx = self.gym.get_actor_index(
+                    env_ptr, table_handle, gymapi.DOMAIN_SIM
+                )
+                table_indices.append(table_object_idx)
+                for name in self.gym.get_actor_rigid_body_names(env_ptr, table_handle):
+                    self.rigid_body_name_to_idx["table/" + name] = (
+                        self.gym.find_actor_rigid_body_index(
+                            env_ptr, table_handle, name, gymapi.DOMAIN_ENV
+                        )
+                    )
 
             # task-specific objects (i.e. goal object for reorientation task)
             self._create_additional_objects(
@@ -3975,6 +5943,13 @@ class SimToolReal(VecTask):
             self.envs.append(env_ptr)
             self.robots.append(robot_actor)
             self.objects.append(object_handle)
+
+        self.env_origins_np = np.asarray(env_origins, dtype=np.float32)
+        self.env_origins = to_torch(
+            self.env_origins_np,
+            dtype=torch.float,
+            device=self.device,
+        )
 
         # Default false because this is slow
         DEBUG_PRINT_OBJECT_MASS_AND_INERTIA_AND_COM = False
@@ -4015,9 +5990,14 @@ class SimToolReal(VecTask):
         self.object_init_state = to_torch(
             object_init_state, device=self.device, dtype=torch.float
         ).view(self.num_envs, 13)
-        self.table_init_state = to_torch(
-            table_init_state, device=self.device, dtype=torch.float
-        ).view(self.num_envs, 13)
+        if self.create_table:
+            self.table_init_state = to_torch(
+                table_init_state, device=self.device, dtype=torch.float
+            ).view(self.num_envs, 13)
+        else:
+            self.table_init_state = torch.zeros(
+                (self.num_envs, 13), device=self.device, dtype=torch.float
+            )
         object_asset_indices_np = np.asarray(object_asset_indices, dtype=np.int64)
         if (
             self.object_pointcloud_use_mesh_surface
@@ -4029,12 +6009,37 @@ class SimToolReal(VecTask):
             self.object_pointcloud_unit_normals_np = self.object_asset_pointcloud_normals_np[
                 object_asset_indices_np
             ].astype(np.float32)
+            self.object_pointcloud_grasp_labels_np = self.object_asset_pointcloud_grasp_labels_np[
+                object_asset_indices_np
+            ].astype(np.int8)
+            self.object_pointcloud_grasp_label_distances_np = self.object_asset_pointcloud_grasp_label_distances_np[
+                object_asset_indices_np
+            ].astype(np.float32)
+            self.binary_affordance_surface_points_np = self.object_asset_binary_affordance_surface_points_np[
+                object_asset_indices_np
+            ].astype(np.float32)
+            self.binary_affordance_surface_labels_np = self.object_asset_binary_affordance_surface_labels_np[
+                object_asset_indices_np
+            ].astype(np.int8)
+            self.binary_affordance_surface_label_distances_np = self.object_asset_binary_affordance_surface_label_distances_np[
+                object_asset_indices_np
+            ].astype(np.float32)
         self.goal_states = self.object_init_state.clone()
         self.goal_states[:, self.up_axis_idx] -= 0.04
         self.goal_init_state = self.goal_states.clone()
 
         self.fingertip_handles = to_torch(
             self.fingertip_handles, dtype=torch.long, device=self.device
+        )
+        self.falling_baton_spawn_avoid_arm_body_handles = to_torch(
+            self.falling_baton_spawn_avoid_arm_body_handles,
+            dtype=torch.long,
+            device=self.device,
+        )
+        self.dynamic_grasp_table_clearance_body_handles = to_torch(
+            self.dynamic_grasp_table_clearance_body_handles,
+            dtype=torch.long,
+            device=self.device,
         )
         self.object_rb_handles = to_torch(
             self.object_rb_handles, dtype=torch.long, device=self.device
@@ -4049,9 +6054,14 @@ class SimToolReal(VecTask):
         self.object_indices = to_torch(
             object_indices, dtype=torch.long, device=self.device
         )
-        self.table_indices = to_torch(
-            table_indices, dtype=torch.long, device=self.device
-        )
+        if self.create_table:
+            self.table_indices = to_torch(
+                table_indices, dtype=torch.long, device=self.device
+            )
+        else:
+            self.table_indices = torch.full(
+                (self.num_envs,), -1, dtype=torch.long, device=self.device
+            )
         self.object_asset_indices = to_torch(
             object_asset_indices, dtype=torch.long, device=self.device
         )
@@ -4145,6 +6155,35 @@ class SimToolReal(VecTask):
                 rigid_body_idx,
                 gymapi.MESH_VISUAL,
                 gymapi.Vec3(*color),
+            )
+
+    def _set_robot_actor_visual_colors(self, env, actor) -> None:
+        hand_color = self.cfg["env"].get("robotHandBodyColor", None)
+        hand_tokens = self.cfg["env"].get("robotHandColorBodyNameContains", [])
+        if hand_color is None or not hand_tokens:
+            return
+
+        touch_color = self.cfg["env"].get("robotHandTouchBodyColor", None)
+        touch_tokens = self.cfg["env"].get("robotHandTouchColorBodyNameContains", [])
+        body_names = self.gym.get_actor_rigid_body_names(env, actor)
+
+        for rigid_body_idx, body_name in enumerate(body_names):
+            if not any(token in body_name for token in hand_tokens):
+                continue
+
+            color = hand_color
+            if touch_color is not None and any(
+                token in body_name for token in touch_tokens
+            ):
+                color = touch_color
+
+            rgb = [float(channel) for channel in color[:3]]
+            self.gym.set_rigid_body_color(
+                env,
+                actor,
+                rigid_body_idx,
+                gymapi.MESH_VISUAL,
+                gymapi.Vec3(*rgb),
             )
 
     def _distance_delta_rewards(self, lifted_object: Tensor) -> Tuple[Tensor, Tensor]:
@@ -4263,10 +6302,17 @@ class SimToolReal(VecTask):
         return -1 * kuka_actions_penalty, -1 * hand_actions_penalty
 
     def _dynamic_grasp_speed_curriculum_alpha(self) -> float:
-        if (
-            not self.dynamic_grasp_speed_curriculum
-            or self.dynamic_grasp_speed_curriculum_steps <= 0
-        ):
+        if not self.dynamic_grasp_speed_curriculum:
+            return 1.0
+
+        if self.dynamic_grasp_speed_curriculum_mode in {
+            "success",
+            "success_gate",
+            "performance",
+        }:
+            return float(self.dynamic_grasp_speed_curriculum_success_alpha)
+
+        if self.dynamic_grasp_speed_curriculum_steps <= 0:
             return 1.0
 
         return min(
@@ -4274,6 +6320,78 @@ class SimToolReal(VecTask):
             / float(self.dynamic_grasp_speed_curriculum_steps),
             1.0,
         )
+
+    def _update_dynamic_grasp_success_speed_curriculum(
+        self,
+        *,
+        is_success: Tensor,
+        lifted_object: Tensor,
+        stable_grasp: Tensor,
+        true_grasp: Tensor,
+        legacy_success: Tensor,
+        legacy_stable_grasp: Tensor,
+        contact_like: Optional[Tensor] = None,
+    ) -> None:
+        if not self.dynamic_grasp_speed_curriculum:
+            return
+        if self.dynamic_grasp_speed_curriculum_mode not in {
+            "success",
+            "success_gate",
+            "performance",
+        }:
+            return
+
+        metric_tensors = {
+            "success": is_success.float(),
+            "lift_hold_success": is_success.float(),
+            "lifted": lifted_object.float(),
+            "stable_grasp": stable_grasp.float(),
+            "true_grasp": true_grasp.float(),
+            "legacy_success": legacy_success.float(),
+            "legacy_stable_grasp": legacy_stable_grasp.float(),
+        }
+        if contact_like is not None:
+            metric_tensors["contact"] = contact_like.float()
+            metric_tensors["contact_like"] = contact_like.float()
+        metric = self.dynamic_grasp_speed_curriculum_metric
+        if metric not in metric_tensors:
+            metric = "success"
+        metric_value = float(metric_tensors[metric].mean().item())
+        ema_alpha = min(
+            max(float(self.dynamic_grasp_speed_curriculum_ema_alpha), 0.0),
+            1.0,
+        )
+        if not self.dynamic_grasp_speed_curriculum_metric_initialized:
+            metric_ema = metric_value
+            self.dynamic_grasp_speed_curriculum_metric_initialized = True
+        else:
+            metric_ema = (
+                (1.0 - ema_alpha) * self.dynamic_grasp_speed_curriculum_metric_ema
+                + ema_alpha * metric_value
+            )
+
+        start = float(self.dynamic_grasp_speed_curriculum_start_success)
+        full = float(self.dynamic_grasp_speed_curriculum_full_success)
+        if full <= start:
+            target_alpha = 1.0 if metric_ema >= start else 0.0
+        else:
+            target_alpha = (metric_ema - start) / (full - start)
+            target_alpha = min(max(target_alpha, 0.0), 1.0)
+
+        current_alpha = float(self.dynamic_grasp_speed_curriculum_success_alpha)
+        rise = max(float(self.dynamic_grasp_speed_curriculum_alpha_rise), 0.0)
+        if target_alpha > current_alpha and rise > 0.0:
+            next_alpha = min(target_alpha, current_alpha + rise)
+        elif target_alpha > current_alpha:
+            next_alpha = target_alpha
+        elif self.dynamic_grasp_speed_curriculum_allow_decrease:
+            next_alpha = target_alpha
+        else:
+            next_alpha = current_alpha
+
+        self.dynamic_grasp_speed_curriculum_metric_value = metric_value
+        self.dynamic_grasp_speed_curriculum_metric_ema = metric_ema
+        self.dynamic_grasp_speed_curriculum_success_alpha = next_alpha
 
     def _dynamic_grasp_current_motion_ranges(self):
         alpha = self._dynamic_grasp_speed_curriculum_alpha()
@@ -4295,6 +6413,46 @@ class SimToolReal(VecTask):
             self.dynamic_grasp_initial_yaw_rate_range,
         )
         return speed_range, yaw_rate_range, alpha
+
+    def _falling_baton_current_catch_reference_pos(self, env_ids: Tensor) -> Tensor:
+        ref_pos = self.palm_center_pos[env_ids].clone()
+        if hasattr(self, "fingertip_pos_offset") and self.num_fingertips > 0:
+            fingertip_center = self.fingertip_pos_offset[env_ids].mean(dim=1)
+            palm_to_fingers = fingertip_center - self.palm_center_pos[env_ids]
+            ref_pos = ref_pos + float(
+                self.falling_baton_catch_center_finger_weight
+            ) * palm_to_fingers
+
+            palm_to_fingers_xy = palm_to_fingers[:, 0:2]
+            palm_to_fingers_xy_norm = torch.norm(
+                palm_to_fingers_xy, dim=-1, keepdim=True
+            )
+            forward_xy = torch.where(
+                palm_to_fingers_xy_norm > 1e-6,
+                palm_to_fingers_xy / torch.clamp(palm_to_fingers_xy_norm, min=1e-6),
+                torch.zeros_like(palm_to_fingers_xy),
+            )
+            ref_pos[:, 0:2] = (
+                ref_pos[:, 0:2]
+                + float(self.falling_baton_catch_center_forward_offset) * forward_xy
+            )
+
+        world_offset = torch.tensor(
+            self.falling_baton_catch_center_world_offset,
+            dtype=torch.float,
+            device=self.device,
+        )
+        return ref_pos + world_offset
+
+    def _falling_baton_spawn_reference_pos(self, env_ids: Tensor) -> Tensor:
+        reference_mode = self.falling_baton_palm_relative_xy_reference
+        if reference_mode in {"home", "home_catch_center"} and hasattr(
+            self, "falling_baton_home_catch_reference_pos"
+        ):
+            return self.falling_baton_home_catch_reference_pos[env_ids].clone()
+        if reference_mode in {"current_catch_center", "catch_center"}:
+            return self._falling_baton_current_catch_reference_pos(env_ids)
+        return self.palm_center_pos[env_ids].clone()
 
     def _set_dynamic_object_initial_velocity(
         self, env_ids: Tensor, obj_indices: Tensor
@@ -4325,12 +6483,225 @@ class SimToolReal(VecTask):
         self.dynamic_grasp_object_xy_velocity[env_ids] = planar_vel
         self.dynamic_grasp_object_yaw_rate[env_ids] = yaw_rates.squeeze(-1)
 
+    def _falling_baton_spawn_workspace_ranges(self) -> Tuple[List[float], List[float]]:
+        if self.falling_baton_forward_workspace_enabled:
+            return (
+                self.falling_baton_forward_workspace_x_range,
+                self.falling_baton_forward_workspace_y_range,
+            )
+        return self.falling_baton_spawn_x_range, self.falling_baton_spawn_y_range
+
+    def _clamp_falling_baton_spawn_xy(self, xy: Tensor) -> Tensor:
+        x_range, y_range = self._falling_baton_spawn_workspace_ranges()
+        xy[:, 0] = torch.clamp(
+            xy[:, 0],
+            min=float(x_range[0]),
+            max=float(x_range[1]),
+        )
+        xy[:, 1] = torch.clamp(
+            xy[:, 1],
+            min=float(y_range[0]),
+            max=float(y_range[1]),
+        )
+        return xy
+
+    def _apply_falling_baton_spawn_xy_constraints(
+        self, env_ids: Tensor, obj_indices: Tensor
+    ) -> None:
+        if len(env_ids) == 0:
+            return
+
+        xy = self.root_state_tensor[obj_indices, 0:2].clone()
+        if self.falling_baton_forward_workspace_enabled:
+            xy = self._clamp_falling_baton_spawn_xy(xy)
+
+        avoid_handles = getattr(
+            self, "falling_baton_spawn_avoid_arm_body_handles", None
+        )
+        if (
+            self.falling_baton_spawn_avoid_arm_enabled
+            and avoid_handles is not None
+            and avoid_handles.numel() > 0
+            and hasattr(self, "rigid_body_states")
+        ):
+            min_dist = max(float(self.falling_baton_spawn_avoid_arm_min_xy_distance), 0.0)
+            fallback = torch.tensor(
+                self.falling_baton_spawn_avoid_arm_fallback_direction,
+                dtype=torch.float,
+                device=self.device,
+            ).reshape(1, 2)
+            fallback_norm = torch.norm(fallback, dim=-1, keepdim=True)
+            fallback = torch.where(
+                fallback_norm > 1e-6,
+                fallback / torch.clamp(fallback_norm, min=1e-6),
+                torch.tensor([[0.0, 1.0]], dtype=torch.float, device=self.device),
+            )
+            arm_xy = self.rigid_body_states[
+                env_ids[:, None], avoid_handles[None, :], 0:2
+            ]
+            for _ in range(int(self.falling_baton_spawn_avoid_arm_iters)):
+                delta = xy[:, None, :] - arm_xy
+                dists = torch.norm(delta, dim=-1)
+                closest_dist, closest_idx = torch.min(dists, dim=1)
+                closest_delta = torch.gather(
+                    delta,
+                    1,
+                    closest_idx[:, None, None].expand(-1, 1, 2),
+                ).squeeze(1)
+                closest_norm = torch.norm(closest_delta, dim=-1, keepdim=True)
+                push_dir = torch.where(
+                    closest_norm > 1e-6,
+                    closest_delta / torch.clamp(closest_norm, min=1e-6),
+                    fallback.expand(len(env_ids), -1),
+                )
+                push_amount = torch.clamp(min_dist - closest_dist, min=0.0)
+                xy = xy + push_dir * push_amount[:, None]
+                if self.falling_baton_forward_workspace_enabled:
+                    xy = self._clamp_falling_baton_spawn_xy(xy)
+
+        self.root_state_tensor[obj_indices, 0:2] = xy
+
+    def _reset_falling_baton_object(self, env_ids: Tensor, obj_indices: Tensor) -> None:
+        if len(env_ids) == 0:
+            return
+
+        def lerp_range(start_range, target_range):
+            alpha = self._dynamic_grasp_speed_curriculum_alpha()
+            start_min, start_max = float(start_range[0]), float(start_range[1])
+            target_min, target_max = float(target_range[0]), float(target_range[1])
+            return (
+                start_min + (target_min - start_min) * alpha,
+                start_max + (target_max - start_max) * alpha,
+            )
+
+        self.root_state_tensor[obj_indices] = self.object_init_state[env_ids].clone()
+
+        x_range, y_range = self._falling_baton_spawn_workspace_ranges()
+        x_min, x_max = x_range
+        y_min, y_max = y_range
+        z_min, z_max = self.falling_baton_spawn_z_range
+        self.root_state_tensor[obj_indices, 0:1] = torch_rand_float(
+            x_min, x_max, (len(env_ids), 1), device=self.device
+        )
+        self.root_state_tensor[obj_indices, 1:2] = torch_rand_float(
+            y_min, y_max, (len(env_ids), 1), device=self.device
+        )
+        if self.falling_baton_palm_relative_xy_spawn_enabled and hasattr(
+            self, "palm_center_pos"
+        ):
+            spawn_reference_pos = self._falling_baton_spawn_reference_pos(env_ids)
+            dx_min, dx_max = lerp_range(
+                self.falling_baton_palm_relative_start_x_range,
+                self.falling_baton_palm_relative_x_range,
+            )
+            dy_min, dy_max = lerp_range(
+                self.falling_baton_palm_relative_start_y_range,
+                self.falling_baton_palm_relative_y_range,
+            )
+            xy_offset = torch.cat(
+                [
+                    torch_rand_float(
+                        dx_min, dx_max, (len(env_ids), 1), device=self.device
+                    ),
+                    torch_rand_float(
+                        dy_min, dy_max, (len(env_ids), 1), device=self.device
+                    ),
+                ],
+                dim=-1,
+            )
+            palm_relative_xy = spawn_reference_pos[:, 0:2] + xy_offset
+            if self.falling_baton_palm_relative_xy_clamp_to_global_range:
+                palm_relative_xy[:, 0] = torch.clamp(
+                    palm_relative_xy[:, 0],
+                    min=float(x_min),
+                    max=float(x_max),
+                )
+                palm_relative_xy[:, 1] = torch.clamp(
+                    palm_relative_xy[:, 1],
+                    min=float(y_min),
+                    max=float(y_max),
+                )
+            self.root_state_tensor[obj_indices, 0:2] = palm_relative_xy
+        self._apply_falling_baton_spawn_xy_constraints(env_ids, obj_indices)
+        self.root_state_tensor[obj_indices, 2:3] = torch_rand_float(
+            z_min, z_max, (len(env_ids), 1), device=self.device
+        )
+        if self.falling_baton_spawn_above_palm_enabled and hasattr(
+            self, "palm_center_pos"
+        ):
+            spawn_reference_pos = self._falling_baton_spawn_reference_pos(env_ids)
+            above_min, above_max = self.falling_baton_spawn_above_palm_range
+            palm_relative_z = (
+                spawn_reference_pos[:, 2:3]
+                + torch_rand_float(
+                    above_min,
+                    above_max,
+                    (len(env_ids), 1),
+                    device=self.device,
+                )
+            )
+            self.root_state_tensor[obj_indices, 2:3] = torch.maximum(
+                self.root_state_tensor[obj_indices, 2:3],
+                palm_relative_z,
+            )
+
+        if self.falling_baton_random_orientation:
+            new_object_rot = self.get_random_quat(env_ids)
+        elif hasattr(self, "object_default_rot"):
+            new_object_rot = self.object_default_rot[env_ids].clone()
+        else:
+            new_object_rot = torch.zeros((len(env_ids), 4), device=self.device)
+            new_object_rot[:, -1] = 1.0
+        self.root_state_tensor[obj_indices, 3:7] = new_object_rot
+
+        xy_speed_min, xy_speed_max = lerp_range(
+            self.falling_baton_start_initial_xy_speed_range,
+            self.falling_baton_initial_xy_speed_range,
+        )
+        z_speed_min, z_speed_max = lerp_range(
+            self.falling_baton_start_initial_z_speed_range,
+            self.falling_baton_initial_z_speed_range,
+        )
+        xy_speeds = torch_rand_float(
+            xy_speed_min, xy_speed_max, (len(env_ids), 1), device=self.device
+        )
+        headings = torch_rand_float(
+            -math.pi, math.pi, (len(env_ids), 1), device=self.device
+        )
+        planar_vel = torch.cat(
+            [torch.cos(headings) * xy_speeds, torch.sin(headings) * xy_speeds],
+            dim=-1,
+        )
+        downward_speed = torch_rand_float(
+            z_speed_min, z_speed_max, (len(env_ids), 1), device=self.device
+        )
+
+        ang_range = self.falling_baton_initial_ang_vel_range
+        start_ang_range = self.falling_baton_start_initial_ang_vel_range
+        if len(ang_range) == 2 and len(start_ang_range) == 2:
+            ang_min, ang_max = lerp_range(start_ang_range, ang_range)
+        else:
+            ang_abs = abs(float(ang_range[0]))
+            ang_min, ang_max = -ang_abs, ang_abs
+        ang_vel = torch_rand_float(
+            ang_min, ang_max, (len(env_ids), 3), device=self.device
+        )
+
+        self.root_state_tensor[obj_indices, 7:9] = planar_vel
+        self.root_state_tensor[obj_indices, 9:10] = -downward_speed
+        self.root_state_tensor[obj_indices, 10:13] = ang_vel
+        self.dynamic_grasp_object_xy_velocity[env_ids] = planar_vel
+        self.dynamic_grasp_object_yaw_rate[env_ids] = ang_vel[:, 2]
+
     def _apply_dynamic_tabletop_motion(self) -> None:
         """Keep unlifted dynamic-grasp objects sliding despite tabletop friction."""
         if not self.dynamic_tabletop_grasp or not self.dynamic_grasp_persistent_motion:
             return
 
-        active_env_ids = (~self.lifted_object).nonzero(as_tuple=False).squeeze(-1)
+        active_motion_mask = ~self.lifted_object
+        if self.dynamic_grasp_release_motion_on_contact:
+            active_motion_mask = active_motion_mask & (~self.dynamic_grasp_motion_released)
+        active_env_ids = active_motion_mask.nonzero(as_tuple=False).squeeze(-1)
         if len(active_env_ids) == 0:
             return
 
@@ -4385,6 +6756,9 @@ class SimToolReal(VecTask):
         grasp_quality: Optional[Tensor] = None,
         scoop_lift: Optional[Tensor] = None,
         palm_only_lift: Optional[Tensor] = None,
+        legacy_success: Optional[Tensor] = None,
+        legacy_stable_grasp: Optional[Tensor] = None,
+        lift_hold_success: Optional[Tensor] = None,
     ) -> None:
         if (
             not self.log_dynamic_object_pool_metrics
@@ -4411,6 +6785,12 @@ class SimToolReal(VecTask):
             metrics["scoop_lift"] = scoop_lift.float()
         if palm_only_lift is not None:
             metrics["palm_only_lift"] = palm_only_lift.float()
+        if legacy_success is not None:
+            metrics["legacy_success"] = legacy_success.float()
+        if legacy_stable_grasp is not None:
+            metrics["legacy_stable_grasp"] = legacy_stable_grasp.float()
+        if lift_hold_success is not None:
+            metrics["lift_hold_success"] = lift_hold_success.float()
         for asset_idx, label in enumerate(self.object_asset_labels):
             env_mask = mask_values == asset_idx
             env_mask_float = env_mask.float()
@@ -4419,6 +6799,435 @@ class SimToolReal(VecTask):
                 self.extras[f"dynamic_object/{label}/{metric_name}"] = (
                     (metric_value * env_mask_float).sum() / count
                 ).item()
+
+    def _compute_falling_baton_grasp_reward(self) -> Tuple[Tensor, Tensor]:
+        kuka_actions_penalty, hand_actions_penalty = self._action_penalties()
+
+        closest_fingertip_dist = self.curr_fingertip_distances.min(dim=-1).values
+        object_palm_dist = torch.norm(self.object_pos - self.palm_center_pos, dim=-1)
+        object_palm_rel_speed = torch.norm(
+            self.object_linvel - self._palm_state[:, 7:10], dim=-1
+        )
+        object_speed = torch.norm(self.object_linvel, dim=-1)
+        object_ang_speed = torch.norm(self.object_angvel, dim=-1)
+
+        hold_height_ok = self.object_pos[:, 2] > self.falling_baton_catch_min_height
+        pre_catch_weight = (~self.lifted_object).float()
+        all_env_ids = torch.arange(self.num_envs, dtype=torch.long, device=self.device)
+        catch_reference_pos = self._falling_baton_current_catch_reference_pos(
+            all_env_ids
+        )
+        catch_target_z = (
+            catch_reference_pos[:, 2]
+            + float(self.falling_baton_intercept_target_z_offset)
+        )
+        gravity_abs = 9.81
+        object_above_catch = self.object_pos[:, 2] > catch_target_z
+        dz_to_catch = torch.clamp(self.object_pos[:, 2] - catch_target_z, min=0.0)
+        vz = self.object_linvel[:, 2]
+        t_disc = torch.clamp(vz * vz + 2.0 * gravity_abs * dz_to_catch, min=0.0)
+        t_to_catch = (vz + torch.sqrt(t_disc)) / gravity_abs
+        t_to_catch = torch.clamp(
+            t_to_catch,
+            min=0.0,
+            max=max(float(self.falling_baton_intercept_max_time), 1e-6),
+        )
+        predicted_catch_pos = self.object_pos + self.object_linvel * t_to_catch[:, None]
+        predicted_catch_pos[:, 2] = (
+            predicted_catch_pos[:, 2] - 0.5 * gravity_abs * t_to_catch * t_to_catch
+        )
+        predicted_catch_dist = torch.norm(
+            predicted_catch_pos - catch_reference_pos, dim=-1
+        )
+        falling_baton_intercept_rew = (
+            torch.exp(
+                -predicted_catch_dist
+                / max(float(self.falling_baton_intercept_distance_scale), 1e-6)
+            )
+            * pre_catch_weight
+            * object_above_catch.float()
+        )
+        catch_window_xy_dist = torch.norm(
+            self.object_pos[:, 0:2] - catch_reference_pos[:, 0:2], dim=-1
+        )
+        catch_window_z_dist = torch.abs(self.object_pos[:, 2] - catch_target_z)
+        falling_baton_catch_window_rew = (
+            torch.exp(
+                -catch_window_xy_dist
+                / max(float(self.falling_baton_catch_window_distance_scale), 1e-6)
+            )
+            * torch.exp(
+                -catch_window_z_dist
+                / max(float(self.falling_baton_catch_window_z_band), 1e-6)
+            )
+            * pre_catch_weight
+        )
+
+        dynamic_palm_reach_rew = (
+            torch.exp(
+                -object_palm_dist
+                / max(float(self.dynamic_grasp_palm_reach_distance_scale), 1e-6)
+            )
+            * pre_catch_weight
+        )
+        dynamic_fingertip_reach_rew = (
+            torch.exp(
+                -closest_fingertip_dist
+                / max(float(self.dynamic_grasp_fingertip_reach_distance_scale), 1e-6)
+            )
+            * pre_catch_weight
+        )
+
+        true_grasp_metrics = self._dynamic_true_grasp_metrics(
+            object_palm_dist, self.lifted_object
+        )
+        grasp_quality = true_grasp_metrics["grasp_quality"]
+        true_grasp = true_grasp_metrics["true_grasp"]
+        contact_like = true_grasp_metrics["finger_contact_count"] > 0
+        caught_object = hold_height_ok & true_grasp
+        self.lifted_object = self.lifted_object | caught_object
+        finger_contact_progress = torch.clamp(
+            true_grasp_metrics["finger_contact_count"]
+            / max(float(self.dynamic_grasp_min_finger_contacts), 1.0),
+            0.0,
+            1.0,
+        )
+        contact_progress = torch.clamp(
+            self.dynamic_grasp_contact_progress_finger_weight * finger_contact_progress
+            + self.dynamic_grasp_contact_progress_non_thumb_weight
+            * true_grasp_metrics["non_thumb_quality"]
+            + self.dynamic_grasp_contact_progress_thumb_weight
+            * true_grasp_metrics["thumb_score"],
+            0.0,
+            1.0,
+        )
+        dynamic_contact_progress_rew = contact_progress * torch.exp(
+            -object_palm_rel_speed
+            / max(float(self.dynamic_grasp_contact_progress_vel_scale), 1e-6)
+        )
+        dynamic_true_grasp_quality_rew = grasp_quality
+        dynamic_opposing_contact_rew = true_grasp_metrics["opposing_score"]
+        dynamic_thumb_opposition_rew = (
+            true_grasp_metrics["thumb_score"]
+            * true_grasp_metrics["non_thumb_quality"]
+            * (0.5 + 0.5 * true_grasp_metrics["opposing_score"])
+        )
+        dynamic_true_grasp_bonus_rew = true_grasp.float()
+
+        binary_affordance_metrics = self._dynamic_binary_affordance_contact_metrics(
+            true_grasp_metrics
+        )
+        dynamic_binary_affordance_positive_contact_rew = binary_affordance_metrics[
+            "positive_contact_rew"
+        ]
+        dynamic_binary_affordance_negative_contact_penalty = binary_affordance_metrics[
+            "negative_contact_penalty"
+        ]
+
+        stable_grasp_base = (
+            hold_height_ok
+            & (object_palm_rel_speed < self.dynamic_grasp_stable_object_palm_vel)
+            & (object_speed < self.falling_baton_stable_object_speed)
+            & (object_ang_speed < self.falling_baton_stable_object_ang_speed)
+            & (
+                closest_fingertip_dist
+                < self.dynamic_grasp_stable_fingertip_distance
+            )
+        )
+        unstable_contact = contact_like.float() * (~stable_grasp_base).float()
+        falling_baton_post_contact_rel_vel_penalty = (
+            object_palm_rel_speed * unstable_contact
+        )
+        falling_baton_post_contact_ang_vel_penalty = (
+            object_ang_speed
+            * unstable_contact
+            / max(float(self.falling_baton_stable_object_ang_speed), 1e-6)
+        )
+        stable_grasp = (
+            stable_grasp_base & true_grasp
+            if self.dynamic_grasp_require_true_grasp_for_success
+            else stable_grasp_base
+        )
+        stable_grasp_int = stable_grasp.to(
+            dtype=self.dynamic_grasp_success_steps.dtype
+        )
+        if self.dynamic_grasp_stable_counter_decay > 0:
+            counter_delta = torch.where(
+                stable_grasp,
+                stable_grasp_int,
+                -torch.full_like(
+                    self.dynamic_grasp_success_steps,
+                    int(self.dynamic_grasp_stable_counter_decay),
+                ),
+            )
+            self.dynamic_grasp_success_steps = torch.clamp(
+                self.dynamic_grasp_success_steps + counter_delta,
+                min=0,
+                max=self.dynamic_grasp_success_steps_required,
+            )
+        else:
+            self.dynamic_grasp_success_steps = (
+                self.dynamic_grasp_success_steps + stable_grasp_int
+            ) * stable_grasp_int
+        stable_grasp_progress = torch.clamp(
+            self.dynamic_grasp_success_steps.float()
+            / max(float(self.dynamic_grasp_success_steps_required), 1.0),
+            0.0,
+            1.0,
+        )
+        is_success = (
+            self.dynamic_grasp_success_steps
+            >= self.dynamic_grasp_success_steps_required
+        )
+        self.successes += is_success
+
+        dynamic_stable_hold_rew = stable_grasp.float()
+        dynamic_stable_grasp_progress_rew = stable_grasp_progress
+        dynamic_hold_object_vel_rew = (
+            torch.exp(
+                -object_palm_rel_speed
+                / max(float(self.dynamic_grasp_stable_object_palm_vel), 1e-6)
+            )
+            * true_grasp.float()
+            * caught_object.float()
+        )
+        dynamic_hold_object_ang_vel_penalty = (
+            object_ang_speed
+            * true_grasp.float()
+            * caught_object.float()
+            / max(float(self.falling_baton_stable_object_ang_speed), 1e-6)
+        )
+        dynamic_dropped_penalty = (
+            self.object_pos[:, 2] < self.falling_baton_drop_reset_z
+        ).float()
+        dynamic_timeout_penalty = (
+            (self.progress_buf >= self.max_episode_length - 1) & (~is_success)
+        ).float()
+
+        self._update_dynamic_grasp_success_speed_curriculum(
+            is_success=is_success,
+            lifted_object=caught_object,
+            stable_grasp=stable_grasp,
+            true_grasp=true_grasp,
+            legacy_success=is_success,
+            legacy_stable_grasp=stable_grasp,
+            contact_like=contact_like,
+        )
+
+        raw_terms = {
+            "raw_dynamic_palm_reach_rew": dynamic_palm_reach_rew,
+            "raw_dynamic_fingertip_reach_rew": dynamic_fingertip_reach_rew,
+            "raw_falling_baton_intercept_rew": falling_baton_intercept_rew,
+            "raw_falling_baton_catch_window_rew": falling_baton_catch_window_rew,
+            "raw_falling_baton_post_contact_rel_vel_penalty": falling_baton_post_contact_rel_vel_penalty,
+            "raw_falling_baton_post_contact_ang_vel_penalty": falling_baton_post_contact_ang_vel_penalty,
+            "raw_dynamic_contact_progress_rew": dynamic_contact_progress_rew,
+            "raw_dynamic_true_grasp_quality_rew": dynamic_true_grasp_quality_rew,
+            "raw_dynamic_opposing_contact_rew": dynamic_opposing_contact_rew,
+            "raw_dynamic_thumb_opposition_rew": dynamic_thumb_opposition_rew,
+            "raw_dynamic_true_grasp_bonus_rew": dynamic_true_grasp_bonus_rew,
+            "raw_dynamic_binary_affordance_positive_contact_rew": dynamic_binary_affordance_positive_contact_rew,
+            "raw_dynamic_binary_affordance_negative_contact_penalty": dynamic_binary_affordance_negative_contact_penalty,
+            "raw_dynamic_stable_hold_rew": dynamic_stable_hold_rew,
+            "raw_dynamic_stable_grasp_progress_rew": dynamic_stable_grasp_progress_rew,
+            "raw_dynamic_hold_object_vel_rew": dynamic_hold_object_vel_rew,
+            "raw_dynamic_hold_object_ang_vel_penalty": dynamic_hold_object_ang_vel_penalty,
+            "raw_dynamic_dropped_penalty": dynamic_dropped_penalty,
+            "raw_dynamic_timeout_penalty": dynamic_timeout_penalty,
+        }
+        for key, value in raw_terms.items():
+            self.rewards_episode[key] += value
+
+        dynamic_palm_reach_rew *= self.dynamic_grasp_palm_reach_rew_scale
+        dynamic_fingertip_reach_rew *= self.dynamic_grasp_fingertip_reach_rew_scale
+        falling_baton_intercept_rew *= self.falling_baton_intercept_rew_scale
+        falling_baton_catch_window_rew *= self.falling_baton_catch_window_rew_scale
+        falling_baton_post_contact_rel_vel_penalty = (
+            -falling_baton_post_contact_rel_vel_penalty
+            * self.falling_baton_post_contact_rel_vel_penalty_scale
+        )
+        falling_baton_post_contact_ang_vel_penalty = (
+            -falling_baton_post_contact_ang_vel_penalty
+            * self.falling_baton_post_contact_ang_vel_penalty_scale
+        )
+        dynamic_contact_progress_rew *= self.dynamic_grasp_contact_progress_rew_scale
+        dynamic_true_grasp_quality_rew *= (
+            self.dynamic_grasp_true_grasp_quality_rew_scale
+        )
+        dynamic_opposing_contact_rew *= self.dynamic_grasp_opposing_contact_rew_scale
+        dynamic_thumb_opposition_rew *= (
+            self.dynamic_grasp_thumb_opposition_rew_scale
+        )
+        dynamic_true_grasp_bonus_rew *= self.dynamic_grasp_true_grasp_bonus_rew_scale
+        dynamic_binary_affordance_positive_contact_rew *= (
+            self.dynamic_grasp_binary_affordance_positive_contact_rew_scale
+        )
+        dynamic_binary_affordance_negative_contact_penalty = (
+            -dynamic_binary_affordance_negative_contact_penalty
+            * self.dynamic_grasp_binary_affordance_negative_contact_penalty_scale
+        )
+        dynamic_stable_hold_rew *= self.dynamic_grasp_stable_hold_rew_scale
+        dynamic_stable_grasp_progress_rew *= (
+            self.dynamic_grasp_stable_progress_rew_scale
+        )
+        dynamic_hold_object_vel_rew *= self.dynamic_grasp_hold_object_vel_rew_scale
+        dynamic_hold_object_ang_vel_penalty = (
+            -dynamic_hold_object_ang_vel_penalty
+            * self.dynamic_grasp_hold_object_ang_vel_penalty_scale
+        )
+        dynamic_dropped_penalty = (
+            -dynamic_dropped_penalty * self.dynamic_grasp_dropped_penalty_scale
+        )
+        dynamic_timeout_penalty = (
+            -dynamic_timeout_penalty * self.dynamic_grasp_timeout_penalty_scale
+        )
+        dynamic_success_bonus = is_success.float() * self.dynamic_grasp_success_bonus
+
+        scaled_terms = {
+            "dynamic_palm_reach_rew": dynamic_palm_reach_rew,
+            "dynamic_fingertip_reach_rew": dynamic_fingertip_reach_rew,
+            "falling_baton_intercept_rew": falling_baton_intercept_rew,
+            "falling_baton_catch_window_rew": falling_baton_catch_window_rew,
+            "falling_baton_post_contact_rel_vel_penalty": falling_baton_post_contact_rel_vel_penalty,
+            "falling_baton_post_contact_ang_vel_penalty": falling_baton_post_contact_ang_vel_penalty,
+            "dynamic_contact_progress_rew": dynamic_contact_progress_rew,
+            "dynamic_true_grasp_quality_rew": dynamic_true_grasp_quality_rew,
+            "dynamic_opposing_contact_rew": dynamic_opposing_contact_rew,
+            "dynamic_thumb_opposition_rew": dynamic_thumb_opposition_rew,
+            "dynamic_true_grasp_bonus_rew": dynamic_true_grasp_bonus_rew,
+            "dynamic_binary_affordance_positive_contact_rew": dynamic_binary_affordance_positive_contact_rew,
+            "dynamic_binary_affordance_negative_contact_penalty": dynamic_binary_affordance_negative_contact_penalty,
+            "dynamic_stable_hold_rew": dynamic_stable_hold_rew,
+            "dynamic_stable_grasp_progress_rew": dynamic_stable_grasp_progress_rew,
+            "dynamic_hold_object_vel_rew": dynamic_hold_object_vel_rew,
+            "dynamic_hold_object_ang_vel_penalty": dynamic_hold_object_ang_vel_penalty,
+            "dynamic_dropped_penalty": dynamic_dropped_penalty,
+            "dynamic_timeout_penalty": dynamic_timeout_penalty,
+        }
+        reward = (
+            sum(scaled_terms.values())
+            + dynamic_success_bonus
+            + kuka_actions_penalty
+            + hand_actions_penalty
+        )
+        self.rew_buf[:] = reward
+
+        resets = self._compute_resets(is_success)
+        self.reset_buf[:] = resets
+        if self.cfg["env"]["forceNoReset"]:
+            self.reset_buf[:] = False
+
+        for key, value in scaled_terms.items():
+            self.rewards_episode[key] += value
+            self.extras[key] = value.mean().item()
+        self.rewards_episode["dynamic_success_bonus"] += dynamic_success_bonus
+        self.rewards_episode["kuka_actions_penalty"] += kuka_actions_penalty
+        self.rewards_episode["hand_actions_penalty"] += hand_actions_penalty
+        self.rewards_episode["total_reward"] += reward
+
+        info_successes = self._successes_for_info()
+        self.extras["successes"] = info_successes
+        self.extras["success_ratio"] = (
+            info_successes.mean().item() / max(self.max_consecutive_successes, 1)
+        )
+        self.extras["lift_hold_success_ratio"] = is_success.float().mean().item()
+        self.extras["dynamic_success_bonus"] = dynamic_success_bonus.mean().item()
+        self.extras["dynamic_grasp_success_steps"] = (
+            self.dynamic_grasp_success_steps.float().mean().item()
+        )
+        self.extras["dynamic_lifted_fraction"] = caught_object.float().mean().item()
+        self.extras["dynamic_stable_grasp_fraction"] = (
+            stable_grasp.float().mean().item()
+        )
+        self.extras["dynamic_stable_grasp_base_fraction"] = (
+            stable_grasp_base.float().mean().item()
+        )
+        self.extras["dynamic_true_grasp_fraction"] = true_grasp.float().mean().item()
+        self.extras["dynamic_true_grasp_quality"] = grasp_quality.mean().item()
+        self.extras["dynamic_contact_fraction"] = (
+            true_grasp_metrics["finger_contact_count"]
+            >= max(float(self.dynamic_grasp_min_finger_contacts), 1.0)
+        ).float().mean().item()
+        self.extras["dynamic_object_palm_rel_speed"] = (
+            object_palm_rel_speed.mean().item()
+        )
+        self.extras["dynamic_object_palm_dist"] = object_palm_dist.mean().item()
+        self.extras["dynamic_object_xy_speed"] = (
+            torch.norm(self.object_linvel[:, 0:2], dim=-1).mean().item()
+        )
+        self.extras["dynamic_commanded_xy_speed"] = (
+            torch.norm(self.dynamic_grasp_object_xy_velocity, dim=-1).mean().item()
+        )
+        self.extras["dynamic_hold_object_speed"] = object_speed.mean().item()
+        self.extras["dynamic_hold_object_ang_speed"] = object_ang_speed.mean().item()
+        self.extras["dynamic_binary_affordance_enabled"] = float(
+            self.dynamic_grasp_use_binary_affordance_labels
+        )
+        self.extras["dynamic_binary_affordance_valid_contact_fraction"] = (
+            binary_affordance_metrics["valid_contact_fraction"].mean().item()
+        )
+        self.extras["dynamic_binary_affordance_positive_contact_fraction"] = (
+            binary_affordance_metrics["positive_contact_fraction"].mean().item()
+        )
+        self.extras["dynamic_binary_affordance_negative_contact_fraction"] = (
+            binary_affordance_metrics["negative_contact_fraction"].mean().item()
+        )
+        self.extras["dynamic_binary_affordance_positive_contact_score"] = (
+            binary_affordance_metrics["positive_contact_score"].mean().item()
+        )
+        self.extras["dynamic_binary_affordance_negative_contact_score"] = (
+            binary_affordance_metrics["negative_contact_score"].mean().item()
+        )
+        self.extras["falling_baton_object_z"] = self.object_pos[:, 2].mean().item()
+        self.extras["falling_baton_object_palm_xy_dist"] = torch.norm(
+            self.object_pos[:, 0:2] - self.palm_center_pos[:, 0:2], dim=-1
+        ).mean().item()
+        spawn_reference_pos = self._falling_baton_spawn_reference_pos(all_env_ids)
+        self.extras["falling_baton_object_spawn_ref_xy_dist"] = torch.norm(
+            self.object_pos[:, 0:2] - spawn_reference_pos[:, 0:2], dim=-1
+        ).mean().item()
+        self.extras["falling_baton_predicted_catch_dist"] = (
+            predicted_catch_dist.mean().item()
+        )
+        self.extras["falling_baton_time_to_catch"] = t_to_catch.mean().item()
+        self.extras["falling_baton_catch_window_xy_dist"] = (
+            catch_window_xy_dist.mean().item()
+        )
+        self.extras["falling_baton_catch_window_z_dist"] = (
+            catch_window_z_dist.mean().item()
+        )
+        self.extras["falling_baton_contact_like_fraction"] = (
+            contact_like.float().mean().item()
+        )
+        self.extras["falling_baton_down_speed"] = (
+            torch.clamp(-self.object_linvel[:, 2], min=0.0).mean().item()
+        )
+        self.extras["falling_baton_catch_height_fraction"] = (
+            hold_height_ok.float().mean().item()
+        )
+        self.extras[
+            "dynamic_grasp_speed_curriculum_alpha"
+        ] = self._dynamic_grasp_speed_curriculum_alpha()
+
+        self._log_dynamic_object_pool_metrics(
+            is_success=is_success,
+            lifted_object=caught_object,
+            stable_grasp=stable_grasp,
+            lift_progress=caught_object.float(),
+            object_palm_rel_speed=object_palm_rel_speed,
+            true_grasp=true_grasp,
+            grasp_quality=grasp_quality,
+            scoop_lift=true_grasp_metrics["scoop_lift"],
+            palm_only_lift=true_grasp_metrics["palm_only_lift"],
+            legacy_success=is_success,
+            legacy_stable_grasp=stable_grasp,
+            lift_hold_success=is_success,
+        )
+        self.prev_dynamic_grasp_contact_like[:] = (
+            true_grasp_metrics["finger_contact_count"] > 0
+        )
+        self.true_objective = self._true_objective()
+        return self.rew_buf, is_success
 
     def _compute_dynamic_tabletop_grasp_reward(self) -> Tuple[Tensor, Tensor]:
         lifting_rew, lift_bonus_rew, lifted_object = self._lifting_reward()
@@ -4484,6 +7293,9 @@ class SimToolReal(VecTask):
         palm_pregrasp_xy_dist = torch.norm(
             self.palm_center_pos[:, 0:2] - pregrasp_target_xy, dim=-1
         )
+        pregrasp_ready = (
+            palm_pregrasp_xy_dist < self.dynamic_grasp_pregrasp_ready_distance
+        )
         dynamic_pregrasp_alignment_rew = (
             torch.exp(
                 -palm_pregrasp_xy_dist
@@ -4519,6 +7331,17 @@ class SimToolReal(VecTask):
             torch.square(self.target_accel_for_penalty[:, : self.num_arm_dofs]),
             dim=-1,
         )
+        arm_home_span = (
+            self.arm_hand_dof_upper_limits[: self.num_arm_dofs]
+            - self.arm_hand_dof_lower_limits[: self.num_arm_dofs]
+        ).clamp(min=1e-6)
+        arm_home_error = (
+            self.arm_hand_dof_pos[:, : self.num_arm_dofs]
+            - self.hand_arm_default_dof_pos[: self.num_arm_dofs].unsqueeze(0)
+        ) / arm_home_span.unsqueeze(0)
+        dynamic_safe_arm_home_posture_penalty = torch.sum(
+            torch.square(arm_home_error), dim=-1
+        )
         dynamic_safe_hand_target_delta_penalty = torch.sum(
             torch.square(
                 self.target_delta_for_penalty[
@@ -4534,6 +7357,45 @@ class SimToolReal(VecTask):
         lifted_object_float = lifted_object.float()
         object_palm_dist = torch.norm(
             self.object_pos - self.palm_center_pos, dim=-1
+        )
+        not_lifted_float = (~lifted_object).float()
+        reach_phase_weight = torch.ones_like(object_palm_dist)
+        if self.dynamic_grasp_reach_ready_cutoff > 0.0:
+            fade = max(float(self.dynamic_grasp_reach_ready_fade_distance), 1e-6)
+            reach_phase_weight = torch.clamp(
+                (palm_pregrasp_xy_dist - self.dynamic_grasp_reach_ready_cutoff)
+                / fade,
+                min=0.0,
+                max=1.0,
+            )
+            keep = torch.clamp(
+                torch.tensor(
+                    self.dynamic_grasp_reach_ready_keep_fraction,
+                    device=self.device,
+                    dtype=reach_phase_weight.dtype,
+                ),
+                min=0.0,
+                max=1.0,
+            )
+            reach_phase_weight = keep + (1.0 - keep) * reach_phase_weight
+        dynamic_palm_reach_rew = (
+            torch.exp(
+                -object_palm_dist
+                / max(float(self.dynamic_grasp_palm_reach_distance_scale), 1e-6)
+            )
+            * not_lifted_float
+            * reach_phase_weight
+        )
+        dynamic_fingertip_reach_rew = (
+            torch.exp(
+                -closest_fingertip_dist
+                / max(
+                    float(self.dynamic_grasp_fingertip_reach_distance_scale),
+                    1e-6,
+                )
+            )
+            * not_lifted_float
+            * reach_phase_weight
         )
         true_grasp_metrics = self._dynamic_true_grasp_metrics(
             object_palm_dist, lifted_object
@@ -4551,6 +7413,202 @@ class SimToolReal(VecTask):
         dynamic_opposing_contact_rew = (
             true_grasp_metrics["opposing_score"] * (~lifted_object).float()
         )
+        dynamic_thumb_opposition_rew = (
+            true_grasp_metrics["thumb_score"]
+            * true_grasp_metrics["non_thumb_quality"]
+            * (0.5 + 0.5 * true_grasp_metrics["opposing_score"])
+            * (~lifted_object).float()
+        )
+        dynamic_true_grasp_bonus_rew = true_grasp.float() * (~lifted_object).float()
+        finger_contact_progress = torch.clamp(
+            true_grasp_metrics["finger_contact_count"]
+            / max(float(self.dynamic_grasp_min_finger_contacts), 1.0),
+            0.0,
+            1.0,
+        )
+        non_thumb_contact_progress = torch.clamp(
+            true_grasp_metrics["non_thumb_contact_count"]
+            / max(float(self.dynamic_grasp_min_non_thumb_contacts), 1.0),
+            0.0,
+            1.0,
+        )
+        dynamic_contact_progress = torch.clamp(
+            self.dynamic_grasp_contact_progress_finger_weight
+            * finger_contact_progress
+            + self.dynamic_grasp_contact_progress_non_thumb_weight
+            * non_thumb_contact_progress
+            + self.dynamic_grasp_contact_progress_thumb_weight
+            * true_grasp_metrics["thumb_contact"].float(),
+            0.0,
+            1.0,
+        )
+        dynamic_closed_contact = (
+            true_grasp_metrics["thumb_contact"]
+            & (
+                true_grasp_metrics["non_thumb_contact_count"]
+                >= self.dynamic_grasp_min_non_thumb_contacts
+            )
+            & (
+                true_grasp_metrics["finger_contact_count"]
+                >= self.dynamic_grasp_min_finger_contacts
+            )
+        )
+        contact_no_lift_active = (
+            dynamic_closed_contact
+            & (~lifted_object)
+            & (lift_progress < self.dynamic_grasp_contact_no_lift_progress_margin)
+        )
+        contact_no_lift_int = contact_no_lift_active.to(
+            dtype=self.dynamic_grasp_closed_contact_no_lift_steps.dtype
+        )
+        self.dynamic_grasp_closed_contact_no_lift_steps = (
+            self.dynamic_grasp_closed_contact_no_lift_steps + contact_no_lift_int
+        ) * contact_no_lift_int
+        if self.dynamic_grasp_contact_reward_decay_steps > 0:
+            contact_decay_progress = torch.clamp(
+                (
+                    self.dynamic_grasp_closed_contact_no_lift_steps.float()
+                    - float(self.dynamic_grasp_contact_reward_decay_grace_steps)
+                )
+                / max(float(self.dynamic_grasp_contact_reward_decay_steps), 1.0),
+                min=0.0,
+                max=1.0,
+            )
+            contact_reward_decay = 1.0 - contact_decay_progress * (
+                1.0
+                - min(
+                    max(
+                        float(self.dynamic_grasp_contact_reward_decay_min_fraction),
+                        0.0,
+                    ),
+                    1.0,
+                )
+            )
+        else:
+            contact_decay_progress = torch.zeros_like(dynamic_contact_progress)
+            contact_reward_decay = torch.ones_like(dynamic_contact_progress)
+        if self.dynamic_grasp_decay_contact_rewards_near_lift_threshold:
+            lift_progress_decay_power = max(
+                float(self.dynamic_grasp_contact_reward_lift_progress_decay_power),
+                1e-6,
+            )
+            lift_progress_decay_min_fraction = min(
+                max(
+                    float(
+                        self.dynamic_grasp_contact_reward_lift_progress_decay_min_fraction
+                    ),
+                    0.0,
+                ),
+                1.0,
+            )
+            contact_lift_progress_decay = torch.pow(
+                torch.clamp(1.0 - lift_progress, min=0.0, max=1.0),
+                lift_progress_decay_power,
+            )
+            contact_lift_progress_decay = (
+                lift_progress_decay_min_fraction
+                + (1.0 - lift_progress_decay_min_fraction)
+                * contact_lift_progress_decay
+            )
+            contact_reward_decay = contact_reward_decay * contact_lift_progress_decay
+            dynamic_true_grasp_quality_rew *= contact_lift_progress_decay
+            dynamic_opposing_contact_rew *= contact_lift_progress_decay
+            dynamic_thumb_opposition_rew *= contact_lift_progress_decay
+            dynamic_true_grasp_bonus_rew *= contact_lift_progress_decay
+        else:
+            contact_lift_progress_decay = torch.ones_like(dynamic_contact_progress)
+        contact_no_lift_penalty_progress = torch.clamp(
+            (
+                self.dynamic_grasp_closed_contact_no_lift_steps.float()
+                - float(self.dynamic_grasp_contact_no_lift_penalty_grace_steps)
+            )
+            / max(float(self.dynamic_grasp_contact_no_lift_penalty_ramp_steps), 1.0),
+            min=0.0,
+            max=1.0,
+        )
+        contact_progress_vel_gate = torch.exp(
+            -object_palm_rel_speed
+            / max(float(self.dynamic_grasp_contact_progress_vel_scale), 1e-6)
+        )
+        dynamic_contact_progress_rew = (
+            dynamic_contact_progress
+            * contact_progress_vel_gate
+            * not_lifted_float
+            * contact_reward_decay
+        )
+        dynamic_closed_contact_bonus_rew = (
+            dynamic_closed_contact.float()
+            * contact_progress_vel_gate
+            * not_lifted_float
+            * contact_reward_decay
+        )
+        dynamic_contact_lift_progress_rew = (
+            lift_progress
+            * torch.clamp(grasp_quality + 0.5 * dynamic_closed_contact.float(), 0.0, 1.0)
+            * not_lifted_float
+            * contact_lift_progress_decay
+        )
+        dynamic_contact_lift_velocity_rew = (
+            torch.clamp(
+                self.object_linvel[:, 2]
+                / max(float(self.dynamic_grasp_contact_lift_velocity_scale), 1e-6),
+                min=0.0,
+                max=1.0,
+            )
+            * dynamic_closed_contact.float()
+            * torch.clamp(grasp_quality + 0.25, 0.0, 1.0)
+            * not_lifted_float
+        )
+        dynamic_contact_palm_lift_rew = (
+            torch.clamp(
+                self._palm_state[:, 9]
+                / max(float(self.dynamic_grasp_contact_palm_lift_vel_scale), 1e-6),
+                min=0.0,
+                max=1.0,
+            )
+            * dynamic_closed_contact.float()
+            * torch.clamp(grasp_quality + 0.25, 0.0, 1.0)
+            * not_lifted_float
+        )
+        dynamic_contact_no_lift_penalty = (
+            contact_no_lift_penalty_progress
+            * contact_no_lift_active.float()
+            * not_lifted_float
+        )
+        binary_affordance_metrics = self._dynamic_binary_affordance_contact_metrics(
+            true_grasp_metrics
+        )
+        dynamic_binary_affordance_positive_contact_rew = (
+            binary_affordance_metrics["positive_contact_rew"]
+        )
+        dynamic_binary_affordance_negative_contact_penalty = (
+            binary_affordance_metrics["negative_contact_penalty"]
+        )
+        positive_affordance_gate = torch.clamp(
+            binary_affordance_metrics["positive_contact_score"]
+            * max(float(self.dynamic_grasp_binary_affordance_lift_gate_scale), 0.0),
+            0.0,
+            1.0,
+        )
+        negative_affordance_gate = torch.clamp(
+            binary_affordance_metrics["negative_contact_score"]
+            * max(float(self.dynamic_grasp_binary_affordance_lift_gate_scale), 0.0),
+            0.0,
+            1.0,
+        )
+        dynamic_binary_affordance_lift_progress_rew = (
+            lift_progress
+            * true_grasp.float()
+            * positive_affordance_gate
+            * not_lifted_float
+        )
+        dynamic_binary_affordance_lifted_true_grasp_rew = (
+            lifted_object_float * true_grasp.float() * positive_affordance_gate
+        )
+        dynamic_binary_affordance_negative_lift_penalty = (
+            torch.clamp(lift_progress + lifted_object_float, 0.0, 1.0)
+            * negative_affordance_gate
+        )
         dynamic_scoop_lift_penalty = (
             true_grasp_metrics["scoop_lift"].float() * (1.0 - grasp_quality)
         )
@@ -4567,15 +7625,143 @@ class SimToolReal(VecTask):
             lift_bonus_rew *= lift_reward_gate
             dynamic_lift_progress_rew *= lift_reward_gate
 
+        hold_target_z = (
+            self.object_init_state[:, 2] + self.dynamic_grasp_hold_height_offset
+        )
+        dynamic_hold_height_error = torch.abs(self.object_pos[:, 2] - hold_target_z)
+        dynamic_hold_height_rew = (
+            torch.exp(
+                -dynamic_hold_height_error
+                / max(float(self.dynamic_grasp_hold_height_scale), 1e-6)
+            )
+            * lifted_object_float
+        )
+        dynamic_hold_height_ok = (
+            dynamic_hold_height_error < self.dynamic_grasp_hold_height_tolerance
+        )
+        object_speed = torch.norm(self.object_linvel, dim=-1)
+        object_ang_speed = torch.norm(self.object_angvel, dim=-1)
+        dynamic_hold_object_vel_rew = (
+            torch.exp(
+                -object_speed
+                / max(float(self.dynamic_grasp_hold_object_vel_scale), 1e-6)
+            )
+            * lifted_object_float
+        )
+        dynamic_hold_object_vel_ok = (
+            object_speed < self.dynamic_grasp_hold_object_vel_success_threshold
+        )
+        dynamic_hold_object_ang_vel_penalty = (
+            torch.square(
+                torch.clamp(
+                    object_ang_speed - self.dynamic_grasp_hold_object_ang_vel_margin,
+                    min=0.0,
+                )
+            )
+            * lifted_object_float
+        )
+        palm_upright_axis = (
+            quat_axis(self._palm_rot, self.dynamic_grasp_hold_palm_upright_axis)
+            * self.dynamic_grasp_hold_palm_upright_sign
+        )
+        dynamic_hold_palm_upright_dot = palm_upright_axis[:, 2]
+        dynamic_hold_palm_upright_rew = (
+            torch.clamp(
+                (
+                    dynamic_hold_palm_upright_dot
+                    - self.dynamic_grasp_hold_palm_upright_min_dot
+                )
+                / max(1.0 - self.dynamic_grasp_hold_palm_upright_min_dot, 1e-6),
+                min=0.0,
+                max=1.0,
+            )
+            * lifted_object_float
+        )
+        dynamic_hold_palm_upright_ok = (
+            dynamic_hold_palm_upright_dot
+            > self.dynamic_grasp_hold_palm_upright_min_dot
+        )
+        dynamic_hold_success_mask = torch.ones_like(lifted_object)
+        if (
+            self.dynamic_grasp_lift_hold_enabled
+            and self.dynamic_grasp_hold_success_requires_height
+        ):
+            dynamic_hold_success_mask = (
+                dynamic_hold_success_mask & dynamic_hold_height_ok
+            )
+        if (
+            self.dynamic_grasp_lift_hold_enabled
+            and self.dynamic_grasp_hold_success_requires_low_object_vel
+        ):
+            dynamic_hold_success_mask = (
+                dynamic_hold_success_mask & dynamic_hold_object_vel_ok
+            )
+        if (
+            self.dynamic_grasp_lift_hold_enabled
+            and self.dynamic_grasp_hold_success_requires_palm_upright
+        ):
+            dynamic_hold_success_mask = (
+                dynamic_hold_success_mask & dynamic_hold_palm_upright_ok
+            )
+
         stable_grasp_base = (
             lifted_object
             & (mean_fingertip_dist < self.dynamic_grasp_stable_fingertip_distance)
             & (object_palm_rel_speed < self.dynamic_grasp_stable_object_palm_vel)
+            & dynamic_hold_success_mask
         )
         if self.dynamic_grasp_require_true_grasp_for_success:
             stable_grasp = stable_grasp_base & true_grasp
         else:
             stable_grasp = stable_grasp_base
+        if self.distillation_weight_buf is not None:
+            distillation_weight = (
+                self.distillation_weight_base
+                + self.distillation_weight_lifted * lifted_object.float()
+                + self.distillation_weight_true_grasp * true_grasp.float()
+                + self.distillation_weight_stable_grasp * stable_grasp.float()
+            )
+            if self.distillation_weight_max > 0.0:
+                distillation_weight = torch.clamp(
+                    distillation_weight,
+                    min=0.0,
+                    max=self.distillation_weight_max,
+                )
+            self.distillation_weight_buf[:] = distillation_weight.unsqueeze(-1)
+            self.extras["distillation_weight_mean"] = (
+                distillation_weight.mean().item()
+            )
+        legacy_stable_grasp_base = (
+            lifted_object
+            & (
+                mean_fingertip_dist
+                < self.dynamic_grasp_legacy_stable_fingertip_distance
+            )
+            & (
+                object_palm_rel_speed
+                < self.dynamic_grasp_legacy_stable_object_palm_vel
+            )
+        )
+        if self.dynamic_grasp_legacy_require_true_grasp_for_success:
+            legacy_stable_grasp = legacy_stable_grasp_base & true_grasp
+        else:
+            legacy_stable_grasp = legacy_stable_grasp_base
+        legacy_stable_grasp_int = legacy_stable_grasp.to(
+            dtype=self.dynamic_grasp_legacy_success_steps.dtype
+        )
+        self.dynamic_grasp_legacy_success_steps = (
+            self.dynamic_grasp_legacy_success_steps + legacy_stable_grasp_int
+        ) * legacy_stable_grasp_int
+        legacy_success = (
+            self.dynamic_grasp_legacy_success_steps
+            >= self.dynamic_grasp_legacy_success_steps_required
+        )
+        legacy_success_progress = torch.clamp(
+            self.dynamic_grasp_legacy_success_steps.float()
+            / max(float(self.dynamic_grasp_legacy_success_steps_required), 1.0),
+            0.0,
+            1.0,
+        )
         if self.dynamic_grasp_stable_counter_decay > 0:
             stable_grasp_int = stable_grasp.to(
                 dtype=self.dynamic_grasp_success_steps.dtype
@@ -4633,10 +7819,30 @@ class SimToolReal(VecTask):
             (closest_fingertip_dist < self.dynamic_grasp_stable_fingertip_distance)
             | lifted_object
         )
-        pregrasp_ready = (
-            palm_pregrasp_xy_dist < self.dynamic_grasp_pregrasp_ready_distance
-        )
+        dynamic_motion_release_contact = torch.zeros_like(lifted_object)
+        if self.dynamic_grasp_release_motion_on_contact:
+            release_contact_distance = max(
+                float(self.dynamic_grasp_release_motion_contact_distance), 1e-6
+            )
+            release_finger_contacts = (
+                true_grasp_metrics["fingertip_surface_dist"] < release_contact_distance
+            ).float().sum(dim=-1)
+            dynamic_motion_release_contact = (
+                release_finger_contacts
+                >= float(self.dynamic_grasp_release_motion_min_finger_contacts)
+            )
+            dynamic_motion_release_now = dynamic_motion_release_contact
+            if self.dynamic_grasp_release_motion_on_lift:
+                dynamic_motion_release_now = dynamic_motion_release_now | lifted_object
+            self.dynamic_grasp_motion_released[:] = (
+                self.dynamic_grasp_motion_released | dynamic_motion_release_now
+            )
         palm_xy_speed = torch.norm(palm_xy_vel, dim=-1)
+        dynamic_ready_bonus_rew = (
+            pregrasp_ready.float()
+            * (~contact_like).float()
+            * not_lifted_float
+        )
         dynamic_pregrasp_hold_rew = (
             torch.exp(
                 -palm_pregrasp_xy_dist
@@ -4649,6 +7855,59 @@ class SimToolReal(VecTask):
             * (~contact_like).float()
             * (~lifted_object).float()
         )
+        palm_object_z = self.palm_center_pos[:, 2] - self.object_pos[:, 2]
+        pregrasp_free_phase = (~contact_like).float() * not_lifted_float
+        topdown_height_error = torch.abs(
+            palm_object_z - self.dynamic_grasp_pregrasp_topdown_height_offset
+        )
+        dynamic_pregrasp_topdown_height_rew = (
+            torch.exp(
+                -topdown_height_error
+                / max(float(self.dynamic_grasp_pregrasp_topdown_height_scale), 1e-6)
+            )
+            * pregrasp_free_phase
+        )
+        low_palm_violation = torch.clamp(
+            self.dynamic_grasp_pregrasp_min_palm_height_offset - palm_object_z,
+            min=0.0,
+        )
+        dynamic_pregrasp_low_palm_penalty = torch.clamp(
+            torch.square(
+                low_palm_violation
+                / max(float(self.dynamic_grasp_pregrasp_low_palm_height_scale), 1e-6)
+            ),
+            max=float(self.dynamic_grasp_pregrasp_low_palm_max_penalty),
+        ) * not_lifted_float
+        if (
+            self.dynamic_grasp_table_clearance_body_handles.numel() > 0
+            and self.dynamic_grasp_table_clearance_penalty_scale > 0.0
+        ):
+            table_clearance_body_z = self.rigid_body_states[
+                :, self.dynamic_grasp_table_clearance_body_handles, 2
+            ]
+            table_clearance_limit_z = (
+                self.object_init_state[:, 2]
+                - self.dynamic_grasp_table_clearance_reference_offset
+                + self.dynamic_grasp_table_clearance_margin
+            ).unsqueeze(-1)
+            table_clearance_violation = torch.clamp(
+                table_clearance_limit_z - table_clearance_body_z,
+                min=0.0,
+            )
+            dynamic_table_clearance_penalty = torch.clamp(
+                torch.mean(
+                    torch.square(
+                        table_clearance_violation
+                        / max(float(self.dynamic_grasp_table_clearance_scale), 1e-6)
+                    ),
+                    dim=-1,
+                ),
+                max=float(self.dynamic_grasp_table_clearance_max_penalty),
+            ) * not_lifted_float
+            dynamic_table_clearance_min_z = table_clearance_body_z.min(dim=-1).values
+        else:
+            dynamic_table_clearance_penalty = torch.zeros_like(object_palm_dist)
+            dynamic_table_clearance_min_z = torch.zeros_like(object_palm_dist)
         if self.dynamic_grasp_early_contact_grace_distance > 0.0:
             early_contact_not_ready_weight = torch.clamp(
                 (
@@ -4787,6 +8046,15 @@ class SimToolReal(VecTask):
             self.dynamic_grasp_success_steps
             >= self.dynamic_grasp_success_steps_required
         )
+        self._update_dynamic_grasp_success_speed_curriculum(
+            is_success=is_success,
+            lifted_object=lifted_object,
+            stable_grasp=stable_grasp,
+            true_grasp=true_grasp,
+            legacy_success=legacy_success,
+            legacy_stable_grasp=legacy_stable_grasp,
+            contact_like=contact_like,
+        )
         dynamic_timeout_penalty = (
             (self.progress_buf >= self.max_episode_length - 1) & (~is_success)
         ).float()
@@ -4800,6 +8068,28 @@ class SimToolReal(VecTask):
             "raw_dynamic_velocity_match_rew"
         ] += dynamic_velocity_match_rew
         self.rewards_episode["raw_dynamic_intercept_rew"] += dynamic_intercept_rew
+        self.rewards_episode["raw_dynamic_palm_reach_rew"] += dynamic_palm_reach_rew
+        self.rewards_episode[
+            "raw_dynamic_fingertip_reach_rew"
+        ] += dynamic_fingertip_reach_rew
+        self.rewards_episode[
+            "raw_dynamic_ready_bonus_rew"
+        ] += dynamic_ready_bonus_rew
+        self.rewards_episode[
+            "raw_dynamic_contact_progress_rew"
+        ] += dynamic_contact_progress_rew
+        self.rewards_episode[
+            "raw_dynamic_closed_contact_bonus_rew"
+        ] += dynamic_closed_contact_bonus_rew
+        self.rewards_episode[
+            "raw_dynamic_contact_lift_progress_rew"
+        ] += dynamic_contact_lift_progress_rew
+        self.rewards_episode[
+            "raw_dynamic_contact_lift_velocity_rew"
+        ] += dynamic_contact_lift_velocity_rew
+        self.rewards_episode[
+            "raw_dynamic_contact_no_lift_penalty"
+        ] += dynamic_contact_no_lift_penalty
         self.rewards_episode[
             "raw_dynamic_pregrasp_alignment_rew"
         ] += dynamic_pregrasp_alignment_rew
@@ -4831,6 +8121,18 @@ class SimToolReal(VecTask):
             "raw_dynamic_lifted_enclosure_vel_rew"
         ] += dynamic_lifted_enclosure_vel_rew
         self.rewards_episode[
+            "raw_dynamic_hold_height_rew"
+        ] += dynamic_hold_height_rew
+        self.rewards_episode[
+            "raw_dynamic_hold_object_vel_rew"
+        ] += dynamic_hold_object_vel_rew
+        self.rewards_episode[
+            "raw_dynamic_hold_object_ang_vel_penalty"
+        ] += dynamic_hold_object_ang_vel_penalty
+        self.rewards_episode[
+            "raw_dynamic_hold_palm_upright_rew"
+        ] += dynamic_hold_palm_upright_rew
+        self.rewards_episode[
             "raw_dynamic_pre_contact_slow_rew"
         ] += dynamic_pre_contact_slow_rew
         self.rewards_episode[
@@ -4860,11 +8162,23 @@ class SimToolReal(VecTask):
             "raw_dynamic_safe_arm_target_accel_penalty"
         ] += dynamic_safe_arm_target_accel_penalty
         self.rewards_episode[
+            "raw_dynamic_safe_arm_home_posture_penalty"
+        ] += dynamic_safe_arm_home_posture_penalty
+        self.rewards_episode[
             "raw_dynamic_safe_hand_target_delta_penalty"
         ] += dynamic_safe_hand_target_delta_penalty
         self.rewards_episode[
             "raw_dynamic_pregrasp_hold_rew"
         ] += dynamic_pregrasp_hold_rew
+        self.rewards_episode[
+            "raw_dynamic_pregrasp_topdown_height_rew"
+        ] += dynamic_pregrasp_topdown_height_rew
+        self.rewards_episode[
+            "raw_dynamic_pregrasp_low_palm_penalty"
+        ] += dynamic_pregrasp_low_palm_penalty
+        self.rewards_episode[
+            "raw_dynamic_table_clearance_penalty"
+        ] += dynamic_table_clearance_penalty
         self.rewards_episode[
             "raw_dynamic_early_contact_penalty"
         ] += dynamic_early_contact_penalty
@@ -4893,6 +8207,30 @@ class SimToolReal(VecTask):
             "raw_dynamic_opposing_contact_rew"
         ] += dynamic_opposing_contact_rew
         self.rewards_episode[
+            "raw_dynamic_thumb_opposition_rew"
+        ] += dynamic_thumb_opposition_rew
+        self.rewards_episode[
+            "raw_dynamic_true_grasp_bonus_rew"
+        ] += dynamic_true_grasp_bonus_rew
+        self.rewards_episode[
+            "raw_dynamic_contact_palm_lift_rew"
+        ] += dynamic_contact_palm_lift_rew
+        self.rewards_episode[
+            "raw_dynamic_binary_affordance_positive_contact_rew"
+        ] += dynamic_binary_affordance_positive_contact_rew
+        self.rewards_episode[
+            "raw_dynamic_binary_affordance_negative_contact_penalty"
+        ] += dynamic_binary_affordance_negative_contact_penalty
+        self.rewards_episode[
+            "raw_dynamic_binary_affordance_lift_progress_rew"
+        ] += dynamic_binary_affordance_lift_progress_rew
+        self.rewards_episode[
+            "raw_dynamic_binary_affordance_lifted_true_grasp_rew"
+        ] += dynamic_binary_affordance_lifted_true_grasp_rew
+        self.rewards_episode[
+            "raw_dynamic_binary_affordance_negative_lift_penalty"
+        ] += dynamic_binary_affordance_negative_lift_penalty
+        self.rewards_episode[
             "raw_dynamic_scoop_lift_penalty"
         ] += dynamic_scoop_lift_penalty
         self.rewards_episode[
@@ -4904,6 +8242,27 @@ class SimToolReal(VecTask):
         lifting_rew *= self.lifting_rew_scale
         dynamic_velocity_match_rew *= self.dynamic_grasp_velocity_match_rew_scale
         dynamic_intercept_rew *= self.dynamic_grasp_intercept_rew_scale
+        dynamic_palm_reach_rew *= self.dynamic_grasp_palm_reach_rew_scale
+        dynamic_fingertip_reach_rew *= (
+            self.dynamic_grasp_fingertip_reach_rew_scale
+        )
+        dynamic_ready_bonus_rew *= self.dynamic_grasp_ready_bonus_rew_scale
+        dynamic_contact_progress_rew *= (
+            self.dynamic_grasp_contact_progress_rew_scale
+        )
+        dynamic_closed_contact_bonus_rew *= (
+            self.dynamic_grasp_closed_contact_bonus_rew_scale
+        )
+        dynamic_contact_lift_progress_rew *= (
+            self.dynamic_grasp_contact_lift_progress_rew_scale
+        )
+        dynamic_contact_lift_velocity_rew *= (
+            self.dynamic_grasp_contact_lift_velocity_rew_scale
+        )
+        dynamic_contact_no_lift_penalty = (
+            -dynamic_contact_no_lift_penalty
+            * self.dynamic_grasp_contact_no_lift_penalty_scale
+        )
         dynamic_pregrasp_alignment_rew *= (
             self.dynamic_grasp_pregrasp_alignment_rew_scale
         )
@@ -4928,6 +8287,15 @@ class SimToolReal(VecTask):
         )
         dynamic_lifted_enclosure_vel_rew *= (
             self.dynamic_grasp_lifted_enclosure_vel_rew_scale
+        )
+        dynamic_hold_height_rew *= self.dynamic_grasp_hold_height_rew_scale
+        dynamic_hold_object_vel_rew *= self.dynamic_grasp_hold_object_vel_rew_scale
+        dynamic_hold_object_ang_vel_penalty = (
+            -dynamic_hold_object_ang_vel_penalty
+            * self.dynamic_grasp_hold_object_ang_vel_penalty_scale
+        )
+        dynamic_hold_palm_upright_rew *= (
+            self.dynamic_grasp_hold_palm_upright_rew_scale
         )
         dynamic_pre_contact_slow_rew *= self.dynamic_grasp_pre_contact_slow_rew_scale
         dynamic_controlled_contact_rew *= (
@@ -4964,11 +8332,26 @@ class SimToolReal(VecTask):
             -dynamic_safe_arm_target_accel_penalty
             * self.dynamic_grasp_safe_arm_target_accel_penalty_scale
         )
+        dynamic_safe_arm_home_posture_penalty = (
+            -dynamic_safe_arm_home_posture_penalty
+            * self.dynamic_grasp_safe_arm_home_posture_penalty_scale
+        )
         dynamic_safe_hand_target_delta_penalty = (
             -dynamic_safe_hand_target_delta_penalty
             * self.dynamic_grasp_safe_hand_target_delta_penalty_scale
         )
         dynamic_pregrasp_hold_rew *= self.dynamic_grasp_pregrasp_hold_rew_scale
+        dynamic_pregrasp_topdown_height_rew *= (
+            self.dynamic_grasp_pregrasp_topdown_height_rew_scale
+        )
+        dynamic_pregrasp_low_palm_penalty = (
+            -dynamic_pregrasp_low_palm_penalty
+            * self.dynamic_grasp_pregrasp_low_palm_penalty_scale
+        )
+        dynamic_table_clearance_penalty = (
+            -dynamic_table_clearance_penalty
+            * self.dynamic_grasp_table_clearance_penalty_scale
+        )
         dynamic_early_contact_penalty = (
             -dynamic_early_contact_penalty
             * self.dynamic_grasp_early_contact_penalty_scale
@@ -4994,6 +8377,30 @@ class SimToolReal(VecTask):
         dynamic_opposing_contact_rew *= (
             self.dynamic_grasp_opposing_contact_rew_scale
         )
+        dynamic_thumb_opposition_rew *= (
+            self.dynamic_grasp_thumb_opposition_rew_scale
+        )
+        dynamic_true_grasp_bonus_rew *= self.dynamic_grasp_true_grasp_bonus_rew_scale
+        dynamic_contact_palm_lift_rew *= (
+            self.dynamic_grasp_contact_palm_lift_rew_scale
+        )
+        dynamic_binary_affordance_positive_contact_rew *= (
+            self.dynamic_grasp_binary_affordance_positive_contact_rew_scale
+        )
+        dynamic_binary_affordance_negative_contact_penalty = (
+            -dynamic_binary_affordance_negative_contact_penalty
+            * self.dynamic_grasp_binary_affordance_negative_contact_penalty_scale
+        )
+        dynamic_binary_affordance_lift_progress_rew *= (
+            self.dynamic_grasp_binary_affordance_lift_progress_rew_scale
+        )
+        dynamic_binary_affordance_lifted_true_grasp_rew *= (
+            self.dynamic_grasp_binary_affordance_lifted_true_grasp_rew_scale
+        )
+        dynamic_binary_affordance_negative_lift_penalty = (
+            -dynamic_binary_affordance_negative_lift_penalty
+            * self.dynamic_grasp_binary_affordance_negative_lift_penalty_scale
+        )
         dynamic_scoop_lift_penalty = (
             -dynamic_scoop_lift_penalty * self.dynamic_grasp_scoop_lift_penalty_scale
         )
@@ -5010,6 +8417,14 @@ class SimToolReal(VecTask):
             + lift_bonus_rew
             + dynamic_velocity_match_rew
             + dynamic_intercept_rew
+            + dynamic_palm_reach_rew
+            + dynamic_fingertip_reach_rew
+            + dynamic_ready_bonus_rew
+            + dynamic_contact_progress_rew
+            + dynamic_closed_contact_bonus_rew
+            + dynamic_contact_lift_progress_rew
+            + dynamic_contact_lift_velocity_rew
+            + dynamic_contact_no_lift_penalty
             + dynamic_pregrasp_alignment_rew
             + dynamic_affordance_target_rew
             + dynamic_enclosure_rew
@@ -5021,6 +8436,10 @@ class SimToolReal(VecTask):
             + dynamic_lifted_centering_rew
             + dynamic_lifted_height_hold_rew
             + dynamic_lifted_enclosure_vel_rew
+            + dynamic_hold_height_rew
+            + dynamic_hold_object_vel_rew
+            + dynamic_hold_object_ang_vel_penalty
+            + dynamic_hold_palm_upright_rew
             + dynamic_pre_contact_slow_rew
             + dynamic_controlled_contact_rew
             + dynamic_impact_penalty
@@ -5032,8 +8451,12 @@ class SimToolReal(VecTask):
             + dynamic_safe_action_delta_penalty
             + dynamic_safe_arm_target_delta_penalty
             + dynamic_safe_arm_target_accel_penalty
+            + dynamic_safe_arm_home_posture_penalty
             + dynamic_safe_hand_target_delta_penalty
             + dynamic_pregrasp_hold_rew
+            + dynamic_pregrasp_topdown_height_rew
+            + dynamic_pregrasp_low_palm_penalty
+            + dynamic_table_clearance_penalty
             + dynamic_early_contact_penalty
             + dynamic_pre_contact_rel_vel_penalty
             + dynamic_ready_enclosure_rew
@@ -5043,6 +8466,14 @@ class SimToolReal(VecTask):
             + dynamic_lifted_true_grasp_rew
             + dynamic_quality_lift_progress_rew
             + dynamic_opposing_contact_rew
+            + dynamic_thumb_opposition_rew
+            + dynamic_true_grasp_bonus_rew
+            + dynamic_contact_palm_lift_rew
+            + dynamic_binary_affordance_positive_contact_rew
+            + dynamic_binary_affordance_negative_contact_penalty
+            + dynamic_binary_affordance_lift_progress_rew
+            + dynamic_binary_affordance_lifted_true_grasp_rew
+            + dynamic_binary_affordance_negative_lift_penalty
             + dynamic_scoop_lift_penalty
             + dynamic_palm_only_lift_penalty
             + dynamic_success_bonus
@@ -5079,7 +8510,27 @@ class SimToolReal(VecTask):
         self.extras["dynamic_stable_grasp_progress"] = (
             stable_grasp_progress.mean().item()
         )
+        self.extras["legacy_success_ratio"] = legacy_success.float().mean().item()
+        self.extras["lift_hold_success_ratio"] = is_success.float().mean().item()
+        self.extras["dynamic_legacy_success_steps"] = (
+            self.dynamic_grasp_legacy_success_steps.float().mean().item()
+        )
+        self.extras["dynamic_legacy_success_progress"] = (
+            legacy_success_progress.mean().item()
+        )
+        self.extras["dynamic_legacy_stable_grasp_fraction"] = (
+            legacy_stable_grasp.float().mean().item()
+        )
+        self.extras["dynamic_legacy_stable_grasp_base_fraction"] = (
+            legacy_stable_grasp_base.float().mean().item()
+        )
         self.extras["dynamic_contact_fraction"] = contact_like.float().mean().item()
+        self.extras["dynamic_motion_released_fraction"] = (
+            self.dynamic_grasp_motion_released.float().mean().item()
+        )
+        self.extras["dynamic_motion_release_contact_fraction"] = (
+            dynamic_motion_release_contact.float().mean().item()
+        )
         self.extras["dynamic_lifted_fraction"] = lifted_object.float().mean().item()
         self.extras["dynamic_stable_grasp_fraction"] = (
             stable_grasp.float().mean().item()
@@ -5105,6 +8556,15 @@ class SimToolReal(VecTask):
         )
         self.extras["dynamic_opposing_score"] = (
             true_grasp_metrics["opposing_score"].mean().item()
+        )
+        self.extras["dynamic_thumb_score"] = (
+            true_grasp_metrics["thumb_score"].mean().item()
+        )
+        self.extras["dynamic_non_thumb_quality"] = (
+            true_grasp_metrics["non_thumb_quality"].mean().item()
+        )
+        self.extras["dynamic_finger_count_quality"] = (
+            true_grasp_metrics["finger_count_quality"].mean().item()
         )
         self.extras["dynamic_scoop_lift_fraction"] = (
             true_grasp_metrics["scoop_lift"].float().mean().item()
@@ -5152,6 +8612,54 @@ class SimToolReal(VecTask):
         self.extras["dynamic_affordance_target_rew"] = (
             dynamic_affordance_target_rew.mean().item()
         )
+        self.extras["dynamic_palm_reach_rew"] = (
+            dynamic_palm_reach_rew.mean().item()
+        )
+        self.extras["dynamic_fingertip_reach_rew"] = (
+            dynamic_fingertip_reach_rew.mean().item()
+        )
+        self.extras["dynamic_reach_phase_weight"] = (
+            reach_phase_weight.mean().item()
+        )
+        self.extras["dynamic_ready_bonus_rew"] = (
+            dynamic_ready_bonus_rew.mean().item()
+        )
+        self.extras["dynamic_contact_progress"] = (
+            dynamic_contact_progress.mean().item()
+        )
+        self.extras["dynamic_contact_progress_rew"] = (
+            dynamic_contact_progress_rew.mean().item()
+        )
+        self.extras["dynamic_closed_contact_fraction"] = (
+            dynamic_closed_contact.float().mean().item()
+        )
+        self.extras["dynamic_closed_contact_bonus_rew"] = (
+            dynamic_closed_contact_bonus_rew.mean().item()
+        )
+        self.extras["dynamic_contact_lift_progress_rew"] = (
+            dynamic_contact_lift_progress_rew.mean().item()
+        )
+        self.extras["dynamic_contact_lift_velocity_rew"] = (
+            dynamic_contact_lift_velocity_rew.mean().item()
+        )
+        self.extras["dynamic_contact_no_lift_penalty"] = (
+            dynamic_contact_no_lift_penalty.mean().item()
+        )
+        self.extras["dynamic_contact_reward_decay"] = (
+            contact_reward_decay.mean().item()
+        )
+        self.extras["dynamic_contact_lift_progress_decay"] = (
+            contact_lift_progress_decay.mean().item()
+        )
+        self.extras["dynamic_contact_decay_progress"] = (
+            contact_decay_progress.mean().item()
+        )
+        self.extras["dynamic_contact_no_lift_steps"] = (
+            self.dynamic_grasp_closed_contact_no_lift_steps.float().mean().item()
+        )
+        self.extras["dynamic_contact_no_lift_penalty_progress"] = (
+            contact_no_lift_penalty_progress.mean().item()
+        )
         self.extras["dynamic_pregrasp_ready_fraction"] = (
             pregrasp_ready.float().mean().item()
         )
@@ -5163,6 +8671,38 @@ class SimToolReal(VecTask):
         self.extras["dynamic_lifted_object_palm_dist"] = (
             (object_palm_dist * lifted_object_float).sum() / lifted_count
         ).item()
+        self.extras["dynamic_hold_height_error"] = (
+            dynamic_hold_height_error.mean().item()
+        )
+        self.extras["dynamic_hold_height_ok_fraction"] = (
+            dynamic_hold_height_ok.float().mean().item()
+        )
+        self.extras["dynamic_hold_object_speed"] = object_speed.mean().item()
+        self.extras["dynamic_hold_object_vel_ok_fraction"] = (
+            dynamic_hold_object_vel_ok.float().mean().item()
+        )
+        self.extras["dynamic_hold_object_ang_speed"] = (
+            object_ang_speed.mean().item()
+        )
+        self.extras["dynamic_hold_palm_upright_dot"] = (
+            dynamic_hold_palm_upright_dot.mean().item()
+        )
+        self.extras["dynamic_hold_palm_upright_ok_fraction"] = (
+            dynamic_hold_palm_upright_ok.float().mean().item()
+        )
+        self.extras["dynamic_hold_success_mask_fraction"] = (
+            dynamic_hold_success_mask.float().mean().item()
+        )
+        self.extras["dynamic_hold_height_rew"] = dynamic_hold_height_rew.mean().item()
+        self.extras["dynamic_hold_object_vel_rew"] = (
+            dynamic_hold_object_vel_rew.mean().item()
+        )
+        self.extras["dynamic_hold_object_ang_vel_penalty"] = (
+            dynamic_hold_object_ang_vel_penalty.mean().item()
+        )
+        self.extras["dynamic_hold_palm_upright_rew"] = (
+            dynamic_hold_palm_upright_rew.mean().item()
+        )
         self.extras["dynamic_contact_onset_fraction"] = (
             contact_onset.float().mean().item()
         )
@@ -5188,11 +8728,30 @@ class SimToolReal(VecTask):
         self.extras["dynamic_safe_arm_target_accel_penalty"] = (
             dynamic_safe_arm_target_accel_penalty.mean().item()
         )
+        self.extras["dynamic_safe_arm_home_posture_penalty"] = (
+            dynamic_safe_arm_home_posture_penalty.mean().item()
+        )
         self.extras["dynamic_safe_hand_target_delta_penalty"] = (
             dynamic_safe_hand_target_delta_penalty.mean().item()
         )
         self.extras["dynamic_pregrasp_hold_rew"] = (
             dynamic_pregrasp_hold_rew.mean().item()
+        )
+        self.extras["dynamic_palm_object_z"] = palm_object_z.mean().item()
+        self.extras["dynamic_pregrasp_topdown_height_error"] = (
+            topdown_height_error.mean().item()
+        )
+        self.extras["dynamic_pregrasp_topdown_height_rew"] = (
+            dynamic_pregrasp_topdown_height_rew.mean().item()
+        )
+        self.extras["dynamic_pregrasp_low_palm_penalty"] = (
+            dynamic_pregrasp_low_palm_penalty.mean().item()
+        )
+        self.extras["dynamic_table_clearance_min_z"] = (
+            dynamic_table_clearance_min_z.mean().item()
+        )
+        self.extras["dynamic_table_clearance_penalty"] = (
+            dynamic_table_clearance_penalty.mean().item()
         )
         self.extras["dynamic_early_contact_penalty"] = (
             dynamic_early_contact_penalty.mean().item()
@@ -5224,6 +8783,54 @@ class SimToolReal(VecTask):
         self.extras["dynamic_opposing_contact_rew"] = (
             dynamic_opposing_contact_rew.mean().item()
         )
+        self.extras["dynamic_thumb_opposition_rew"] = (
+            dynamic_thumb_opposition_rew.mean().item()
+        )
+        self.extras["dynamic_true_grasp_bonus_rew"] = (
+            dynamic_true_grasp_bonus_rew.mean().item()
+        )
+        self.extras["dynamic_contact_palm_lift_rew"] = (
+            dynamic_contact_palm_lift_rew.mean().item()
+        )
+        self.extras["dynamic_binary_affordance_enabled"] = float(
+            self.dynamic_grasp_use_binary_affordance_labels
+        )
+        self.extras["dynamic_binary_affordance_valid_contact_fraction"] = (
+            binary_affordance_metrics["valid_contact_fraction"].mean().item()
+        )
+        self.extras["dynamic_binary_affordance_positive_contact_fraction"] = (
+            binary_affordance_metrics["positive_contact_fraction"].mean().item()
+        )
+        self.extras["dynamic_binary_affordance_negative_contact_fraction"] = (
+            binary_affordance_metrics["negative_contact_fraction"].mean().item()
+        )
+        self.extras["dynamic_binary_affordance_positive_contact_score"] = (
+            binary_affordance_metrics["positive_contact_score"].mean().item()
+        )
+        self.extras["dynamic_binary_affordance_negative_contact_score"] = (
+            binary_affordance_metrics["negative_contact_score"].mean().item()
+        )
+        self.extras["dynamic_binary_affordance_positive_contact_rew"] = (
+            dynamic_binary_affordance_positive_contact_rew.mean().item()
+        )
+        self.extras["dynamic_binary_affordance_negative_contact_penalty"] = (
+            dynamic_binary_affordance_negative_contact_penalty.mean().item()
+        )
+        self.extras["dynamic_binary_affordance_positive_lift_gate"] = (
+            positive_affordance_gate.mean().item()
+        )
+        self.extras["dynamic_binary_affordance_negative_lift_gate"] = (
+            negative_affordance_gate.mean().item()
+        )
+        self.extras["dynamic_binary_affordance_lift_progress_rew"] = (
+            dynamic_binary_affordance_lift_progress_rew.mean().item()
+        )
+        self.extras["dynamic_binary_affordance_lifted_true_grasp_rew"] = (
+            dynamic_binary_affordance_lifted_true_grasp_rew.mean().item()
+        )
+        self.extras["dynamic_binary_affordance_negative_lift_penalty"] = (
+            dynamic_binary_affordance_negative_lift_penalty.mean().item()
+        )
         self.extras["dynamic_scoop_lift_penalty"] = (
             dynamic_scoop_lift_penalty.mean().item()
         )
@@ -5233,6 +8840,23 @@ class SimToolReal(VecTask):
         self.extras[
             "dynamic_grasp_speed_curriculum_alpha"
         ] = self._dynamic_grasp_speed_curriculum_alpha()
+        if self.dynamic_grasp_speed_curriculum_mode in {
+            "success",
+            "success_gate",
+            "performance",
+        }:
+            self.extras["dynamic_grasp_speed_curriculum_metric"] = (
+                self.dynamic_grasp_speed_curriculum_metric_value
+            )
+            self.extras["dynamic_grasp_speed_curriculum_metric_ema"] = (
+                self.dynamic_grasp_speed_curriculum_metric_ema
+            )
+            self.extras["dynamic_grasp_speed_curriculum_start_success"] = (
+                self.dynamic_grasp_speed_curriculum_start_success
+            )
+            self.extras["dynamic_grasp_speed_curriculum_full_success"] = (
+                self.dynamic_grasp_speed_curriculum_full_success
+            )
         self._log_dynamic_object_pool_metrics(
             is_success=is_success,
             lifted_object=lifted_object,
@@ -5243,6 +8867,9 @@ class SimToolReal(VecTask):
             grasp_quality=grasp_quality,
             scoop_lift=true_grasp_metrics["scoop_lift"],
             palm_only_lift=true_grasp_metrics["palm_only_lift"],
+            legacy_success=legacy_success,
+            legacy_stable_grasp=legacy_stable_grasp,
+            lift_hold_success=is_success,
         )
         self.prev_dynamic_grasp_contact_like[:] = contact_like
         self.true_objective = self._true_objective()
@@ -5255,6 +8882,26 @@ class SimToolReal(VecTask):
             (lift_bonus_rew, "lift_bonus_rew"),
             (dynamic_velocity_match_rew, "dynamic_velocity_match_rew"),
             (dynamic_intercept_rew, "dynamic_intercept_rew"),
+            (dynamic_palm_reach_rew, "dynamic_palm_reach_rew"),
+            (dynamic_fingertip_reach_rew, "dynamic_fingertip_reach_rew"),
+            (dynamic_ready_bonus_rew, "dynamic_ready_bonus_rew"),
+            (dynamic_contact_progress_rew, "dynamic_contact_progress_rew"),
+            (
+                dynamic_closed_contact_bonus_rew,
+                "dynamic_closed_contact_bonus_rew",
+            ),
+            (
+                dynamic_contact_lift_progress_rew,
+                "dynamic_contact_lift_progress_rew",
+            ),
+            (
+                dynamic_contact_lift_velocity_rew,
+                "dynamic_contact_lift_velocity_rew",
+            ),
+            (
+                dynamic_contact_no_lift_penalty,
+                "dynamic_contact_no_lift_penalty",
+            ),
             (
                 dynamic_pregrasp_alignment_rew,
                 "dynamic_pregrasp_alignment_rew",
@@ -5281,6 +8928,13 @@ class SimToolReal(VecTask):
                 dynamic_lifted_enclosure_vel_rew,
                 "dynamic_lifted_enclosure_vel_rew",
             ),
+            (dynamic_hold_height_rew, "dynamic_hold_height_rew"),
+            (dynamic_hold_object_vel_rew, "dynamic_hold_object_vel_rew"),
+            (
+                dynamic_hold_object_ang_vel_penalty,
+                "dynamic_hold_object_ang_vel_penalty",
+            ),
+            (dynamic_hold_palm_upright_rew, "dynamic_hold_palm_upright_rew"),
             (dynamic_pre_contact_slow_rew, "dynamic_pre_contact_slow_rew"),
             (dynamic_controlled_contact_rew, "dynamic_controlled_contact_rew"),
             (dynamic_impact_penalty, "dynamic_impact_penalty"),
@@ -5305,10 +8959,26 @@ class SimToolReal(VecTask):
                 "dynamic_safe_arm_target_accel_penalty",
             ),
             (
+                dynamic_safe_arm_home_posture_penalty,
+                "dynamic_safe_arm_home_posture_penalty",
+            ),
+            (
                 dynamic_safe_hand_target_delta_penalty,
                 "dynamic_safe_hand_target_delta_penalty",
             ),
             (dynamic_pregrasp_hold_rew, "dynamic_pregrasp_hold_rew"),
+            (
+                dynamic_pregrasp_topdown_height_rew,
+                "dynamic_pregrasp_topdown_height_rew",
+            ),
+            (
+                dynamic_pregrasp_low_palm_penalty,
+                "dynamic_pregrasp_low_palm_penalty",
+            ),
+            (
+                dynamic_table_clearance_penalty,
+                "dynamic_table_clearance_penalty",
+            ),
             (dynamic_early_contact_penalty, "dynamic_early_contact_penalty"),
             (
                 dynamic_pre_contact_rel_vel_penalty,
@@ -5327,6 +8997,29 @@ class SimToolReal(VecTask):
                 "dynamic_quality_lift_progress_rew",
             ),
             (dynamic_opposing_contact_rew, "dynamic_opposing_contact_rew"),
+            (dynamic_thumb_opposition_rew, "dynamic_thumb_opposition_rew"),
+            (dynamic_true_grasp_bonus_rew, "dynamic_true_grasp_bonus_rew"),
+            (dynamic_contact_palm_lift_rew, "dynamic_contact_palm_lift_rew"),
+            (
+                dynamic_binary_affordance_positive_contact_rew,
+                "dynamic_binary_affordance_positive_contact_rew",
+            ),
+            (
+                dynamic_binary_affordance_negative_contact_penalty,
+                "dynamic_binary_affordance_negative_contact_penalty",
+            ),
+            (
+                dynamic_binary_affordance_lift_progress_rew,
+                "dynamic_binary_affordance_lift_progress_rew",
+            ),
+            (
+                dynamic_binary_affordance_lifted_true_grasp_rew,
+                "dynamic_binary_affordance_lifted_true_grasp_rew",
+            ),
+            (
+                dynamic_binary_affordance_negative_lift_penalty,
+                "dynamic_binary_affordance_negative_lift_penalty",
+            ),
             (dynamic_scoop_lift_penalty, "dynamic_scoop_lift_penalty"),
             (
                 dynamic_palm_only_lift_penalty,
@@ -5354,7 +9047,12 @@ class SimToolReal(VecTask):
         ones = torch.ones_like(self.reset_buf)
         zeros = torch.zeros_like(self.reset_buf)
 
-        object_z_low = torch.where(self.object_pos[:, 2] < 0.1, ones, zeros)  # fall
+        object_z_low_threshold = (
+            self.falling_baton_drop_reset_z if self.falling_baton_grasp else 0.1
+        )
+        object_z_low = torch.where(
+            self.object_pos[:, 2] < object_z_low_threshold, ones, zeros
+        )  # fall
         if self.max_consecutive_successes > 0:
             # Reset progress buffer if max_consecutive_successes > 0
             self.progress_buf = torch.where(
@@ -5520,6 +9218,8 @@ class SimToolReal(VecTask):
     def compute_kuka_reward(self) -> Tuple[Tensor, Tensor]:
         if self.dynamic_tabletop_grasp:
             return self._compute_dynamic_tabletop_grasp_reward()
+        if self.falling_baton_grasp:
+            return self._compute_falling_baton_grasp_reward()
 
         lifting_rew, lift_bonus_rew, lifted_object = self._lifting_reward()
         fingertip_delta_rew, hand_delta_penalty = self._distance_delta_rewards(
@@ -6032,6 +9732,24 @@ class SimToolReal(VecTask):
             1, self.num_fingertips, 1
         )
         self.fingertip_pos_rel_palm = self.fingertip_pos_offset - palm_center_repeat
+        if (
+            getattr(self, "falling_baton_grasp", False)
+            and self.falling_baton_palm_relative_xy_reference
+            in {"home", "home_catch_center"}
+            and (
+                not hasattr(self, "falling_baton_home_catch_reference_pos")
+                or self.falling_baton_home_catch_reference_pos.shape
+                != self.palm_center_pos.shape
+            )
+        ):
+            all_env_ids = torch.arange(
+                self.num_envs, dtype=torch.long, device=self.device
+            )
+            self.falling_baton_home_catch_reference_pos = (
+                self._falling_baton_current_catch_reference_pos(all_env_ids)
+                .detach()
+                .clone()
+            )
 
         if self.fingertip_pos_rel_object_prev is None:
             self.fingertip_pos_rel_object_prev = self.fingertip_pos_rel_object.clone()
@@ -6183,6 +9901,28 @@ class SimToolReal(VecTask):
             palm_rot=obs_dict["palm_rot"],
             add_noise=False,
         )
+        if any(
+            key.startswith("teacher_object_pointcloud_")
+            for key in self.distillation_teacher_obs_list
+        ):
+            (
+                obs_dict["teacher_object_pointcloud_rel_palm"],
+                obs_dict["teacher_object_pointcloud_centroid_rel_palm"],
+                obs_dict["teacher_object_pointcloud_vel_rel_palm"],
+                obs_dict["teacher_object_pointcloud_tracking_confidence"],
+            ) = self._teacher_object_pointcloud_observation(
+                object_pos=self.object_pos,
+                object_rot=self.object_rot,
+                object_vel=obs_dict["object_vel"],
+                palm_pos=self.palm_center_pos,
+                palm_rot=obs_dict["palm_rot"],
+                palm_vel=obs_dict["palm_vel"],
+            )
+            self.extras["teacher_object_pointcloud_tracking_confidence"] = (
+                obs_dict["teacher_object_pointcloud_tracking_confidence"]
+                .mean()
+                .item()
+            )
         # closest distance to the furthest keypoint, achieved so far in this episode
         obs_dict["closest_keypoint_max_dist"] = (
             self.closest_keypoint_max_dist.unsqueeze(-1)
@@ -6288,6 +10028,18 @@ class SimToolReal(VecTask):
                     add_noise=True,
                 )
             )
+        pointcloud_confidence = obs_dict["object_pointcloud_tracking_confidence"]
+        self.extras["object_pointcloud_tracking_confidence"] = (
+            pointcloud_confidence.mean().item()
+        )
+        if self.object_pointcloud_use_rgbd_render:
+            self.extras["rgbd_pointcloud_valid_fraction"] = (
+                (pointcloud_confidence > 0.0).float().mean().item()
+            )
+            if self.object_pointcloud_temporal_fusion:
+                self.extras["rgbd_pointcloud_temporal_history_fill"] = (
+                    self._object_pointcloud_temporal_history_fill
+                )
         # closest distance to the furthest keypoint, achieved so far in this episode
         obs_dict["closest_keypoint_max_dist"] = (
             self.closest_keypoint_max_dist.unsqueeze(-1) * self.turn_off_extra_obs_scale
@@ -6314,6 +10066,15 @@ class SimToolReal(VecTask):
         obs_dict["reward"] = (
             reward_obs_scale * self.rew_buf * self.turn_off_extra_obs_scale
         )
+
+        if self.teacher_obs_buf is not None:
+            self.teacher_obs_buf = torch.cat(
+                [
+                    obs_dict[k].reshape(self.num_envs, -1)
+                    for k in self.distillation_teacher_obs_list
+                ],
+                dim=-1,
+            )
 
         # ##############################################################################################################
         # Create obs_buf
@@ -6543,7 +10304,21 @@ class SimToolReal(VecTask):
     def reset_object_pose(
         self, env_ids: Tensor, reset_buf_idxs=None, tensor_reset=True
     ):
-        if len(env_ids) > 0 and reset_buf_idxs is None and tensor_reset:
+        if (
+            len(env_ids) > 0
+            and reset_buf_idxs is None
+            and tensor_reset
+            and self.falling_baton_grasp
+        ):
+            obj_indices = self.object_indices[env_ids]
+            self._reset_falling_baton_object(env_ids, obj_indices)
+
+            noise_min, noise_max = self.cfg["env"]["objectScaleNoiseMultiplierRange"]
+            self.object_scale_noise_multiplier[env_ids] = torch_rand_float(
+                noise_min, noise_max, (len(env_ids), 3), device=self.device
+            )
+
+        elif len(env_ids) > 0 and reset_buf_idxs is None and tensor_reset:
             obj_indices = self.object_indices[env_ids]
             table_indices = self.table_indices[env_ids]
 
@@ -6645,8 +10420,11 @@ class SimToolReal(VecTask):
             self.furthest_hand_dist[env_ids] = -1
             self.lifted_object[env_ids] = False
             self.dynamic_grasp_success_steps[env_ids] = 0
+            self.dynamic_grasp_legacy_success_steps[env_ids] = 0
+            self.dynamic_grasp_motion_released[env_ids] = False
             self.prev_dynamic_grasp_contact_like[env_ids] = False
-            if self.dynamic_tabletop_grasp and reset_buf_idxs is not None:
+            self.dynamic_grasp_closed_contact_no_lift_steps[env_ids] = 0
+            if (self.dynamic_tabletop_grasp or self.falling_baton_grasp) and reset_buf_idxs is not None:
                 self.dynamic_grasp_object_xy_velocity[env_ids] = self.root_state_tensor[
                     self.object_indices[env_ids], 7:9
                 ]
@@ -6656,7 +10434,10 @@ class SimToolReal(VecTask):
         self.deferred_set_actor_root_state_tensor_indexed(
             [self.object_indices[env_ids]]
         )
-        self.deferred_set_actor_root_state_tensor_indexed([self.table_indices[env_ids]])
+        if self.create_table:
+            self.deferred_set_actor_root_state_tensor_indexed(
+                [self.table_indices[env_ids]]
+            )
 
     def deferred_set_actor_root_state_tensor_indexed(
         self, obj_indices: List[Tensor]
@@ -6726,6 +10507,12 @@ class SimToolReal(VecTask):
             if hasattr(self, "object_pointcloud_velocity_initialized"):
                 self.object_pointcloud_velocity_initialized[env_ids] = False
                 self.prev_object_pointcloud_centroid_rel_palm[env_ids] = 0.0
+            if hasattr(self, "object_pointcloud_history_valid"):
+                self.object_pointcloud_history_points[env_ids] = 0.0
+                self.object_pointcloud_history_centroids[env_ids] = 0.0
+                self.object_pointcloud_history_confidence[env_ids] = 0.0
+                self.object_pointcloud_history_valid[env_ids] = False
+                self._object_pointcloud_temporal_cache_step = -1
 
             self.prev_episode_closest_keypoint_max_dist[env_ids] = torch.where(
                 self.prev_episode_successes[env_ids] > 0,
@@ -6982,10 +10769,28 @@ class SimToolReal(VecTask):
             self.target_delta_for_penalty[reset_env_ids, :] = 0.0
             self.target_accel_for_penalty[reset_env_ids, :] = 0.0
 
-        control_actions = actions[:, : self.num_hand_arm_dofs]
-        assert control_actions.shape == (self.num_envs, self.num_hand_arm_dofs), (
+        control_actions = actions[:, : self.num_robot_control_actions]
+        assert control_actions.shape == (
+            self.num_envs,
+            self.num_robot_control_actions,
+        ), (
             f"control_actions.shape: {control_actions.shape}, expected: "
-            f"({self.num_envs}, {self.num_hand_arm_dofs})"
+            f"({self.num_envs}, {self.num_robot_control_actions})"
+        )
+        arm_policy_actions = control_actions[:, : self.num_arm_dofs]
+        hand_policy_actions = control_actions[
+            :, self.num_arm_dofs : self.num_robot_control_actions
+        ]
+        hand_physical_actions = self._expand_policy_hand_actions(hand_policy_actions)
+        physical_control_actions = torch.cat(
+            [arm_policy_actions, hand_physical_actions], dim=-1
+        )
+        assert physical_control_actions.shape == (
+            self.num_envs,
+            self.num_hand_arm_dofs,
+        ), (
+            f"physical_control_actions.shape: {physical_control_actions.shape}, "
+            f"expected: ({self.num_envs}, {self.num_hand_arm_dofs})"
         )
 
         if self.policy_action_interface == "joint_target":
@@ -6999,11 +10804,11 @@ class SimToolReal(VecTask):
             positive_span = upper_limits - target_center
             negative_span = target_center - lower_limits
             targets = torch.where(
-                control_actions >= 0.0,
+                physical_control_actions >= 0.0,
                 target_center.unsqueeze(0)
-                + control_actions * positive_span.unsqueeze(0),
+                + physical_control_actions * positive_span.unsqueeze(0),
                 target_center.unsqueeze(0)
-                + control_actions * negative_span.unsqueeze(0),
+                + physical_control_actions * negative_span.unsqueeze(0),
             )
             self.cur_targets[:, : self.num_arm_dofs] = (
                 self.arm_moving_average * targets[:, : self.num_arm_dofs]
@@ -7028,7 +10833,7 @@ class SimToolReal(VecTask):
                     self.arm_hand_dof_pos[:, : self.num_arm_dofs]
                     + self.hand_dof_speed_scale
                     * self.dt
-                    * self.actions[:, : self.num_arm_dofs]
+                    * arm_policy_actions
                 )
                 self.cur_targets[:, : self.num_arm_dofs] = tensor_clamp(
                     targets,
@@ -7041,7 +10846,7 @@ class SimToolReal(VecTask):
                     self.prev_targets[:, : self.num_arm_dofs]
                     + self.hand_dof_speed_scale
                     * self.dt
-                    * self.actions[:, : self.num_arm_dofs]
+                    * arm_policy_actions
                 )
                 self.cur_targets[:, : self.num_arm_dofs] = tensor_clamp(
                     targets,
@@ -7058,7 +10863,7 @@ class SimToolReal(VecTask):
 
             # hand
             self.cur_targets[:, self.num_arm_dofs : self.num_hand_arm_dofs] = scale(
-                control_actions[:, self.num_arm_dofs : self.num_hand_arm_dofs],
+                hand_physical_actions,
                 self.arm_hand_dof_lower_limits[
                     self.num_arm_dofs : self.num_hand_arm_dofs
                 ],
@@ -7765,6 +11570,100 @@ class SimToolReal(VecTask):
         assert 0 <= alpha <= 1, f"alpha must be between 0 and 1, got {alpha}"
         return init + (final - init) * alpha
 
+    def _setup_hand_action_mapping(self, robot_dof_names: List[str]) -> None:
+        hand_dof_names = robot_dof_names[
+            self.num_arm_dofs : self.num_hand_arm_dofs
+        ]
+        self.policy_hand_action_names = list(
+            self.cfg["env"].get(
+                "handActionNames",
+                [
+                    "thumb_metacarpal",
+                    "thumb_flex",
+                    "index_flex",
+                    "middle_flex",
+                    "ring_flex",
+                    "pinky_flex",
+                ],
+            )
+        )
+        if len(self.policy_hand_action_names) != self.num_policy_hand_dofs:
+            raise ValueError(
+                "handActionNames length must match handActionDofs; got "
+                f"{len(self.policy_hand_action_names)} names for "
+                f"{self.num_policy_hand_dofs} policy hand actions."
+            )
+
+        if self.hand_action_mode == "physical_joint":
+            self.hand_action_physical_indices = None
+            print(
+                "Hand action mode: physical_joint. Policy controls physical hand "
+                f"DOFs directly: {hand_dof_names}"
+            )
+            return
+
+        action_name_to_idx = {
+            name: idx for idx, name in enumerate(self.policy_hand_action_names)
+        }
+        physical_to_policy_action = []
+        inferred_mapping = []
+        for joint_name in hand_dof_names:
+            lower_name = joint_name.lower()
+            if "thumb" in lower_name and "metacarpal" in lower_name:
+                action_name = "thumb_metacarpal"
+            elif "thumb" in lower_name and (
+                "proximal" in lower_name or "distal" in lower_name
+            ):
+                action_name = "thumb_flex"
+            elif "index" in lower_name and (
+                "proximal" in lower_name or "distal" in lower_name
+            ):
+                action_name = "index_flex"
+            elif "middle" in lower_name and (
+                "proximal" in lower_name or "distal" in lower_name
+            ):
+                action_name = "middle_flex"
+            elif "ring" in lower_name and (
+                "proximal" in lower_name or "distal" in lower_name
+            ):
+                action_name = "ring_flex"
+            elif ("pinky" in lower_name or "little" in lower_name) and (
+                "proximal" in lower_name or "distal" in lower_name
+            ):
+                action_name = "pinky_flex"
+            else:
+                raise ValueError(
+                    f"Could not infer Revo2 coupled action for hand DOF "
+                    f"{joint_name!r}; hand_dof_names={hand_dof_names}"
+                )
+
+            if action_name not in action_name_to_idx:
+                raise ValueError(
+                    f"Inferred action {action_name!r} for joint {joint_name!r}, "
+                    f"but handActionNames={self.policy_hand_action_names}"
+                )
+            action_idx = action_name_to_idx[action_name]
+            physical_to_policy_action.append(action_idx)
+            inferred_mapping.append((joint_name, action_name))
+
+        self.hand_action_physical_indices = torch.tensor(
+            physical_to_policy_action, dtype=torch.long, device=self.device
+        )
+        print(
+            "Hand action mode: revo2_coupled. Policy hand actions "
+            f"{self.policy_hand_action_names} expand to physical DOFs: "
+            f"{inferred_mapping}"
+        )
+
+    def _expand_policy_hand_actions(self, hand_actions: Tensor) -> Tensor:
+        if self.hand_action_mode == "physical_joint":
+            return hand_actions
+        if self.hand_action_mode == "revo2_coupled":
+            if self.hand_action_physical_indices is None:
+                raise RuntimeError("Revo2 hand action mapping has not been initialized.")
+            return hand_actions[:, self.hand_action_physical_indices]
+        raise NotImplementedError(f"Unknown handActionMode={self.hand_action_mode}")
+
     def post_physics_step(self):
         self.frame_since_restart += 1
 
@@ -8125,6 +12024,10 @@ class SimToolReal(VecTask):
         self.camera_properties.height = int(
             self.camera_properties.height / RESOLUTION_REDUCTION_FACTOR_TO_SAVE_SPACE
         )
+        if self.cfg["env"].get("videoCameraWidth", None) is not None:
+            self.camera_properties.width = int(self.cfg["env"]["videoCameraWidth"])
+        if self.cfg["env"].get("videoCameraHeight", None) is not None:
+            self.camera_properties.height = int(self.cfg["env"]["videoCameraHeight"])
 
         self.camera_handles = []
         self.camera_env_indices = []
@@ -8153,8 +12056,14 @@ class SimToolReal(VecTask):
                 self.envs[camera_env_idx],
                 self.camera_properties,
             )
+            # Camera sensors created inside an Isaac Gym env use env-local
+            # coordinates here. Adding the env grid origin makes per-object
+            # train videos point outside the selected env and record empty floor.
             self.gym.set_camera_location(
-                camera_handle, self.envs[camera_env_idx], cam_pos, cam_target
+                camera_handle,
+                self.envs[camera_env_idx],
+                cam_pos,
+                cam_target,
             )
             self.camera_handles.append(camera_handle)
 
@@ -8162,6 +12071,8 @@ class SimToolReal(VecTask):
         self.video_camera_stride = max(
             1, int(self.cfg["env"].get("videoCameraStride", 1))
         )
+        self.video_camera_debug = bool(self.cfg["env"].get("videoCameraDebug", False))
+        self.video_camera_debug_prints = 0
         self.camera_handle = self.camera_handles[0]
         self.index_to_view = self.camera_env_indices[0]
         self.current_video_object_label = self.camera_object_labels[0]
@@ -8176,6 +12087,75 @@ class SimToolReal(VecTask):
         #   Case 3: self.video_frames = [np.array(frame) for frame in ...]
         #     * These are image frames that will be assembled into a video when enough frames are capture
         self.video_frames: Optional[List[np.ndarray]] = None
+
+    def _initialize_object_pointcloud_render_cameras(self) -> None:
+        assert self.cfg["env"]["enableCameraSensors"], (
+            "objectPointCloudSource=rgbd_render requires enableCameraSensors=True"
+        )
+        self.object_pointcloud_render_camera_properties = gymapi.CameraProperties()
+        self.object_pointcloud_render_camera_properties.width = int(
+            self.object_pointcloud_render_width
+        )
+        self.object_pointcloud_render_camera_properties.height = int(
+            self.object_pointcloud_render_height
+        )
+        self.object_pointcloud_render_camera_properties.horizontal_fov = float(
+            self.object_pointcloud_render_horizontal_fov
+        )
+
+        camera_pos_local = np.asarray(
+            self.object_pointcloud_render_camera_pos_cfg, dtype=np.float32
+        )
+        camera_target_local = np.asarray(
+            self.object_pointcloud_render_camera_target_cfg, dtype=np.float32
+        )
+        # Camera sensors attached to an Isaac Gym env use env-local coordinates.
+        # Adding the env grid origin makes every nonzero-origin camera point
+        # outside its own env, so only env 0 produces a valid object mask.
+        camera_pos_world_np = np.repeat(
+            camera_pos_local[None, :], self.num_envs, axis=0
+        )
+        camera_target_world_np = np.repeat(
+            camera_target_local[None, :], self.num_envs, axis=0
+        )
+        self.object_pointcloud_render_camera_pos_world_np = camera_pos_world_np
+        self.object_pointcloud_render_camera_target_world_np = camera_target_world_np
+        self.object_pointcloud_render_camera_pos_world = to_torch(
+            camera_pos_world_np,
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.object_pointcloud_render_camera_target_world = to_torch(
+            camera_target_world_np,
+            dtype=torch.float,
+            device=self.device,
+        )
+        self.object_pointcloud_render_camera_handles = []
+        for env_idx, env_ptr in enumerate(self.envs):
+            camera_handle = self.gym.create_camera_sensor(
+                env_ptr,
+                self.object_pointcloud_render_camera_properties,
+            )
+            cam_pos_np = camera_pos_world_np[env_idx]
+            cam_target_np = camera_target_world_np[env_idx]
+            cam_pos = gymapi.Vec3(
+                float(cam_pos_np[0]), float(cam_pos_np[1]), float(cam_pos_np[2])
+            )
+            cam_target = gymapi.Vec3(
+                float(cam_target_np[0]),
+                float(cam_target_np[1]),
+                float(cam_target_np[2]),
+            )
+            self.gym.set_camera_location(camera_handle, env_ptr, cam_pos, cam_target)
+            self.object_pointcloud_render_camera_handles.append(camera_handle)
+
+        print(
+            "Initialized RGB-D object pointcloud cameras: "
+            f"{len(self.object_pointcloud_render_camera_handles)} envs, "
+            f"{self.object_pointcloud_render_width}x"
+            f"{self.object_pointcloud_render_height}, "
+            f"segmentation_id={self.object_segmentation_id}"
+        )
 
     def _select_next_video_camera(self) -> None:
         if not hasattr(self, "camera_handles") or len(self.camera_handles) == 0:
@@ -8207,7 +12187,7 @@ class SimToolReal(VecTask):
         should_start_video_capture_at_start_of_next_episode = (
             self.video_frames is None
             and self.control_steps % self.cfg["env"]["capture_video_freq"] == 0
-            # and (self.control_steps > 0)  # Don't record video on first step
+            and (self.capture_video_at_step_zero or self.control_steps > 0)
         )
         if should_start_video_capture_at_start_of_next_episode:
             self._select_next_video_camera()
@@ -8223,16 +12203,348 @@ class SimToolReal(VecTask):
         should_start_video_capture_now = (
             self.video_frames is not None
             and len(self.video_frames) == 0
-            # and self.progress_buf[self.index_to_view].item() <= 1  # Only start video capture on first step of episode so that videos don't start in the middle of an episode
-            # Actually doesn't work because progress_buf gets reset to 0 not only at start of episode but on success
-            and self.reset_buf[self.index_to_view].item()
-            == 1  # Only start video capture after reset of an env
         )
         video_capture_in_progress = (
             self.video_frames is not None and len(self.video_frames) > 0
         )
         if should_start_video_capture_now or video_capture_in_progress:
             self._capture_video(video_capture_in_progress)
+
+    def _reset_video_debug_overlay_history(self) -> None:
+        self.video_debug_overlay_object_history = []
+
+    @staticmethod
+    def _normalize_np(vec: np.ndarray, fallback: np.ndarray) -> np.ndarray:
+        norm = float(np.linalg.norm(vec))
+        if norm < 1e-6:
+            return fallback.astype(np.float32)
+        return (vec / norm).astype(np.float32)
+
+    def _project_points_to_video(
+        self,
+        points_np: np.ndarray,
+        cam_pos_np: np.ndarray,
+        cam_target_np: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        if points_np.size == 0:
+            return np.zeros((0, 2), dtype=np.int32), np.zeros((0,), dtype=np.bool_)
+
+        forward = self._normalize_np(
+            cam_target_np - cam_pos_np, np.asarray([1.0, 0.0, 0.0], dtype=np.float32)
+        )
+        world_up = np.asarray([0.0, 0.0, 1.0], dtype=np.float32)
+        right = np.cross(forward, world_up)
+        if float(np.linalg.norm(right)) < 1e-6:
+            world_up = np.asarray([0.0, 1.0, 0.0], dtype=np.float32)
+            right = np.cross(forward, world_up)
+        right = self._normalize_np(right, np.asarray([0.0, 1.0, 0.0], dtype=np.float32))
+        up = self._normalize_np(np.cross(right, forward), world_up)
+
+        rel = points_np.astype(np.float32) - cam_pos_np[None, :]
+        depth = rel @ forward
+        cam_x = rel @ right
+        cam_y = rel @ up
+
+        width = int(self.camera_properties.width)
+        height = int(self.camera_properties.height)
+        horizontal_fov_deg = float(getattr(self.camera_properties, "horizontal_fov", 90.0))
+        horizontal_fov_rad = math.radians(horizontal_fov_deg)
+        focal_x = width / (2.0 * math.tan(horizontal_fov_rad * 0.5))
+        focal_y = focal_x
+        center_x = (width - 1) * 0.5
+        center_y = (height - 1) * 0.5
+
+        safe_depth = np.maximum(depth, 1e-6)
+        pixel_x = center_x + focal_x * cam_x / safe_depth
+        pixel_y = center_y - focal_y * cam_y / safe_depth
+        valid = (
+            (depth > 1e-4)
+            & np.isfinite(pixel_x)
+            & np.isfinite(pixel_y)
+            & (pixel_x >= 0.0)
+            & (pixel_x < width)
+            & (pixel_y >= 0.0)
+            & (pixel_y < height)
+        )
+        pixels = np.stack([pixel_x, pixel_y], axis=-1).astype(np.int32)
+        return pixels, valid
+
+    @staticmethod
+    def _draw_video_points(
+        frame: np.ndarray,
+        pixels: np.ndarray,
+        valid: np.ndarray,
+        color: Tuple[int, int, int],
+        radius: int,
+    ) -> None:
+        if pixels.size == 0:
+            return
+        height, width = frame.shape[:2]
+        rgba_color = np.asarray([color[0], color[1], color[2], 255], dtype=frame.dtype)
+        valid_pixels = pixels[valid]
+        for x, y in valid_pixels:
+            x0 = max(0, int(x) - radius)
+            x1 = min(width, int(x) + radius + 1)
+            y0 = max(0, int(y) - radius)
+            y1 = min(height, int(y) + radius + 1)
+            frame[y0:y1, x0:x1] = rgba_color
+
+    @staticmethod
+    def _draw_video_line(
+        frame: np.ndarray,
+        start_xy: np.ndarray,
+        end_xy: np.ndarray,
+        color: Tuple[int, int, int],
+        thickness: int = 1,
+    ) -> None:
+        height, width = frame.shape[:2]
+        start = start_xy.astype(np.float32)
+        end = end_xy.astype(np.float32)
+        length = int(np.linalg.norm(end - start))
+        steps = max(length, 1)
+        rgba_color = np.asarray([color[0], color[1], color[2], 255], dtype=frame.dtype)
+        for alpha in np.linspace(0.0, 1.0, steps + 1):
+            point = start * (1.0 - alpha) + end * alpha
+            x = int(round(float(point[0])))
+            y = int(round(float(point[1])))
+            if x < 0 or x >= width or y < 0 or y >= height:
+                continue
+            x0 = max(0, x - thickness)
+            x1 = min(width, x + thickness + 1)
+            y0 = max(0, y - thickness)
+            y1 = min(height, y + thickness + 1)
+            frame[y0:y1, x0:x1] = rgba_color
+
+    def _draw_video_arrow(
+        self,
+        frame: np.ndarray,
+        start_xy: np.ndarray,
+        end_xy: np.ndarray,
+        color: Tuple[int, int, int],
+        thickness: int = 2,
+    ) -> None:
+        self._draw_video_line(frame, start_xy, end_xy, color, thickness=thickness)
+        direction = end_xy.astype(np.float32) - start_xy.astype(np.float32)
+        norm = float(np.linalg.norm(direction))
+        if norm < 4.0:
+            return
+        direction = direction / norm
+        perp = np.asarray([-direction[1], direction[0]], dtype=np.float32)
+        head_len = min(12.0, max(6.0, norm * 0.25))
+        left = end_xy - direction * head_len + perp * head_len * 0.45
+        right = end_xy - direction * head_len - perp * head_len * 0.45
+        self._draw_video_line(frame, end_xy, left, color, thickness=thickness)
+        self._draw_video_line(frame, end_xy, right, color, thickness=thickness)
+
+    def _overlay_video_debug(self, frame: np.ndarray) -> np.ndarray:
+        if not self.video_debug_overlay_enabled:
+            return frame
+
+        env_idx = int(self.index_to_view)
+        cam_pos_np = self.video_debug_overlay_current_cam_pos_np.astype(np.float32)
+        cam_target_np = self.video_debug_overlay_current_cam_target_np.astype(np.float32)
+
+        object_pos_np = self.object_pos[env_idx].detach().cpu().numpy().astype(np.float32)
+        self.video_debug_overlay_object_history.append(object_pos_np.copy())
+        self.video_debug_overlay_object_history = (
+            self.video_debug_overlay_object_history[
+                -self.video_debug_overlay_trajectory_history :
+            ]
+        )
+
+        object_history = np.asarray(
+            self.video_debug_overlay_object_history, dtype=np.float32
+        )
+        history_pixels, history_valid = self._project_points_to_video(
+            object_history, cam_pos_np, cam_target_np
+        )
+        for idx in range(1, len(history_pixels)):
+            if not history_valid[idx - 1] or not history_valid[idx]:
+                continue
+            self._draw_video_line(
+                frame,
+                history_pixels[idx - 1],
+                history_pixels[idx],
+                (45, 125, 255),
+                thickness=1,
+            )
+        self._draw_video_points(
+            frame,
+            history_pixels,
+            history_valid,
+            (45, 125, 255),
+            max(1, self.video_debug_overlay_point_radius),
+        )
+        object_vel_np = (
+            self.object_linvel[env_idx].detach().cpu().numpy().astype(np.float32)
+        )
+
+        overlay_mode = self.video_debug_overlay_mode
+        if overlay_mode == "auto":
+            overlay_mode = (
+                "falling_3d"
+                if getattr(self, "falling_baton_grasp", False)
+                else "planar_xy"
+            )
+
+        if overlay_mode in {"falling", "falling_3d", "3d"}:
+            object_speed = float(np.linalg.norm(object_vel_np))
+            if self.video_debug_overlay_future_steps > 0 and object_speed > 1e-4:
+                lead_times = (
+                    np.arange(
+                        1,
+                        self.video_debug_overlay_future_steps + 1,
+                        dtype=np.float32,
+                    )
+                    * float(self.video_debug_overlay_future_dt)
+                )
+                gravity_np = (
+                    self.video_debug_overlay_gravity_np
+                    if self.video_debug_overlay_use_gravity_prediction
+                    else np.zeros(3, dtype=np.float32)
+                )
+                future_points = (
+                    object_pos_np[None, :]
+                    + lead_times[:, None] * object_vel_np[None, :]
+                    + 0.5 * (lead_times[:, None] ** 2) * gravity_np[None, :]
+                )
+                direction_np = object_vel_np / max(object_speed, 1e-6)
+                arrow_end_np = (
+                    object_pos_np
+                    + direction_np
+                    * float(self.video_debug_overlay_velocity_arrow_length)
+                )
+                arrow_points = np.stack([object_pos_np, arrow_end_np], axis=0)
+                arrow_pixels, arrow_valid = self._project_points_to_video(
+                    arrow_points, cam_pos_np, cam_target_np
+                )
+                self._draw_video_points(
+                    frame,
+                    arrow_pixels[:1],
+                    arrow_valid[:1],
+                    (255, 30, 30),
+                    max(3, self.video_debug_overlay_point_radius + 1),
+                )
+                if arrow_valid[0] and arrow_valid[1]:
+                    self._draw_video_arrow(
+                        frame,
+                        arrow_pixels[0],
+                        arrow_pixels[1],
+                        (255, 30, 30),
+                        thickness=2,
+                    )
+                future_pixels, future_valid = self._project_points_to_video(
+                    future_points, cam_pos_np, cam_target_np
+                )
+                self._draw_video_points(
+                    frame,
+                    future_pixels,
+                    future_valid,
+                    (20, 255, 80),
+                    max(4, self.video_debug_overlay_point_radius + 2),
+                )
+            return frame
+
+        if len(object_history) > 1:
+            history_xy_span = float(
+                np.linalg.norm(
+                    object_history[:, :2].max(axis=0)
+                    - object_history[:, :2].min(axis=0)
+                )
+            )
+        else:
+            history_xy_span = 0.0
+
+        if hasattr(self, "dynamic_grasp_object_xy_velocity") and (
+            not hasattr(self, "dynamic_grasp_motion_released")
+            or not bool(self.dynamic_grasp_motion_released[env_idx].item())
+        ):
+            commanded_xy_vel = (
+                self.dynamic_grasp_object_xy_velocity[env_idx]
+                .detach()
+                .cpu()
+                .numpy()
+                .astype(np.float32)
+            )
+            object_vel_np[:2] = commanded_xy_vel
+            object_vel_np[2] = 0.0
+        object_xy_speed = float(np.linalg.norm(object_vel_np[:2]))
+        if self.video_debug_overlay_future_steps > 0 and float(
+            object_xy_speed
+        ) > 1e-4:
+            planar_vel_np = object_vel_np.copy()
+            planar_vel_np[2] = 0.0
+            lead_times = (
+                np.arange(1, self.video_debug_overlay_future_steps + 1, dtype=np.float32)
+                * float(self.video_debug_overlay_future_dt)
+            )
+            if history_xy_span < self.video_debug_overlay_min_visible_history_span:
+                past_points = (
+                    object_pos_np[None, :]
+                    - lead_times[::-1, None] * planar_vel_np[None, :]
+                )
+                past_points = np.concatenate(
+                    [past_points, object_pos_np[None, :]], axis=0
+                )
+                past_pixels, past_valid = self._project_points_to_video(
+                    past_points, cam_pos_np, cam_target_np
+                )
+                for idx in range(1, len(past_pixels)):
+                    if not past_valid[idx - 1] or not past_valid[idx]:
+                        continue
+                    self._draw_video_line(
+                        frame,
+                    past_pixels[idx - 1],
+                    past_pixels[idx],
+                    (45, 125, 255),
+                    thickness=2,
+                )
+                self._draw_video_points(
+                    frame,
+                    past_pixels[:-1],
+                    past_valid[:-1],
+                    (45, 125, 255),
+                    max(5, self.video_debug_overlay_point_radius + 3),
+                )
+            future_points = (
+                object_pos_np[None, :] + lead_times[:, None] * planar_vel_np[None, :]
+            )
+            direction_np = planar_vel_np / max(object_xy_speed, 1e-6)
+            arrow_end_np = (
+                object_pos_np
+                + direction_np * float(self.video_debug_overlay_velocity_arrow_length)
+            )
+            arrow_points = np.stack([object_pos_np, arrow_end_np], axis=0)
+            arrow_pixels, arrow_valid = self._project_points_to_video(
+                arrow_points, cam_pos_np, cam_target_np
+            )
+            self._draw_video_points(
+                frame,
+                arrow_pixels[:1],
+                arrow_valid[:1],
+                (255, 30, 30),
+                max(3, self.video_debug_overlay_point_radius + 1),
+            )
+            if arrow_valid[0] and arrow_valid[1]:
+                self._draw_video_arrow(
+                    frame,
+                    arrow_pixels[0],
+                    arrow_pixels[1],
+                    (255, 30, 30),
+                    thickness=2,
+                )
+            future_pixels, future_valid = self._project_points_to_video(
+                future_points, cam_pos_np, cam_target_np
+            )
+            self._draw_video_points(
+                frame,
+                future_pixels,
+                future_valid,
+                (20, 255, 80),
+                max(4, self.video_debug_overlay_point_radius + 2),
+            )
+
+        return frame
 
     def _capture_video(self, video_capture_in_progress: bool) -> None:
         assert self.video_frames is not None
@@ -8250,9 +12562,84 @@ class SimToolReal(VecTask):
             # If there is no viewer, we always want self.enable_viewer_sync=False to speed up env stepping
             else:
                 self.enable_viewer_sync_before = False
+            if self.video_debug_overlay_enabled:
+                self._reset_video_debug_overlay_history()
 
-        # Store image
-        self.enable_viewer_sync = True
+        if bool(self.cfg["env"].get("videoCameraTrackObject", False)):
+            env_idx = int(self.index_to_view)
+            target_offset = self.cfg["env"].get(
+                "videoCameraTrackTargetOffset", [0.0, 0.0, 0.05]
+            )
+            camera_offset = self.cfg["env"].get(
+                "videoCameraTrackOffset", [0.65, -0.95, 0.65]
+            )
+            object_pos = self.root_state_tensor[self.object_indices[env_idx], 0:3]
+            cam_target_np = object_pos.detach().cpu().numpy().astype(np.float32)
+            cam_target_np += np.asarray(target_offset, dtype=np.float32)
+            cam_pos_np = cam_target_np + np.asarray(camera_offset, dtype=np.float32)
+            self.video_debug_overlay_current_cam_pos_np = cam_pos_np.astype(np.float32)
+            self.video_debug_overlay_current_cam_target_np = cam_target_np.astype(
+                np.float32
+            )
+            if self.video_camera_debug and self.video_camera_debug_prints < 8:
+                if self.create_table:
+                    table_pos_str = self.root_state_tensor[
+                        self.table_indices[env_idx], 0:3
+                    ].detach().cpu().tolist()
+                else:
+                    table_pos_str = None
+                palm_pos = self.palm_center_pos[env_idx]
+                env_origin = (
+                    self.env_origins[env_idx]
+                    if hasattr(self, "env_origins")
+                    else torch.zeros(3, device=self.device)
+                )
+                print(
+                    "[video_camera_debug] "
+                    f"step={self.control_steps} env={env_idx} "
+                    f"label={self.current_video_object_label} "
+                    f"env_origin={env_origin.detach().cpu().tolist()} "
+                    f"object_pos={object_pos.detach().cpu().tolist()} "
+                    f"table_pos={table_pos_str} "
+                    f"palm_pos={palm_pos.detach().cpu().tolist()} "
+                    f"cam_pos={cam_pos_np.tolist()} "
+                    f"cam_target={cam_target_np.tolist()}",
+                    flush=True,
+                )
+                self.video_camera_debug_prints += 1
+            self.gym.set_camera_location(
+                self.camera_handle,
+                self.envs[env_idx],
+                gymapi.Vec3(
+                    float(cam_pos_np[0]),
+                    float(cam_pos_np[1]),
+                    float(cam_pos_np[2]),
+                ),
+                gymapi.Vec3(
+                    float(cam_target_np[0]),
+                    float(cam_target_np[1]),
+                    float(cam_target_np[2]),
+                ),
+            )
+        else:
+            self.video_debug_overlay_current_cam_pos_np = (
+                self.video_camera_base_pos_np.copy()
+            )
+            self.video_debug_overlay_current_cam_target_np = (
+                self.video_camera_base_target_np.copy()
+            )
+
+        # Store image. In headless runs, explicitly synchronize graphics only
+        # for recorded frames. Without fetch_results, GPU-pipeline camera
+        # renders can keep showing static scenery while dynamic actors lag out
+        # of the color buffer.
+        if self.viewer is None:
+            self.enable_viewer_sync = True
+            if self.device != "cpu":
+                self.gym.fetch_results(self.sim, True)
+            self.gym.step_graphics(self.sim)
+        else:
+            self.enable_viewer_sync = True
         self.gym.render_all_camera_sensors(self.sim)
         color_image = self.gym.get_camera_image(
             self.sim,
@@ -8272,6 +12659,8 @@ class SimToolReal(VecTask):
         color_image = color_image.reshape(
             self.camera_properties.height, self.camera_properties.width, NUM_RGBA
         )
+        if self.video_debug_overlay_enabled:
+            color_image = self._overlay_video_debug(color_image.copy())
         self.video_frames.append(color_image)
 
         if len(self.video_frames) == self.cfg["env"]["capture_video_len"]:
@@ -8598,6 +12987,56 @@ class SimToolReal(VecTask):
         for i in range(len(rigid_shape_props)):
             rigid_shape_props[i].friction = friction
         self.gym.set_asset_rigid_shape_properties(object_asset, rigid_shape_props)
+
+    def set_falling_baton_object_arm_collision_filters(
+        self,
+        robot_asset: gymapi.Asset,
+        object_assets: List[gymapi.Asset],
+        filter_bit: int,
+        keep_body_name_contains: List[str],
+    ) -> None:
+        """Disable falling-object collisions with arm links while keeping hand contact."""
+        filter_bit = int(filter_bit)
+        if filter_bit <= 0:
+            raise ValueError(
+                f"fallingBatonObjectArmCollisionFilterBit must be positive, got {filter_bit}"
+            )
+
+        keep_tokens = [str(token) for token in keep_body_name_contains if str(token)]
+        keep_tokens.extend([self.palm_body_name, *self.fingertips])
+        keep_tokens = sorted(set(token for token in keep_tokens if token))
+
+        robot_shape_props = self.gym.get_asset_rigid_shape_properties(robot_asset)
+        rb_names = self.gym.get_asset_rigid_body_names(robot_asset)
+        rb_shape_indices = self.gym.get_asset_rigid_body_shape_indices(robot_asset)
+        assert_equals(len(rb_names), len(rb_shape_indices))
+
+        disabled_robot_shapes = 0
+        kept_robot_shapes = 0
+        for rb_name, shape_index in zip(rb_names, rb_shape_indices):
+            keep_for_object_contact = any(token in rb_name for token in keep_tokens)
+            for shape_idx in range(shape_index.start, shape_index.start + shape_index.count):
+                if keep_for_object_contact:
+                    kept_robot_shapes += 1
+                    continue
+                robot_shape_props[shape_idx].filter |= filter_bit
+                disabled_robot_shapes += 1
+        self.gym.set_asset_rigid_shape_properties(robot_asset, robot_shape_props)
+
+        object_shape_count = 0
+        for object_asset in object_assets:
+            object_shape_props = self.gym.get_asset_rigid_shape_properties(object_asset)
+            for shape_prop in object_shape_props:
+                shape_prop.filter |= filter_bit
+                object_shape_count += 1
+            self.gym.set_asset_rigid_shape_properties(object_asset, object_shape_props)
+
+        print(
+            "Falling Baton object-arm collision filter enabled: "
+            f"filter_bit={filter_bit}, disabled_robot_shapes={disabled_robot_shapes}, "
+            f"kept_hand_shapes={kept_robot_shapes}, object_shapes={object_shape_count}, "
+            f"keep_tokens={keep_tokens}"
+        )
 
     def set_object_masses_and_inertias(
         self,

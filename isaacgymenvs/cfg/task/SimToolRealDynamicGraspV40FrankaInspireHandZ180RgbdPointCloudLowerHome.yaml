@@ -1,0 +1,11 @@
+defaults:
+  - SimToolRealDynamicGraspV39FrankaInspireHandZ180RgbdPointCloudSafeHome
+  - _self_
+
+env:
+  # V40 keeps the V39 RGB-D render + mask pointcloud and safe open-hand reset,
+  # but lowers the safe home pose slightly. URDF FK estimates the palm moves
+  # from roughly y=+0.44, z=+0.88 to y=+0.37, z=+0.85, still outside the
+  # robot-side table edge while shortening the approach-to-pregrasp motion.
+  defaultArmDofPos:
+    [0.0, -1.00, 0.0, -2.20, 0.0, 1.40, 0.7853981633974483]

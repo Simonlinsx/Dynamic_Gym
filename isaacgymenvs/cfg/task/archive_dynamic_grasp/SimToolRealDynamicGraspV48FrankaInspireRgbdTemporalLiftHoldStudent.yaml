@@ -1,0 +1,100 @@
+defaults:
+  - SimToolRealDynamicGraspV47FrankaInspirePrivPointCloudLiftHoldSimpleRewardTeacher
+  - _self_
+
+env:
+  # V48 is the deployable student branch for the V47 Lift-and-Hold task.
+  # The teacher keeps privileged clean mesh point clouds; the student actor sees
+  # only robot state plus RGB-D-rendered, segmentation-mask object point clouds.
+  # The asymmetric critic can still use privileged simulator state during RL.
+
+  objectPointCloudSource: "rgbd_render"
+  objectPointCloudNumPoints: 256
+  objectPointCloudRenderWidth: 128
+  objectPointCloudRenderHeight: 96
+  objectPointCloudRenderHorizontalFov: 60.0
+  objectPointCloudRenderCameraPos: [0.45, -0.75, 0.78]
+  objectPointCloudRenderCameraTarget: [0.0, 0.0, 0.63]
+  objectPointCloudRenderMaxDepth: 2.0
+  objectPointCloudRenderEnvLimit: 1024
+  objectPointCloudRenderAllowLarge: False
+
+  robotSegmentationId: 1
+  objectSegmentationId: 2
+  tableSegmentationId: 3
+  goalObjectSegmentationId: 4
+
+  objectPointCloudTemporalFusion: True
+  objectPointCloudTemporalHistoryFrames: 8
+  objectPointCloudTemporalRandomSample: True
+  objectPointCloudCentroidFromPoints: True
+  objectPointCloudVelocityFromCentroid: True
+  objectPointCloudVelocityNoiseStd: 0.01
+  objectPointCloudVelocityClip: 1.2
+
+  objectPointCloudNoiseStd: 0.001
+  objectPointCloudDepthNoiseStd: 0.0015
+  objectPointCloudDropoutProb: 0.01
+  objectPointCloudOutlierProb: 0.0
+  objectPointCloudOutlierScale: 0.0
+  objectPointCloudRandomizeOrder: True
+
+  # Metadata for the next distillation step. These are intentionally inert in
+  # PPO until we add the teacher-action auxiliary loss.
+  studentBranch: True
+  teacherTask: "SimToolRealDynamicGraspV47FrankaInspirePrivPointCloudLiftHoldSimpleRewardTeacher"
+  teacherCheckpoint: ""
+  distillationEnabled: False
+  distillationActionLossScale: 0.0
+  distillationValueLossScale: 0.0
+  distillationAuxObsLossScale: 0.0
+
+  # Actor/deployable observation: no object_rot, object_vel, object_vel_rel_palm,
+  # keypoints, success/reward, or future affordance targets.
+  obsList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "fingertip_pos_rel_palm",
+      "object_pointcloud_rel_palm",
+      "object_pointcloud_centroid_rel_palm",
+      "object_pointcloud_vel_rel_palm",
+      "object_pointcloud_tracking_confidence",
+    ]
+
+  # Critic/training-only state keeps privileged simulator terms and affordance
+  # targets. The point-cloud slice starts at the same index as actor obs, so the
+  # existing PointNet start_idx remains valid for both actor and critic.
+  stateList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "fingertip_pos_rel_palm",
+      "object_pointcloud_rel_palm",
+      "object_pointcloud_centroid_rel_palm",
+      "object_pointcloud_vel_rel_palm",
+      "object_pointcloud_tracking_confidence",
+      "object_rot",
+      "object_vel",
+      "object_vel_rel_palm",
+      "affordance_pos_rel_palm",
+      "future_affordance_pos_rel_palm",
+      "affordance_axis_rel_palm",
+      "affordance_confidence",
+      "keypoints_rel_palm",
+      "predicted_keypoints_rel_palm",
+      "object_scales",
+      "closest_fingertip_dist",
+      "lifted_object",
+      "progress",
+      "successes",
+      "reward",
+    ]

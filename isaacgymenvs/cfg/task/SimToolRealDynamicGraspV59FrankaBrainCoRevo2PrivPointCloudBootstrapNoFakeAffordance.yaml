@@ -1,0 +1,69 @@
+defaults:
+  - SimToolRealDynamicGraspV53FrankaInspirePrivPointCloudBootstrapNoFakeAffordance
+  - _self_
+
+env:
+  # Franka + BrainCo Revo2 embodiment for the current privileged-pointcloud
+  # teacher recipe. The actual Revo2 URDF is not checked into this repo; generate
+  # the combined asset with scripts/prepare_franka_brainco_revo2_asset.sh.
+  robotEmbodiment: "franka_brainco_revo2_right"
+  armEmbodiment: "franka_panda"
+  handEmbodiment: "brainco_revo2_right"
+  policyActionInterface: "joint_target"
+  robotDofPropertyPreset: "generic_position"
+  robotAssetRoot: "/data1/linsixu/simtoolreal/assets/generated/franka_brainco_revo2_right"
+  assetCollapseFixedJoints: False
+
+  asset:
+    robot: "franka_brainco_revo2_right.urdf"
+    table: "urdf/table_dynamic_grasp.urdf"
+
+  armDofs: 7
+  # Placeholder for the expected Revo2 right-hand active DOF count. Override this
+  # if the provided BrainCo URDF exposes a different number of non-fixed joints.
+  handDofs: 11
+  numFingertips: 5
+  # With the default asset builder prefix, an original hand link named
+  # "base_link" becomes "revo2_base_link". Override these names if the supplied
+  # URDF uses different link names.
+  palmBodyName: "revo2_right_base_link"
+  fingertipBodyNames:
+    [
+      "revo2_right_thumb_tip_link",
+      "revo2_right_index_tip_link",
+      "revo2_right_middle_tip_link",
+      "revo2_right_ring_tip_link",
+      "revo2_right_pinky_tip_link",
+    ]
+  palmOffset: [0.0, 0.0, 0.02]
+  fingertipOffsets:
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+    ]
+
+  # Keep the lower safe Franka home pose from the current Inspire line, with the
+  # open hand outside/above the robot-side table edge before the policy moves.
+  defaultArmDofPos:
+    [0.0, -1.20, 0.0, -2.20, 0.0, 1.40, 0.7853981633974483]
+  defaultHandDofPos:
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+  robotArmStiffness: 1000.0
+  robotArmDamping: 200.0
+  robotArmEffort: [87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0]
+  robotHandStiffness: 60.0
+  robotHandDamping: 6.0
+  robotHandEffort: 20.0
+  robotHandJointFriction: 0.01
+  robotHandBodyColor: [0.03, 0.08, 0.18]
+  robotHandTouchBodyColor: [0.12, 0.12, 0.14]
+  robotHandColorBodyNameContains: ["revo2_right_"]
+  robotHandTouchColorBodyNameContains: ["touch"]
+
+  resetDofPosRandomIntervalArm: 0.005
+  resetDofPosRandomIntervalFingers: 0.0
+  resetDofVelRandomInterval: 0.0

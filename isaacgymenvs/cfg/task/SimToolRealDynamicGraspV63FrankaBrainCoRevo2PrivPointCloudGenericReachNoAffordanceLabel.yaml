@@ -1,0 +1,10 @@
+defaults:
+  - SimToolRealDynamicGraspV62FrankaBrainCoRevo2PrivPointCloudGenericReach
+  - _self_
+
+env:
+  # Ablation for V62: keep the same generic reach/pregrasp shaping, but remove
+  # the binary affordance weak-prior reward entirely.
+  dynamicGraspUseBinaryAffordanceLabels: False
+  dynamicGraspBinaryAffordancePositiveContactRewScale: 0.0
+  dynamicGraspBinaryAffordanceNegativeContactPenaltyScale: 0.0

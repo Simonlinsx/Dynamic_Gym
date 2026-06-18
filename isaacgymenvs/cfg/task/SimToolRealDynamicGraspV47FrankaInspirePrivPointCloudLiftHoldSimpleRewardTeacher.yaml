@@ -1,0 +1,98 @@
+defaults:
+  - SimToolRealDynamicGraspV46FrankaInspirePrivPointCloudReleaseMotionTeacher
+  - _self_
+
+env:
+  # V47 keeps the V46 privileged point-cloud teacher and release-on-contact
+  # object dynamics, but makes the objective explicitly Lift-and-Hold.
+  # The effective reward is intentionally smaller: approach -> true grasp ->
+  # lift -> stable suspended hold, with only light safety/anti-scoop terms.
+
+  episodeLength: 420
+  maxConsecutiveSuccesses: 1
+
+  # Lift-and-Hold success gate. This makes success mean "held steadily for a
+  # short window" rather than "briefly lifted".
+  dynamicGraspLiftHoldEnabled: True
+  dynamicGraspSuccessSteps: 24
+  dynamicGraspStableCounterDecay: 2
+  dynamicGraspStableObjectPalmVel: 0.28
+  dynamicGraspStableFingertipDistance: 0.14
+  dynamicGraspRequireTrueGraspForSuccess: True
+  dynamicGraspHoldSuccessRequiresHeight: True
+  dynamicGraspHoldSuccessRequiresLowObjectVel: True
+  dynamicGraspHoldSuccessRequiresPalmUpright: True
+
+  dynamicGraspHoldHeightOffset: 0.18
+  dynamicGraspHoldHeightTolerance: 0.055
+  dynamicGraspHoldHeightScale: 0.07
+  dynamicGraspHoldObjectVelScale: 0.18
+  dynamicGraspHoldObjectVelSuccessThreshold: 0.26
+  dynamicGraspHoldObjectAngVelMargin: 1.0
+  dynamicGraspHoldPalmUprightAxis: 2
+  dynamicGraspHoldPalmUprightSign: 1.0
+  dynamicGraspHoldPalmUprightMinDot: -0.10
+
+  # Reward cleanup: remove weak/redundant shaping from the old stack.
+  distanceDeltaRewScale: 0.0
+  dynamicGraspVelocityMatchRewScale: 0.0
+  dynamicGraspInterceptRewScale: 0.0
+  dynamicGraspPregraspHoldRewScale: 0.0
+  dynamicGraspPreContactSlowRewScale: 0.0
+  dynamicGraspControlledContactRewScale: 0.0
+  dynamicGraspReadyEnclosureRewScale: 0.0
+  dynamicGraspReadyGraspQualityRewScale: 0.0
+  dynamicGraspReadyContactRewScale: 0.0
+  dynamicGraspEnclosureRewScale: 0.0
+  dynamicGraspLiftedEnclosureRewScale: 0.0
+  dynamicGraspLiftedRelVelRewScale: 0.0
+  dynamicGraspLiftedHeightHoldRewScale: 0.0
+  dynamicGraspLiftedEnclosureVelRewScale: 0.0
+  dynamicGraspPreContactRelVelPenaltyScale: 0.0
+
+  # Keep one future-affordance/pregrasp signal before contact.
+  dynamicGraspUseAffordancePrior: True
+  dynamicGraspAffordanceTargetRewScale: 4.0
+  dynamicGraspPregraspAlignmentRewScale: 1.5
+  dynamicGraspPregraspAheadDistance: 0.05
+  dynamicGraspPregraspReadyDistance: 0.12
+
+  # Grasp and lift are the dominant dense rewards before success.
+  liftingRewScale: 110.0
+  liftingBonus: 550.0
+  liftingBonusThreshold: 0.12
+  dynamicGraspTrueGraspQualityRewScale: 8.0
+  dynamicGraspOpposingContactRewScale: 10.0
+  dynamicGraspLiftProgressRewScale: 120.0
+  dynamicGraspQualityLiftProgressRewScale: 300.0
+  dynamicGraspLiftedTrueGraspRewScale: 520.0
+
+  # Lift-and-Hold rewards after the object is off the table.
+  dynamicGraspLiftedCenteringRewScale: 60.0
+  dynamicGraspHoldHeightRewScale: 260.0
+  dynamicGraspHoldObjectVelRewScale: 180.0
+  dynamicGraspHoldObjectAngVelPenaltyScale: 12.0
+  dynamicGraspHoldPalmUprightRewScale: 160.0
+  dynamicGraspStableHoldRewScale: 650.0
+  dynamicGraspStableProgressRewScale: 850.0
+  dynamicGraspSuccessBonus: 8500.0
+
+  # Keep safety/anti-scoop terms, but avoid overloading the objective.
+  dynamicGraspEarlyContactPenaltyScale: 2.0
+  dynamicGraspImpactPenaltyScale: 8.0
+  dynamicGraspImpactRelVelMargin: 0.20
+  dynamicGraspKickPenaltyScale: 8.0
+  dynamicGraspKickSpeedMargin: 0.06
+  dynamicGraspPostContactRelVelPenaltyScale: 2.0
+  dynamicGraspPostContactRelVelMargin: 0.28
+  dynamicGraspPushAwayPenaltyScale: 6.0
+  dynamicGraspPushAwaySpeedMargin: 0.22
+  dynamicGraspDroppedPenaltyScale: 180.0
+  dynamicGraspTimeoutPenaltyScale: 10.0
+  dynamicGraspScoopLiftPenaltyScale: 140.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 280.0
+
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.0
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 20.0
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 35.0
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.8

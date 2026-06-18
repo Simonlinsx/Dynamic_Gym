@@ -1,0 +1,28 @@
+defaults:
+  - SimToolRealDynamicGraspV65FrankaBrainCoRevo2PrivPointCloudLiftEscape
+  - _self_
+
+env:
+  # V66 keeps the V65 reward, but fixes the Revo2 embodiment bootstrap issue
+  # found by scripts/run_revo2_scripted_grasp_sanity.py: the previous home pose
+  # placed the closed hand center roughly 21 cm above the tabletop object center,
+  # so the policy learned to reach but almost never formed thumb opposition.
+  defaultArmDofPos:
+    [0.0, -0.85, 0.0, -2.55, 0.0, 1.20, 0.7853981633974483]
+
+  # Keep reset noise small around the lower, contact-ready home pose. This still
+  # randomizes the start but avoids immediately colliding or drifting too high.
+  resetDofPosRandomIntervalArm: 0.003
+  resetDofPosRandomIntervalFingers: 0.0
+  resetDofVelRandomInterval: 0.0
+
+  # Slightly stronger and grippier Revo2 fingers. The V65 scripted sanity check
+  # could form true grasp at the lower pose, but lift remained marginal.
+  robotHandStiffness: 90.0
+  robotHandDamping: 8.0
+  robotHandEffort: 35.0
+  robotHandJointFriction: 0.015
+  handMovingAverage: 0.45
+  fingerTipFriction: 3.0
+  objectFriction: 0.5
+  tableFriction: 0.2

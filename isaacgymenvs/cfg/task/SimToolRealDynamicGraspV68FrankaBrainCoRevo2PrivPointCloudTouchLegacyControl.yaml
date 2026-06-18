@@ -1,0 +1,24 @@
+defaults:
+  - SimToolRealDynamicGraspV67FrankaBrainCoRevo2PrivPointCloudTouchFingertips
+  - _self_
+
+env:
+  # V68 keeps the V65/V67 reward and Revo2 touch-link fingertip grounding, but
+  # restores the action semantics used by the successful V36/V43/V53
+  # Franka+Inspire teacher line: incremental arm targets plus absolute
+  # normalized hand targets. Revo2 V59-V67 had silently switched to the newer
+  # joint_target interface, so the hand policy was no longer a pure hand-model
+  # swap from the working Inspire setup.
+  policyActionInterface: "legacy_joint_target"
+
+  # With V67 fingertipBodyNames pointing at touch links, this friction now
+  # applies to the actual Revo2 contact pads instead of empty tip frames.
+  fingerTipFriction: 3.0
+  objectFriction: 0.5
+  tableFriction: 0.2
+
+  # Keep the Revo2 fingers strong enough for lift once contact is found.
+  robotHandStiffness: 90.0
+  robotHandDamping: 8.0
+  robotHandEffort: 35.0
+  robotHandJointFriction: 0.01

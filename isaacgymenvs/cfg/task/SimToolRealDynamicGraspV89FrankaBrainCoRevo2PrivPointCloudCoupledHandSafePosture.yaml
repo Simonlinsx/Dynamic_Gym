@@ -1,0 +1,153 @@
+defaults:
+  - SimToolRealDynamicGraspV86FrankaBrainCoRevo2PrivPointCloudStaticSimpleReward
+  - _self_
+
+env:
+  # V89 fixes the V87 failure mode where the policy used the arm/wrist as a
+  # contact tool. Keep the easy tabletop Revo2 teacher setup, but restore the
+  # deployable coupled-hand interface and make arm posture/smoothness matter.
+
+  handActionMode: "revo2_coupled"
+  handActionDofs: 6
+  handActionNames:
+    [
+      "thumb_metacarpal",
+      "thumb_flex",
+      "index_flex",
+      "middle_flex",
+      "ring_flex",
+      "pinky_flex",
+    ]
+
+  # Conservative robot motion. The arm can still reach the table workspace, but
+  # large target jumps and high-curvature target changes are no longer cheap.
+  dofSpeedScale: 2.35
+  armMovingAverage: 0.30
+  handMovingAverage: 0.52
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.012
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 18.0
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 32.0
+  dynamicGraspSafeArmHomePosturePenaltyScale: 6.0
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.35
+
+  # Start fully static and only add object motion after true grasp/lift signals
+  # appear. This keeps the run focused on embodiment/control first.
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspSpeedCurriculumMode: "success"
+  dynamicGraspSpeedCurriculumMetric: "success"
+  dynamicGraspSpeedCurriculumStartSuccess: 0.06
+  dynamicGraspSpeedCurriculumFullSuccess: 0.35
+  dynamicGraspSpeedCurriculumEmaAlpha: 0.02
+  dynamicGraspSpeedCurriculumAlphaRise: 0.00025
+  dynamicGraspSpeedCurriculumAllowDecrease: False
+  dynamicGraspStartSpeedRange: [0.0, 0.0]
+  dynamicGraspStartYawRateRange: [0.0, 0.0]
+  dynamicGraspInitialSpeedRange: [0.025, 0.10]
+  dynamicGraspInitialYawRateRange: [-0.35, 0.35]
+  dynamicGraspBounceAtWorkspace: False
+
+  # Reach is still present, but no longer dominates after the palm is close.
+  dynamicGraspPalmReachRewScale: 16.0
+  dynamicGraspPalmReachDistanceScale: 0.34
+  dynamicGraspFingertipReachRewScale: 24.0
+  dynamicGraspFingertipReachDistanceScale: 0.24
+  dynamicGraspReachReadyCutoff: 0.095
+  dynamicGraspReachReadyFadeDistance: 0.20
+  dynamicGraspReachReadyKeepFraction: 0.22
+  dynamicGraspReadyBonusRewScale: 4.0
+  dynamicGraspInterceptRewScale: 0.0
+  dynamicGraspPregraspAlignmentRewScale: 0.0
+  dynamicGraspPregraspHoldRewScale: 0.8
+  dynamicGraspPreContactSlowRewScale: 0.0
+  dynamicGraspPreContactRelVelPenaltyScale: 0.0
+
+  # Contact reward is biased toward thumb/finger opposition. Palm-side touching
+  # and contact-only behavior should not be a profitable endpoint.
+  dynamicGraspSurfaceContactDistance: 0.075
+  dynamicGraspReleaseMotionContactDistance: 0.075
+  dynamicGraspMinFingerContacts: 2
+  dynamicGraspMinNonThumbContacts: 1
+  dynamicGraspOpposingDotThreshold: 0.10
+  dynamicGraspContactProgressFingerWeight: 0.20
+  dynamicGraspContactProgressNonThumbWeight: 0.20
+  dynamicGraspContactProgressThumbWeight: 0.60
+  dynamicGraspContactProgressRewScale: 14.0
+  dynamicGraspContactProgressVelScale: 0.28
+  dynamicGraspControlledContactRewScale: 4.0
+  dynamicGraspClosedContactBonusRewScale: 18.0
+  dynamicGraspTrueGraspQualityRewScale: 18.0
+  dynamicGraspThumbOppositionRewScale: 32.0
+  dynamicGraspOpposingContactRewScale: 90.0
+  dynamicGraspTrueGraspBonusRewScale: 220.0
+  dynamicGraspReadyEnclosureRewScale: 0.0
+  dynamicGraspReadyGraspQualityRewScale: 8.0
+  dynamicGraspReadyContactRewScale: 8.0
+
+  # Keep a dense bridge into lift, but remove the V86/V87 palm-lift shortcut.
+  dynamicGraspDecayContactRewardsNearLiftThreshold: True
+  dynamicGraspContactRewardLiftProgressDecayPower: 1.0
+  dynamicGraspContactRewardLiftProgressDecayMinFraction: 0.10
+  dynamicGraspContactRewardDecayGraceSteps: 8
+  dynamicGraspContactRewardDecaySteps: 40
+  dynamicGraspContactRewardDecayMinFraction: 0.08
+  dynamicGraspContactNoLiftPenaltyScale: 150.0
+  dynamicGraspContactNoLiftPenaltyGraceSteps: 12
+  dynamicGraspContactNoLiftPenaltyRampSteps: 42
+  dynamicGraspContactPalmLiftRewScale: 8.0
+  dynamicGraspContactLiftVelocityRewScale: 160.0
+  dynamicGraspContactLiftVelocityScale: 0.16
+  dynamicGraspContactLiftProgressRewScale: 520.0
+  liftingRewScale: 160.0
+  liftingBonus: 1000.0
+  liftingBonusThreshold: 0.09
+  dynamicGraspLiftProgressRewScale: 220.0
+  dynamicGraspQualityLiftProgressRewScale: 620.0
+  dynamicGraspLiftedTrueGraspRewScale: 900.0
+  dynamicGraspLiftedEnclosureRewScale: 6.0
+  dynamicGraspGateLiftRewardByGraspQuality: True
+  dynamicGraspLiftRewardMinGraspQualityMultiplier: 0.55
+
+  # Success should mean a real lifted grasp, not simply touching or scooping.
+  dynamicGraspLiftHoldEnabled: False
+  dynamicGraspSuccessSteps: 6
+  dynamicGraspStableCounterDecay: 1
+  dynamicGraspStableFingertipDistance: 0.16
+  dynamicGraspStableObjectPalmVel: 0.42
+  dynamicGraspRequireTrueGraspForSuccess: True
+  dynamicGraspLegacySuccessSteps: 6
+  dynamicGraspLegacyStableFingertipDistance: 0.16
+  dynamicGraspLegacyStableObjectPalmVel: 0.42
+  dynamicGraspLegacyRequireTrueGraspForSuccess: True
+  dynamicGraspStableHoldRewScale: 360.0
+  dynamicGraspStableProgressRewScale: 420.0
+  dynamicGraspSuccessBonus: 6000.0
+  dynamicGraspLiftedRelVelRewScale: 60.0
+  dynamicGraspLiftedCenteringRewScale: 40.0
+  dynamicGraspLiftedHeightHoldRewScale: 70.0
+  dynamicGraspLiftedEnclosureVelRewScale: 80.0
+  dynamicGraspHoldPalmUprightRewScale: 20.0
+  dynamicGraspHoldSuccessRequiresPalmUpright: False
+
+  # Stronger anti-shortcut terms than V86, because V87 found arm/palm contact
+  # exploits almost immediately.
+  dynamicGraspEarlyContactPenaltyScale: 1.0
+  dynamicGraspImpactPenaltyScale: 6.0
+  dynamicGraspKickPenaltyScale: 6.0
+  dynamicGraspPostContactRelVelPenaltyScale: 2.0
+  dynamicGraspPushAwayPenaltyScale: 6.0
+  dynamicGraspScoopLiftPenaltyScale: 220.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 420.0
+
+  # Slightly less aggressive than V87; enough authority to close, less incentive
+  # for violent finger chatter.
+  robotHandStiffness: 120.0
+  robotHandDamping: 12.0
+  robotHandEffort: 55.0
+  robotHandJointFriction: 0.020
+  fingerTipFriction: 4.5
+
+  videoDebugOverlayEnabled: True
+  videoDebugOverlayPointRadius: 2
+  videoDebugOverlayTrajectoryHistory: 36
+  videoDebugOverlayFutureSteps: 3
+  videoDebugOverlayFutureDt: 0.2

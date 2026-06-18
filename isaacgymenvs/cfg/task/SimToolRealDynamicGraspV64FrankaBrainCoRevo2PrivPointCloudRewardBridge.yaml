@@ -1,0 +1,59 @@
+defaults:
+  - SimToolRealDynamicGraspV63FrankaBrainCoRevo2PrivPointCloudGenericReachNoAffordanceLabel
+  - _self_
+
+env:
+  # V64 is a reward-only Revo2 teacher update. It keeps the no-label V63 setup
+  # and does not use DOMINO affordance labels. The reward is shaped as a simple
+  # reach -> ready -> contact -> lift bridge.
+
+  # Stage 1: reach the object / moving pregrasp region. These terms are stronger
+  # than V62 because Revo2 was often not entering the contact regime at all.
+  dynamicGraspPalmReachRewScale: 16.0
+  dynamicGraspPalmReachDistanceScale: 0.34
+  dynamicGraspFingertipReachRewScale: 14.0
+  dynamicGraspFingertipReachDistanceScale: 0.22
+  dynamicGraspInterceptRewScale: 2.0
+  dynamicGraspPregraspAlignmentRewScale: 2.5
+  dynamicGraspPregraspHoldRewScale: 4.0
+  dynamicGraspVelocityMatchRewScale: 0.0
+
+  # Fade the pure reach reward once the palm is near the pregrasp target, then
+  # hand over to contact/lift rewards.
+  dynamicGraspReachReadyCutoff: 0.12
+  dynamicGraspReachReadyFadeDistance: 0.18
+  dynamicGraspReachReadyKeepFraction: 0.20
+  dynamicGraspReadyBonusRewScale: 24.0
+
+  # Stage 2: make partial useful contact learnable before the strict true-grasp
+  # and success criteria fire.
+  dynamicGraspContactProgressRewScale: 60.0
+  dynamicGraspContactProgressVelScale: 0.35
+  dynamicGraspClosedContactBonusRewScale: 130.0
+  dynamicGraspControlledContactRewScale: 14.0
+  dynamicGraspTrueGraspQualityRewScale: 14.0
+  dynamicGraspOpposingContactRewScale: 20.0
+  dynamicGraspEnclosureRewScale: 0.7
+  dynamicGraspReadyEnclosureRewScale: 0.0
+  dynamicGraspReadyGraspQualityRewScale: 0.0
+  dynamicGraspReadyContactRewScale: 0.0
+
+  # Stage 3: lift should dominate only after contact quality is non-trivial.
+  dynamicGraspLiftProgressRewScale: 130.0
+  dynamicGraspQualityLiftProgressRewScale: 430.0
+  dynamicGraspContactLiftProgressRewScale: 520.0
+  dynamicGraspLiftedTrueGraspRewScale: 720.0
+  dynamicGraspLiftedEnclosureRewScale: 8.0
+  dynamicGraspStableHoldRewScale: 650.0
+  dynamicGraspStableProgressRewScale: 750.0
+  dynamicGraspSuccessBonus: 7500.0
+
+  # Exploration-friendly early phase. Keep anti-scoop/push penalties from the
+  # inherited bootstrap recipe, but avoid punishing the first useful contacts.
+  dynamicGraspEarlyContactPenaltyScale: 0.0
+  dynamicGraspPreContactSlowRewScale: 1.5
+  dynamicGraspPreContactRelVelPenaltyScale: 1.0
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.002
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 0.5
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 0.4
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.05

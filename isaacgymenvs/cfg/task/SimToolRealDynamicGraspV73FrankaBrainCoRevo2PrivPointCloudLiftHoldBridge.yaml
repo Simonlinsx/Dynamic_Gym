@@ -1,0 +1,126 @@
+defaults:
+  - SimToolRealDynamicGraspV72FrankaBrainCoRevo2PrivPointCloudStableReachBootstrap
+  - _self_
+
+env:
+  # V73 keeps V72's Revo2 geometry/control fix, but retargets the objective from
+  # "reach/contact/short stable" toward a soft Lift-and-Hold bridge. The main
+  # issue in V72 was that contact and partial-lift rewards stayed large near the
+  # lift threshold, while true suspended hold rewards were effectively inactive.
+
+  episodeLength: 420
+  maxConsecutiveSuccesses: 1
+
+  # Keep V72's stable arm update and low home. The policy already reaches and
+  # contacts reliably; avoid reintroducing the hand_far reset failure mode.
+  dofSpeedScale: 2.4
+  armMovingAverage: 0.34
+  handMovingAverage: 0.45
+
+  # Soft Lift-and-Hold success. Height and object velocity are rewarded and
+  # logged, but palm-upright is not a hard gate yet because Revo2's local palm
+  # z-axis is opposite to the Inspire convention.
+  dynamicGraspLiftHoldEnabled: True
+  dynamicGraspSuccessSteps: 12
+  dynamicGraspStableCounterDecay: 1
+  dynamicGraspStableFingertipDistance: 0.15
+  dynamicGraspStableObjectPalmVel: 0.32
+  dynamicGraspRequireTrueGraspForSuccess: True
+  dynamicGraspHoldSuccessRequiresHeight: True
+  dynamicGraspHoldSuccessRequiresLowObjectVel: True
+  dynamicGraspHoldSuccessRequiresPalmUpright: False
+  dynamicGraspHoldHeightOffset: 0.10
+  dynamicGraspHoldHeightTolerance: 0.075
+  dynamicGraspHoldHeightScale: 0.08
+  dynamicGraspHoldObjectVelScale: 0.20
+  dynamicGraspHoldObjectVelSuccessThreshold: 0.32
+  dynamicGraspHoldObjectAngVelMargin: 1.4
+  dynamicGraspHoldPalmUprightAxis: 2
+  dynamicGraspHoldPalmUprightSign: -1.0
+  dynamicGraspHoldPalmUprightMinDot: -0.20
+
+  # Keep enough generic reach to enter contact, but reduce trajectory shaping so
+  # it does not compete with grasp/lift after the hand is close.
+  dynamicGraspPalmReachRewScale: 34.0
+  dynamicGraspFingertipReachRewScale: 28.0
+  dynamicGraspReadyBonusRewScale: 20.0
+  dynamicGraspInterceptRewScale: 2.0
+  dynamicGraspPregraspAlignmentRewScale: 2.5
+  dynamicGraspPregraspHoldRewScale: 4.0
+  dynamicGraspPreContactSlowRewScale: 1.5
+
+  # Reduce contact-only local optima. Near the lifted threshold, pure contact and
+  # true-grasp bonus rewards decay, forcing the policy to transition to the
+  # lifted/hold rewards instead of hovering just below the threshold.
+  dynamicGraspDecayContactRewardsNearLiftThreshold: True
+  dynamicGraspContactRewardLiftProgressDecayPower: 1.0
+  dynamicGraspContactRewardLiftProgressDecayMinFraction: 0.12
+  dynamicGraspContactProgressRewScale: 3.0
+  dynamicGraspClosedContactBonusRewScale: 8.0
+  dynamicGraspTrueGraspQualityRewScale: 5.0
+  dynamicGraspThumbOppositionRewScale: 8.0
+  dynamicGraspOpposingContactRewScale: 35.0
+  dynamicGraspTrueGraspBonusRewScale: 85.0
+
+  # Grasp-to-lift bridge: keep partial-lift shaping, but make upward velocity,
+  # full lifted true grasp, and suspended hold more valuable than contact.
+  dynamicGraspContactPalmLiftRewScale: 120.0
+  dynamicGraspContactPalmLiftVelScale: 0.10
+  dynamicGraspContactLiftVelocityRewScale: 340.0
+  dynamicGraspContactLiftVelocityScale: 0.14
+  dynamicGraspContactLiftProgressRewScale: 520.0
+  liftingRewScale: 240.0
+  liftingBonus: 1700.0
+  liftingBonusThreshold: 0.10
+  dynamicGraspLiftProgressRewScale: 280.0
+  dynamicGraspQualityLiftProgressRewScale: 700.0
+  dynamicGraspLiftedTrueGraspRewScale: 1450.0
+  dynamicGraspLiftedEnclosureRewScale: 8.0
+  dynamicGraspLiftedRelVelRewScale: 90.0
+  dynamicGraspLiftedRelVelScale: 0.28
+  dynamicGraspLiftedCenteringRewScale: 70.0
+  dynamicGraspLiftedCenteringDistanceScale: 0.16
+  dynamicGraspLiftedHeightHoldRewScale: 130.0
+  dynamicGraspLiftedEnclosureVelRewScale: 150.0
+
+  # Post-lift hold rewards. These are soft enough for bootstrap but visible in
+  # wandb, so we can tell whether it starts hovering rather than briefly popping.
+  dynamicGraspHoldHeightRewScale: 260.0
+  dynamicGraspHoldObjectVelRewScale: 170.0
+  dynamicGraspHoldObjectAngVelPenaltyScale: 4.0
+  dynamicGraspHoldPalmUprightRewScale: 40.0
+  dynamicGraspStableHoldRewScale: 900.0
+  dynamicGraspStableProgressRewScale: 1100.0
+  dynamicGraspSuccessBonus: 9500.0
+
+  # Make closed contact without useful height progress fade faster, but keep the
+  # penalties moderate so early lift exploration is not killed.
+  dynamicGraspContactNoLiftProgressMargin: 0.045
+  dynamicGraspContactRewardDecayGraceSteps: 3
+  dynamicGraspContactRewardDecaySteps: 22
+  dynamicGraspContactRewardDecayMinFraction: 0.05
+  dynamicGraspContactNoLiftPenaltyScale: 260.0
+  dynamicGraspContactNoLiftPenaltyGraceSteps: 6
+  dynamicGraspContactNoLiftPenaltyRampSteps: 24
+
+  # Keep anti-scoop and safety terms, but do not let them dominate the new lift
+  # bridge. Mug/cup will still be discouraged from scoop-lift by true-grasp gate.
+  dynamicGraspEarlyContactPenaltyScale: 1.0
+  dynamicGraspImpactPenaltyScale: 5.0
+  dynamicGraspKickPenaltyScale: 5.0
+  dynamicGraspPostContactRelVelPenaltyScale: 2.0
+  dynamicGraspPushAwayPenaltyScale: 5.0
+  dynamicGraspScoopLiftPenaltyScale: 160.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 320.0
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 0.8
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 0.7
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.06
+
+  # Revo2 scripted sanity shows reliable touch/opposition but marginal lift
+  # retention. Slightly stronger fingers make the first lifted examples less
+  # brittle without changing the action interface.
+  robotHandStiffness: 110.0
+  robotHandDamping: 10.0
+  robotHandEffort: 45.0
+  robotHandJointFriction: 0.018
+  fingerTipFriction: 4.0

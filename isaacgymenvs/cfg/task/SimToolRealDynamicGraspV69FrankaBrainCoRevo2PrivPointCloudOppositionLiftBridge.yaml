@@ -1,0 +1,56 @@
+defaults:
+  - SimToolRealDynamicGraspV68FrankaBrainCoRevo2PrivPointCloudTouchLegacyControl
+  - _self_
+
+env:
+  # V69 addresses the V68 local optimum: high non-thumb contact / grasp-quality
+  # reward with no lift. Keep the Revo2 touch-link fingertips and legacy control,
+  # but make contact mean actual fingertip-surface proximity, shift dense contact
+  # credit toward thumb/opposition, and add a small contact->upward-motion bridge.
+
+  # V68 inherited the 0.17 stable-fingertip distance as the surface-contact
+  # threshold, which made near-but-not-touching states look like contact. Use the
+  # tighter threshold from the earlier point-cloud reward variants for true
+  # contact/release logic while leaving stable success distance inherited.
+  dynamicGraspSurfaceContactDistance: 0.075
+  dynamicGraspReleaseMotionContactDistance: 0.075
+  dynamicGraspOpposingDotThreshold: 0.15
+
+  # Do not let non-thumb contact dominate the progress reward. Revo2 needs a
+  # stronger thumb/opposition signal to avoid the "press with fingers" solution.
+  dynamicGraspContactProgressFingerWeight: 0.20
+  dynamicGraspContactProgressNonThumbWeight: 0.10
+  dynamicGraspContactProgressThumbWeight: 0.70
+  dynamicGraspContactProgressRewScale: 5.0
+  dynamicGraspControlledContactRewScale: 2.0
+  dynamicGraspClosedContactBonusRewScale: 16.0
+  dynamicGraspTrueGraspQualityRewScale: 8.0
+  dynamicGraspThumbOppositionRewScale: 18.0
+  dynamicGraspOpposingContactRewScale: 80.0
+  dynamicGraspTrueGraspBonusRewScale: 240.0
+
+  # Bridge from "closed useful contact" to "move the grasp upward". This is
+  # proprioceptive/physics based and object-agnostic; it only activates after
+  # thumb+finger contact, so it should not resurrect palm scooping.
+  dynamicGraspContactPalmLiftRewScale: 90.0
+  dynamicGraspContactPalmLiftVelScale: 0.10
+  dynamicGraspContactLiftVelocityRewScale: 260.0
+  dynamicGraspContactLiftVelocityScale: 0.16
+  dynamicGraspContactLiftProgressRewScale: 1200.0
+  liftingRewScale: 220.0
+  liftingBonus: 1400.0
+  dynamicGraspLiftProgressRewScale: 260.0
+  dynamicGraspQualityLiftProgressRewScale: 900.0
+  dynamicGraspLiftedTrueGraspRewScale: 1200.0
+
+  # Make "closed contact but no height progress" decay faster than V68.
+  dynamicGraspContactNoLiftPenaltyScale: 160.0
+  dynamicGraspContactRewardDecayGraceSteps: 6
+  dynamicGraspContactRewardDecaySteps: 30
+  dynamicGraspContactRewardDecayMinFraction: 0.05
+  dynamicGraspContactNoLiftPenaltyGraceSteps: 10
+  dynamicGraspContactNoLiftPenaltyRampSteps: 35
+
+  # Keep lift exploration alive even before grasp quality is perfect.
+  dynamicGraspGateLiftRewardByGraspQuality: True
+  dynamicGraspLiftRewardMinGraspQualityMultiplier: 0.45

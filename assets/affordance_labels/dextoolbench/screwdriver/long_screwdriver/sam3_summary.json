@@ -1,0 +1,1920 @@
+{
+  "asset_id": "dextoolbench/screwdriver/long_screwdriver",
+  "label": "long_screwdriver",
+  "mesh_path": "/data1/linsixu/simtoolreal/assets/urdf/dextoolbench/screwdriver/long_screwdriver/long_screwdriver.obj",
+  "annotation_dir": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver",
+  "prompts": {
+    "positive_grasp": "long screwdriver handle",
+    "negative_grasp": "long screwdriver shaft or tip",
+    "tool_use_surface": "long screwdriver tip"
+  },
+  "views": [
+    "front",
+    "back",
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "iso1",
+    "iso2"
+  ],
+  "render_dir": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views",
+  "render_only": false,
+  "prompt_infos": {
+    "front": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 4,
+            "kept_masks": 4,
+            "scores": [
+              0.42639416456222534,
+              0.5354429483413696,
+              0.3539881408214569,
+              0.6946571469306946
+            ],
+            "boxes_xyxy": [
+              [
+                251.64663696289062,
+                243.26361083984375,
+                471.5167541503906,
+                273.28173828125
+              ],
+              [
+                41.90155029296875,
+                229.29873657226562,
+                255.58657836914062,
+                282.10382080078125
+              ],
+              [
+                41.65434265136719,
+                232.07846069335938,
+                471.5919189453125,
+                282.4031677246094
+              ],
+              [
+                283.4761657714844,
+                251.2644500732422,
+                471.2298278808594,
+                261.14337158203125
+              ]
+            ],
+            "prompt": "long screwdriver handle",
+            "mask_pixels": 11821
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.7135229706764221,
+              0.26116272807121277,
+              0.3201315701007843
+            ],
+            "boxes_xyxy": [
+              [
+                42.025047302246094,
+                228.95547485351562,
+                255.07647705078125,
+                282.5799865722656
+              ],
+              [
+                252.82431030273438,
+                241.746337890625,
+                286.3186950683594,
+                271.480224609375
+              ],
+              [
+                283.02093505859375,
+                251.1009979248047,
+                471.3431396484375,
+                261.15545654296875
+              ]
+            ],
+            "prompt": "handle",
+            "mask_pixels": 11487
+          }
+        ],
+        "best_score": 0.7135229706764221,
+        "mask_pixels": 11885,
+        "prompt": "long screwdriver handle",
+        "prompt_variants": [
+          "long screwdriver handle",
+          "handle"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/front_positive_grasp_mask.png",
+        "voted_faces": 3452
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.5131081342697144,
+              0.28575006127357483,
+              0.5314136743545532
+            ],
+            "boxes_xyxy": [
+              [
+                252.76451110839844,
+                242.21932983398438,
+                470.610595703125,
+                272.0642395019531
+              ],
+              [
+                40.53492736816406,
+                232.30531311035156,
+                471.1080322265625,
+                281.14581298828125
+              ],
+              [
+                283.455078125,
+                251.40142822265625,
+                471.2430419921875,
+                261.3480224609375
+              ]
+            ],
+            "prompt": "long screwdriver shaft or tip",
+            "mask_pixels": 11907
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.4099563956260681,
+              0.6977730989456177,
+              0.2939150929450989
+            ],
+            "boxes_xyxy": [
+              [
+                252.86203002929688,
+                242.02488708496094,
+                470.7953796386719,
+                273.3092346191406
+              ],
+              [
+                283.20654296875,
+                251.44403076171875,
+                471.18145751953125,
+                261.3135986328125
+              ],
+              [
+                41.137451171875,
+                234.9632568359375,
+                72.43690490722656,
+                277.04730224609375
+              ]
+            ],
+            "prompt": "shaft or tip",
+            "mask_pixels": 3274
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.2683888375759125,
+              0.26776883006095886,
+              0.49151307344436646
+            ],
+            "boxes_xyxy": [
+              [
+                253.23519897460938,
+                242.60513305664062,
+                471.1152648925781,
+                272.1812438964844
+              ],
+              [
+                40.72212219238281,
+                231.2932586669922,
+                471.62762451171875,
+                281.605224609375
+              ],
+              [
+                283.2546081542969,
+                251.4339141845703,
+                471.0105895996094,
+                261.21124267578125
+              ]
+            ],
+            "prompt": "long screwdriver shaft",
+            "mask_pixels": 11905
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.3578718900680542,
+              0.73566073179245,
+              0.27696463465690613
+            ],
+            "boxes_xyxy": [
+              [
+                252.47772216796875,
+                242.41519165039062,
+                471.15625,
+                272.8692932128906
+              ],
+              [
+                283.231201171875,
+                251.3692169189453,
+                470.94549560546875,
+                261.1875915527344
+              ],
+              [
+                41.22529602050781,
+                232.25575256347656,
+                471.89898681640625,
+                281.71539306640625
+              ]
+            ],
+            "prompt": "shaft",
+            "mask_pixels": 11898
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.277226060628891,
+              0.5753584504127502,
+              0.5643897652626038
+            ],
+            "boxes_xyxy": [
+              [
+                40.85282516479492,
+                238.73110961914062,
+                50.65041732788086,
+                273.8232116699219
+              ],
+              [
+                466.873779296875,
+                252.77749633789062,
+                471.36614990234375,
+                260.9017639160156
+              ],
+              [
+                41.145511627197266,
+                235.18844604492188,
+                70.38832092285156,
+                276.71820068359375
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 1036
+          }
+        ],
+        "best_score": 0.73566073179245,
+        "mask_pixels": 11960,
+        "prompt": "long screwdriver shaft or tip",
+        "prompt_variants": [
+          "long screwdriver shaft or tip",
+          "shaft or tip",
+          "long screwdriver shaft",
+          "shaft",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/front_negative_grasp_mask.png",
+        "voted_faces": 3511
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.3820827901363373
+            ],
+            "boxes_xyxy": [
+              [
+                467.1098937988281,
+                252.8068084716797,
+                471.4369812011719,
+                260.7585144042969
+              ]
+            ],
+            "prompt": "long screwdriver tip",
+            "mask_pixels": 28
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.277226060628891,
+              0.5753584504127502,
+              0.5643897652626038
+            ],
+            "boxes_xyxy": [
+              [
+                40.85282516479492,
+                238.73110961914062,
+                50.65041732788086,
+                273.8232116699219
+              ],
+              [
+                466.873779296875,
+                252.77749633789062,
+                471.36614990234375,
+                260.9017639160156
+              ],
+              [
+                41.145511627197266,
+                235.18844604492188,
+                70.38832092285156,
+                276.71820068359375
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 1036
+          }
+        ],
+        "best_score": 0.5753584504127502,
+        "mask_pixels": 1036,
+        "prompt": "long screwdriver tip",
+        "prompt_variants": [
+          "long screwdriver tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/front_tool_use_surface_mask.png",
+        "voted_faces": 387
+      }
+    },
+    "back": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 4,
+            "kept_masks": 4,
+            "scores": [
+              0.4335123598575592,
+              0.3339046537876129,
+              0.6787985563278198,
+              0.3019495904445648
+            ],
+            "boxes_xyxy": [
+              [
+                259.11480712890625,
+                231.93600463867188,
+                455.5211181640625,
+                281.2693176269531
+              ],
+              [
+                39.51988983154297,
+                241.28118896484375,
+                261.59246826171875,
+                272.07861328125
+              ],
+              [
+                41.00629425048828,
+                251.31607055664062,
+                230.09512329101562,
+                261.1064758300781
+              ],
+              [
+                40.56507873535156,
+                232.85629272460938,
+                470.48529052734375,
+                280.3812561035156
+              ]
+            ],
+            "prompt": "long screwdriver handle",
+            "mask_pixels": 11726
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.6334754824638367,
+              0.3396489918231964
+            ],
+            "boxes_xyxy": [
+              [
+                259.139404296875,
+                230.52737426757812,
+                452.69879150390625,
+                282.3775329589844
+              ],
+              [
+                40.6416015625,
+                251.29998779296875,
+                230.15383911132812,
+                261.099853515625
+              ]
+            ],
+            "prompt": "handle",
+            "mask_pixels": 9952
+          }
+        ],
+        "best_score": 0.6787985563278198,
+        "mask_pixels": 11775,
+        "prompt": "long screwdriver handle",
+        "prompt_variants": [
+          "long screwdriver handle",
+          "handle"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/back_positive_grasp_mask.png",
+        "voted_faces": 3309
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.434021919965744,
+              0.5933088064193726,
+              0.25825974345207214
+            ],
+            "boxes_xyxy": [
+              [
+                40.23045349121094,
+                241.23910522460938,
+                261.3531494140625,
+                271.7834777832031
+              ],
+              [
+                40.72265625,
+                251.4860382080078,
+                229.99578857421875,
+                261.1863708496094
+              ],
+              [
+                40.69358825683594,
+                234.5868377685547,
+                470.7032470703125,
+                279.8736572265625
+              ]
+            ],
+            "prompt": "long screwdriver shaft or tip",
+            "mask_pixels": 11776
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.29714322090148926,
+              0.6913576722145081,
+              0.4453568756580353
+            ],
+            "boxes_xyxy": [
+              [
+                41.006736755371094,
+                252.82154846191406,
+                48.347747802734375,
+                260.7602233886719
+              ],
+              [
+                40.594482421875,
+                251.452880859375,
+                229.97735595703125,
+                261.2064208984375
+              ],
+              [
+                40.339439392089844,
+                240.85433959960938,
+                261.20306396484375,
+                272.3905334472656
+              ]
+            ],
+            "prompt": "shaft or tip",
+            "mask_pixels": 2284
+          },
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.3814872205257416
+            ],
+            "boxes_xyxy": [
+              [
+                41.0914306640625,
+                251.46759033203125,
+                230.03271484375,
+                261.1422119140625
+              ]
+            ],
+            "prompt": "long screwdriver shaft",
+            "mask_pixels": 1514
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.417206346988678,
+              0.6842575669288635,
+              0.31661251187324524
+            ],
+            "boxes_xyxy": [
+              [
+                40.31181335449219,
+                241.2188720703125,
+                261.5535888671875,
+                271.9327392578125
+              ],
+              [
+                40.98078155517578,
+                251.30612182617188,
+                230.09765625,
+                261.1450500488281
+              ],
+              [
+                40.9168701171875,
+                233.24795532226562,
+                470.8863525390625,
+                280.8373107910156
+              ]
+            ],
+            "prompt": "shaft",
+            "mask_pixels": 11846
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.43250834941864014,
+              0.25168174505233765,
+              0.7016019821166992
+            ],
+            "boxes_xyxy": [
+              [
+                443.9767761230469,
+                235.6704559326172,
+                470.6588439941406,
+                276.78857421875
+              ],
+              [
+                460.47027587890625,
+                237.7074737548828,
+                471.05096435546875,
+                274.70880126953125
+              ],
+              [
+                40.99477005004883,
+                252.84915161132812,
+                47.71541976928711,
+                260.8971862792969
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 943
+          }
+        ],
+        "best_score": 0.7016019821166992,
+        "mask_pixels": 11878,
+        "prompt": "long screwdriver shaft or tip",
+        "prompt_variants": [
+          "long screwdriver shaft or tip",
+          "shaft or tip",
+          "long screwdriver shaft",
+          "shaft",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/back_negative_grasp_mask.png",
+        "voted_faces": 3371
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.5159790515899658
+            ],
+            "boxes_xyxy": [
+              [
+                41.01409912109375,
+                252.8632354736328,
+                47.97502136230469,
+                260.7770690917969
+              ]
+            ],
+            "prompt": "long screwdriver tip",
+            "mask_pixels": 50
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.43250834941864014,
+              0.25168174505233765,
+              0.7016019821166992
+            ],
+            "boxes_xyxy": [
+              [
+                443.9767761230469,
+                235.6704559326172,
+                470.6588439941406,
+                276.78857421875
+              ],
+              [
+                460.47027587890625,
+                237.7074737548828,
+                471.05096435546875,
+                274.70880126953125
+              ],
+              [
+                40.99477005004883,
+                252.84915161132812,
+                47.71541976928711,
+                260.8971862792969
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 943
+          }
+        ],
+        "best_score": 0.7016019821166992,
+        "mask_pixels": 945,
+        "prompt": "long screwdriver tip",
+        "prompt_variants": [
+          "long screwdriver tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/back_tool_use_surface_mask.png",
+        "voted_faces": 329
+      }
+    },
+    "left": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "long screwdriver handle",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "handle",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "long screwdriver handle",
+        "prompt_variants": [
+          "long screwdriver handle",
+          "handle"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/left_positive_grasp_mask.png",
+        "voted_faces": 0
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "long screwdriver shaft or tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "shaft or tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "long screwdriver shaft",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "shaft",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "long screwdriver shaft or tip",
+        "prompt_variants": [
+          "long screwdriver shaft or tip",
+          "shaft or tip",
+          "long screwdriver shaft",
+          "shaft",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/left_negative_grasp_mask.png",
+        "voted_faces": 0
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "long screwdriver tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "long screwdriver tip",
+        "prompt_variants": [
+          "long screwdriver tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/left_tool_use_surface_mask.png",
+        "voted_faces": 0
+      }
+    },
+    "right": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "long screwdriver handle",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "handle",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "long screwdriver handle",
+        "prompt_variants": [
+          "long screwdriver handle",
+          "handle"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/right_positive_grasp_mask.png",
+        "voted_faces": 0
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "long screwdriver shaft or tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "shaft or tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "long screwdriver shaft",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "shaft",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "long screwdriver shaft or tip",
+        "prompt_variants": [
+          "long screwdriver shaft or tip",
+          "shaft or tip",
+          "long screwdriver shaft",
+          "shaft",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/right_negative_grasp_mask.png",
+        "voted_faces": 0
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "long screwdriver tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "long screwdriver tip",
+        "prompt_variants": [
+          "long screwdriver tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/right_tool_use_surface_mask.png",
+        "voted_faces": 0
+      }
+    },
+    "top": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 4,
+            "kept_masks": 4,
+            "scores": [
+              0.4037211835384369,
+              0.7025159001350403,
+              0.2875865399837494,
+              0.29298004508018494
+            ],
+            "boxes_xyxy": [
+              [
+                250.53732299804688,
+                242.18975830078125,
+                471.1477355957031,
+                273.12628173828125
+              ],
+              [
+                281.43243408203125,
+                248.1331329345703,
+                471.2305908203125,
+                261.0908508300781
+              ],
+              [
+                41.92851257324219,
+                232.93167114257812,
+                255.62379455566406,
+                278.65789794921875
+              ],
+              [
+                41.31953430175781,
+                234.22824096679688,
+                472.0301513671875,
+                277.8032531738281
+              ]
+            ],
+            "prompt": "long screwdriver handle",
+            "mask_pixels": 11288
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.34618866443634033,
+              0.43313589692115784,
+              0.35901957750320435
+            ],
+            "boxes_xyxy": [
+              [
+                250.45314025878906,
+                243.15359497070312,
+                471.2265625,
+                273.0979309082031
+              ],
+              [
+                41.996246337890625,
+                232.4361572265625,
+                255.62167358398438,
+                278.61663818359375
+              ],
+              [
+                281.37091064453125,
+                248.31304931640625,
+                471.3878173828125,
+                260.8132629394531
+              ]
+            ],
+            "prompt": "handle",
+            "mask_pixels": 11090
+          }
+        ],
+        "best_score": 0.7025159001350403,
+        "mask_pixels": 11301,
+        "prompt": "long screwdriver handle",
+        "prompt_variants": [
+          "long screwdriver handle",
+          "handle"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/top_positive_grasp_mask.png",
+        "voted_faces": 3535
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.3439429998397827,
+              0.4214203953742981
+            ],
+            "boxes_xyxy": [
+              [
+                250.87649536132812,
+                241.43423461914062,
+                470.8249206542969,
+                272.7119445800781
+              ],
+              [
+                281.5198059082031,
+                248.1327362060547,
+                471.4342346191406,
+                261.2557678222656
+              ]
+            ],
+            "prompt": "long screwdriver shaft or tip",
+            "mask_pixels": 2523
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.5464010834693909,
+              0.34220242500305176,
+              0.620119571685791
+            ],
+            "boxes_xyxy": [
+              [
+                251.45635986328125,
+                241.353759765625,
+                470.63409423828125,
+                272.89111328125
+              ],
+              [
+                40.941436767578125,
+                235.83872985839844,
+                71.56568908691406,
+                276.2429504394531
+              ],
+              [
+                281.7472839355469,
+                248.10118103027344,
+                471.4055480957031,
+                261.3509216308594
+              ]
+            ],
+            "prompt": "shaft or tip",
+            "mask_pixels": 3509
+          },
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.3433159291744232
+            ],
+            "boxes_xyxy": [
+              [
+                281.4101867675781,
+                248.27801513671875,
+                470.8929748535156,
+                261.1155090332031
+              ]
+            ],
+            "prompt": "long screwdriver shaft",
+            "mask_pixels": 1679
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.3217828571796417,
+              0.46511298418045044,
+              0.6605644822120667
+            ],
+            "boxes_xyxy": [
+              [
+                40.69639587402344,
+                233.829345703125,
+                471.59625244140625,
+                277.4294128417969
+              ],
+              [
+                250.4178466796875,
+                242.17608642578125,
+                470.67034912109375,
+                272.914306640625
+              ],
+              [
+                281.2709045410156,
+                248.32691955566406,
+                471.0547790527344,
+                261.2587890625
+              ]
+            ],
+            "prompt": "shaft",
+            "mask_pixels": 11092
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.6058390736579895,
+              0.38021376729011536
+            ],
+            "boxes_xyxy": [
+              [
+                464.22149658203125,
+                247.95114135742188,
+                471.20294189453125,
+                258.2509460449219
+              ],
+              [
+                41.14336395263672,
+                235.9290008544922,
+                69.7698745727539,
+                275.9093017578125
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 1020
+          }
+        ],
+        "best_score": 0.6605644822120667,
+        "mask_pixels": 11122,
+        "prompt": "long screwdriver shaft or tip",
+        "prompt_variants": [
+          "long screwdriver shaft or tip",
+          "shaft or tip",
+          "long screwdriver shaft",
+          "shaft",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/top_negative_grasp_mask.png",
+        "voted_faces": 3447
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.3974002003669739
+            ],
+            "boxes_xyxy": [
+              [
+                464.1618957519531,
+                248.04368591308594,
+                471.3598327636719,
+                258.0202331542969
+              ]
+            ],
+            "prompt": "long screwdriver tip",
+            "mask_pixels": 51
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.6058390736579895,
+              0.38021376729011536
+            ],
+            "boxes_xyxy": [
+              [
+                464.22149658203125,
+                247.95114135742188,
+                471.20294189453125,
+                258.2509460449219
+              ],
+              [
+                41.14336395263672,
+                235.9290008544922,
+                69.7698745727539,
+                275.9093017578125
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 1020
+          }
+        ],
+        "best_score": 0.6058390736579895,
+        "mask_pixels": 1020,
+        "prompt": "long screwdriver tip",
+        "prompt_variants": [
+          "long screwdriver tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/top_tool_use_surface_mask.png",
+        "voted_faces": 377
+      }
+    },
+    "bottom": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.7746427059173584
+            ],
+            "boxes_xyxy": [
+              [
+                284.26031494140625,
+                252.11495971679688,
+                470.88043212890625,
+                263.8750305175781
+              ]
+            ],
+            "prompt": "long screwdriver handle",
+            "mask_pixels": 1622
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.44848132133483887,
+              0.35139763355255127,
+              0.2686682641506195
+            ],
+            "boxes_xyxy": [
+              [
+                284.6258544921875,
+                252.11273193359375,
+                470.83782958984375,
+                263.9039306640625
+              ],
+              [
+                42.78314971923828,
+                233.08792114257812,
+                254.01303100585938,
+                279.5027160644531
+              ],
+              [
+                250.69424438476562,
+                239.8100128173828,
+                471.0345764160156,
+                271.4838562011719
+              ]
+            ],
+            "prompt": "handle",
+            "mask_pixels": 11134
+          }
+        ],
+        "best_score": 0.7746427059173584,
+        "mask_pixels": 11134,
+        "prompt": "long screwdriver handle",
+        "prompt_variants": [
+          "long screwdriver handle",
+          "handle"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/bottom_positive_grasp_mask.png",
+        "voted_faces": 3198
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.25298312306404114,
+              0.5618460774421692
+            ],
+            "boxes_xyxy": [
+              [
+                251.51739501953125,
+                240.042236328125,
+                471.250244140625,
+                271.891357421875
+              ],
+              [
+                284.4208068847656,
+                252.20315551757812,
+                470.8921813964844,
+                263.8580627441406
+              ]
+            ],
+            "prompt": "long screwdriver shaft or tip",
+            "mask_pixels": 2500
+          },
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.7978996634483337
+            ],
+            "boxes_xyxy": [
+              [
+                284.5420227050781,
+                252.3250274658203,
+                470.8549499511719,
+                263.96466064453125
+              ]
+            ],
+            "prompt": "shaft or tip",
+            "mask_pixels": 1617
+          },
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.33653903007507324
+            ],
+            "boxes_xyxy": [
+              [
+                284.292724609375,
+                252.12171936035156,
+                470.75604248046875,
+                263.8047180175781
+              ]
+            ],
+            "prompt": "long screwdriver shaft",
+            "mask_pixels": 1613
+          },
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.7448322176933289
+            ],
+            "boxes_xyxy": [
+              [
+                284.2208251953125,
+                252.09999084472656,
+                470.7540283203125,
+                263.8904113769531
+              ]
+            ],
+            "prompt": "shaft",
+            "mask_pixels": 1620
+          },
+          {
+            "num_masks": 4,
+            "kept_masks": 4,
+            "scores": [
+              0.26455244421958923,
+              0.48508337140083313,
+              0.38213101029396057,
+              0.2899618148803711
+            ],
+            "boxes_xyxy": [
+              [
+                40.85138702392578,
+                238.9479217529297,
+                50.776283264160156,
+                272.05194091796875
+              ],
+              [
+                465.8723449707031,
+                253.771240234375,
+                471.0889587402344,
+                264.1124267578125
+              ],
+              [
+                41.07179641723633,
+                235.36956787109375,
+                70.32041931152344,
+                275.5079040527344
+              ],
+              [
+                456.73846435546875,
+                252.83816528320312,
+                470.8973388671875,
+                263.9727478027344
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 1152
+          }
+        ],
+        "best_score": 0.7978996634483337,
+        "mask_pixels": 3510,
+        "prompt": "long screwdriver shaft or tip",
+        "prompt_variants": [
+          "long screwdriver shaft or tip",
+          "shaft or tip",
+          "long screwdriver shaft",
+          "shaft",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/bottom_negative_grasp_mask.png",
+        "voted_faces": 1053
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "long screwdriver tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 4,
+            "kept_masks": 4,
+            "scores": [
+              0.26455244421958923,
+              0.48508337140083313,
+              0.38213101029396057,
+              0.2899618148803711
+            ],
+            "boxes_xyxy": [
+              [
+                40.85138702392578,
+                238.9479217529297,
+                50.776283264160156,
+                272.05194091796875
+              ],
+              [
+                465.8723449707031,
+                253.771240234375,
+                471.0889587402344,
+                264.1124267578125
+              ],
+              [
+                41.07179641723633,
+                235.36956787109375,
+                70.32041931152344,
+                275.5079040527344
+              ],
+              [
+                456.73846435546875,
+                252.83816528320312,
+                470.8973388671875,
+                263.9727478027344
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 1152
+          }
+        ],
+        "best_score": 0.48508337140083313,
+        "mask_pixels": 1152,
+        "prompt": "long screwdriver tip",
+        "prompt_variants": [
+          "long screwdriver tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/bottom_tool_use_surface_mask.png",
+        "voted_faces": 387
+      }
+    },
+    "iso1": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.32879704236984253,
+              0.8723756670951843
+            ],
+            "boxes_xyxy": [
+              [
+                41.226806640625,
+                230.64279174804688,
+                271.2723693847656,
+                384.7629089355469
+              ],
+              [
+                277.8026123046875,
+                125.18582153320312,
+                471.25543212890625,
+                239.98098754882812
+              ]
+            ],
+            "prompt": "long screwdriver handle",
+            "mask_pixels": 17278
+          },
+          {
+            "num_masks": 4,
+            "kept_masks": 4,
+            "scores": [
+              0.31319162249565125,
+              0.27274057269096375,
+              0.4264872670173645,
+              0.509678840637207
+            ],
+            "boxes_xyxy": [
+              [
+                241.43370056152344,
+                125.27657318115234,
+                471.3935546875,
+                273.9725646972656
+              ],
+              [
+                72.3729248046875,
+                246.8831787109375,
+                269.8432312011719,
+                381.02960205078125
+              ],
+              [
+                41.74974822998047,
+                231.01577758789062,
+                270.5904541015625,
+                383.8667297363281
+              ],
+              [
+                278.3171081542969,
+                125.41380310058594,
+                471.2984313964844,
+                239.19883728027344
+              ]
+            ],
+            "prompt": "handle",
+            "mask_pixels": 18967
+          }
+        ],
+        "best_score": 0.8723756670951843,
+        "mask_pixels": 19149,
+        "prompt": "long screwdriver handle",
+        "prompt_variants": [
+          "long screwdriver handle",
+          "handle"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/iso1_positive_grasp_mask.png",
+        "voted_faces": 4006
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.7357714176177979,
+              0.26679226756095886
+            ],
+            "boxes_xyxy": [
+              [
+                277.3286437988281,
+                125.12303161621094,
+                471.2334289550781,
+                239.9917449951172
+              ],
+              [
+                241.59288024902344,
+                124.76862335205078,
+                471.23651123046875,
+                273.2881164550781
+              ]
+            ],
+            "prompt": "long screwdriver shaft or tip",
+            "mask_pixels": 4423
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.39732953906059265,
+              0.7229127287864685,
+              0.2557747960090637
+            ],
+            "boxes_xyxy": [
+              [
+                456.5868835449219,
+                124.97976684570312,
+                471.2400207519531,
+                137.63885498046875
+              ],
+              [
+                277.4864807128906,
+                124.9066162109375,
+                471.4094543457031,
+                239.7218017578125
+              ],
+              [
+                241.2799072265625,
+                124.8390884399414,
+                471.36846923828125,
+                273.71746826171875
+              ]
+            ],
+            "prompt": "shaft or tip",
+            "mask_pixels": 4402
+          },
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.41806936264038086
+            ],
+            "boxes_xyxy": [
+              [
+                277.7520446777344,
+                125.28707885742188,
+                471.1291198730469,
+                239.98751831054688
+              ]
+            ],
+            "prompt": "long screwdriver shaft",
+            "mask_pixels": 2595
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.5978527069091797,
+              0.2544599771499634,
+              0.7050638198852539
+            ],
+            "boxes_xyxy": [
+              [
+                241.67190551757812,
+                125.25022888183594,
+                471.1040954589844,
+                273.25286865234375
+              ],
+              [
+                41.063819885253906,
+                231.4019317626953,
+                266.28289794921875,
+                384.946044921875
+              ],
+              [
+                277.3418884277344,
+                125.25080871582031,
+                471.0881042480469,
+                239.7648162841797
+              ]
+            ],
+            "prompt": "shaft",
+            "mask_pixels": 19054
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.7298040986061096,
+              0.4362303614616394
+            ],
+            "boxes_xyxy": [
+              [
+                456.5290222167969,
+                125.0083999633789,
+                471.0531311035156,
+                137.59103393554688
+              ],
+              [
+                41.33092498779297,
+                333.8256530761719,
+                91.02021026611328,
+                387.1280822753906
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 1220
+          }
+        ],
+        "best_score": 0.7357714176177979,
+        "mask_pixels": 19131,
+        "prompt": "long screwdriver shaft or tip",
+        "prompt_variants": [
+          "long screwdriver shaft or tip",
+          "shaft or tip",
+          "long screwdriver shaft",
+          "shaft",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/iso1_negative_grasp_mask.png",
+        "voted_faces": 3995
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.636234700679779
+            ],
+            "boxes_xyxy": [
+              [
+                456.6390686035156,
+                125.01112365722656,
+                471.0830993652344,
+                137.54454040527344
+              ]
+            ],
+            "prompt": "long screwdriver tip",
+            "mask_pixels": 133
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.7298040986061096,
+              0.4362303614616394
+            ],
+            "boxes_xyxy": [
+              [
+                456.5290222167969,
+                125.0083999633789,
+                471.0531311035156,
+                137.59103393554688
+              ],
+              [
+                41.33092498779297,
+                333.8256530761719,
+                91.02021026611328,
+                387.1280822753906
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 1220
+          }
+        ],
+        "best_score": 0.7298040986061096,
+        "mask_pixels": 1221,
+        "prompt": "long screwdriver tip",
+        "prompt_variants": [
+          "long screwdriver tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/iso1_tool_use_surface_mask.png",
+        "voted_faces": 317
+      }
+    },
+    "iso2": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 4,
+            "kept_masks": 4,
+            "scores": [
+              0.7800228595733643,
+              0.6799289584159851,
+              0.35280752182006836,
+              0.32061854004859924
+            ],
+            "boxes_xyxy": [
+              [
+                240.9386444091797,
+                126.36266326904297,
+                470.68310546875,
+                284.0247802734375
+              ],
+              [
+                40.878684997558594,
+                270.2587585449219,
+                230.90066528320312,
+                385.8453674316406
+              ],
+              [
+                40.47917175292969,
+                125.24807739257812,
+                470.549072265625,
+                386.53192138671875
+              ],
+              [
+                40.45030212402344,
+                248.31625366210938,
+                260.27886962890625,
+                386.5646057128906
+              ]
+            ],
+            "prompt": "long screwdriver handle",
+            "mask_pixels": 18773
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.890946090221405,
+              0.39710667729377747
+            ],
+            "boxes_xyxy": [
+              [
+                241.03988647460938,
+                126.27412414550781,
+                470.7377624511719,
+                284.04986572265625
+              ],
+              [
+                40.822662353515625,
+                270.8182678222656,
+                230.79122924804688,
+                385.6640319824219
+              ]
+            ],
+            "prompt": "handle",
+            "mask_pixels": 18004
+          }
+        ],
+        "best_score": 0.890946090221405,
+        "mask_pixels": 18872,
+        "prompt": "long screwdriver handle",
+        "prompt_variants": [
+          "long screwdriver handle",
+          "handle"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/iso2_positive_grasp_mask.png",
+        "voted_faces": 3961
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.8756382465362549
+            ],
+            "boxes_xyxy": [
+              [
+                40.89131164550781,
+                269.0655212402344,
+                230.7159881591797,
+                386.0059509277344
+              ]
+            ],
+            "prompt": "long screwdriver shaft or tip",
+            "mask_pixels": 2546
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.27573874592781067,
+              0.7783769369125366
+            ],
+            "boxes_xyxy": [
+              [
+                416.6932067871094,
+                126.25291442871094,
+                470.6805114746094,
+                184.1632537841797
+              ],
+              [
+                41.206138610839844,
+                269.2361145019531,
+                230.52178955078125,
+                385.9886169433594
+              ]
+            ],
+            "prompt": "shaft or tip",
+            "mask_pixels": 4955
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.5489672422409058,
+              0.25146710872650146
+            ],
+            "boxes_xyxy": [
+              [
+                41.142242431640625,
+                269.1801452636719,
+                230.53997802734375,
+                385.7649230957031
+              ],
+              [
+                40.29402160644531,
+                126.93946838378906,
+                470.62017822265625,
+                387.67266845703125
+              ]
+            ],
+            "prompt": "long screwdriver shaft",
+            "mask_pixels": 18900
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.28046634793281555,
+              0.6955844163894653
+            ],
+            "boxes_xyxy": [
+              [
+                41.02980041503906,
+                248.26348876953125,
+                261.824462890625,
+                386.902587890625
+              ],
+              [
+                41.10345458984375,
+                268.89013671875,
+                230.76217651367188,
+                385.84967041015625
+              ]
+            ],
+            "prompt": "shaft",
+            "mask_pixels": 3386
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.6417483687400818,
+              0.569856584072113
+            ],
+            "boxes_xyxy": [
+              [
+                40.68368148803711,
+                373.98626708984375,
+                51.62349319458008,
+                386.3114013671875
+              ],
+              [
+                417.2206726074219,
+                126.50942993164062,
+                470.5720520019531,
+                184.76837158203125
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 2434
+          }
+        ],
+        "best_score": 0.8756382465362549,
+        "mask_pixels": 18933,
+        "prompt": "long screwdriver shaft or tip",
+        "prompt_variants": [
+          "long screwdriver shaft or tip",
+          "shaft or tip",
+          "long screwdriver shaft",
+          "shaft",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/iso2_negative_grasp_mask.png",
+        "voted_faces": 4009
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.26821115612983704,
+              0.5894444584846497
+            ],
+            "boxes_xyxy": [
+              [
+                39.26714324951172,
+                266.89013671875,
+                234.8370361328125,
+                386.59454345703125
+              ],
+              [
+                40.67780303955078,
+                373.9457092285156,
+                51.314697265625,
+                386.2544250488281
+              ]
+            ],
+            "prompt": "long screwdriver tip",
+            "mask_pixels": 2530
+          },
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.6417483687400818,
+              0.569856584072113
+            ],
+            "boxes_xyxy": [
+              [
+                40.68368148803711,
+                373.98626708984375,
+                51.62349319458008,
+                386.3114013671875
+              ],
+              [
+                417.2206726074219,
+                126.50942993164062,
+                470.5720520019531,
+                184.76837158203125
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 2434
+          }
+        ],
+        "best_score": 0.6417483687400818,
+        "mask_pixels": 4897,
+        "prompt": "long screwdriver tip",
+        "prompt_variants": [
+          "long screwdriver tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/sam3_views/iso2_tool_use_surface_mask.png",
+        "voted_faces": 1086
+      }
+    }
+  },
+  "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/affordance.npz",
+  "num_vertices": 5449,
+  "labeled_vertices": 4204,
+  "class_vertex_counts": {
+    "background": 1245,
+    "positive_grasp": 3746,
+    "negative_grasp": 458,
+    "tool_use_surface": 0,
+    "safe_contact": 0
+  },
+  "multi_label_vertex_counts": {
+    "positive_grasp": 4187,
+    "negative_grasp": 4007,
+    "tool_use_surface": 577,
+    "safe_contact": 0
+  },
+  "overlap_vertices": 4000
+}

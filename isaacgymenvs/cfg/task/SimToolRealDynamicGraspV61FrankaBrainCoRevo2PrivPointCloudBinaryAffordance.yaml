@@ -1,0 +1,23 @@
+defaults:
+  - SimToolRealDynamicGraspV59FrankaBrainCoRevo2PrivPointCloudBootstrapNoFakeAffordance
+  - _self_
+
+env:
+  # V61 keeps the V59 Revo2 privileged mesh-pointcloud teacher as the no-label
+  # baseline, and adds a weak binary grasp-affordance contact prior from the
+  # cleaned SAM3 labels. The label is intentionally not used as a success
+  # criterion: it only nudges fingertip contacts toward positive grasp regions
+  # and away from negative regions.
+  dynamicGraspUseBinaryAffordanceLabels: True
+  dynamicGraspBinaryAffordanceLabelRoot: "assets/affordance_labels"
+  dynamicGraspBinaryAffordanceLabelDataset: "domino20"
+  dynamicGraspBinaryAffordanceLabelFile: "grasp_affordance_clean_v2.npz"
+  dynamicGraspBinaryAffordanceFallbackLabelFiles: ["grasp_affordance_binary.npz"]
+  dynamicGraspBinaryAffordanceMapMaxDistance: 0.0
+  dynamicGraspBinaryAffordanceNumSurfaceSamples: 512
+  dynamicGraspBinaryAffordanceContactDistance: 0.06
+
+  # Keep this weak relative to grasp/lift/hold rewards. These labels are noisy
+  # weak priors, not hard ground truth.
+  dynamicGraspBinaryAffordancePositiveContactRewScale: 6.0
+  dynamicGraspBinaryAffordanceNegativeContactPenaltyScale: 8.0

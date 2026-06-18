@@ -26,6 +26,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--steps", type=int, default=96)
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--out-dir", default="preview_videos")
+    parser.add_argument("--output-prefix", default="franka_inspire_v33_env_preview")
+    parser.add_argument("--camera-width", type=int, default=None)
+    parser.add_argument("--camera-height", type=int, default=None)
     parser.add_argument("--sim-device", default="cuda:0")
     parser.add_argument("--rl-device", default="cuda:0")
     parser.add_argument("--graphics-device-id", type=int, default=0)
@@ -65,8 +68,8 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    png_path = out_dir / f"franka_inspire_v33_env_preview_{stamp}.png"
-    mp4_path = out_dir / f"franka_inspire_v33_env_preview_{stamp}.mp4"
+    png_path = out_dir / f"{args.output_prefix}_{stamp}.png"
+    mp4_path = out_dir / f"{args.output_prefix}_{stamp}.mp4"
 
     cfg_dir = Path(__file__).resolve().parents[1] / "isaacgymenvs" / "cfg"
     with initialize_config_dir(config_dir=str(cfg_dir), version_base="1.1"):
@@ -88,6 +91,10 @@ def main() -> None:
         cfg.headless = True
         cfg.capture_video = False
         cfg.force_render = False
+        if args.camera_width is not None:
+            cfg.task.env.videoCameraWidth = int(args.camera_width)
+        if args.camera_height is not None:
+            cfg.task.env.videoCameraHeight = int(args.camera_height)
         if args.robot_start_pose is not None:
             cfg.task.env.robotStartPose = list(args.robot_start_pose)
         if args.default_arm_dof_pos is not None:
@@ -105,6 +112,12 @@ def main() -> None:
         cfg=cfg,
     )
     env.cfg["env"]["capture_video"] = False
+    env.reset_idx(torch.arange(env.num_envs, device=env.device), tensor_reset=True)
+    env.set_actor_root_state_tensor_indexed()
+    env.set_dof_state_tensor_indexed()
+    env.gym.simulate(env.sim)
+    env.gym.fetch_results(env.sim, True)
+    env.populate_sim_buffers()
     if args.camera_pos is not None or args.camera_target is not None:
         if args.camera_pos is None or args.camera_target is None:
             raise ValueError("--camera-pos and --camera-target must be set together")
@@ -129,6 +142,16 @@ def main() -> None:
         f"env {env.index_to_view}",
         flush=True,
     )
+    env.populate_sim_buffers()
+    palm_pos = env.palm_center_pos[0].detach().cpu().numpy()
+    object_pos = env.object_pos[0].detach().cpu().numpy()
+    fingertip_pos = env.fingertip_pos_offset[0].detach().cpu().numpy()
+    fingertip_dist = ((fingertip_pos - object_pos[None, :]) ** 2).sum(axis=1) ** 0.5
+    palm_object_dist = float(((palm_pos - object_pos) ** 2).sum() ** 0.5)
+    print(f"home_palm_pos {palm_pos.tolist()}", flush=True)
+    print(f"home_object_pos {object_pos.tolist()}", flush=True)
+    print(f"home_palm_object_dist {palm_object_dist:.4f}", flush=True)
+    print(f"home_min_fingertip_object_dist {float(fingertip_dist.min()):.4f}", flush=True)
 
     frames = []
     for step in range(args.steps):

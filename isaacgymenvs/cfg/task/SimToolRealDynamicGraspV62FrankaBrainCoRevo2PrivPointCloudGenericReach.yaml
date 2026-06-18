@@ -1,0 +1,26 @@
+defaults:
+  - SimToolRealDynamicGraspV61FrankaBrainCoRevo2PrivPointCloudBinaryAffordance
+  - _self_
+
+env:
+  # V62 keeps V61's binary affordance as a weak contact-quality prior, but adds
+  # only generic approach shaping. The goal is to make Revo2 reliably enter the
+  # pregrasp/contact regime without hand-crafting object-specific behavior.
+
+  # Generic reach shaping before lift.
+  dynamicGraspPalmReachRewScale: 8.0
+  dynamicGraspPalmReachDistanceScale: 0.28
+  dynamicGraspFingertipReachRewScale: 10.0
+  dynamicGraspFingertipReachDistanceScale: 0.18
+
+  # Slightly stronger, still generic motion-to-object shaping.
+  dynamicGraspInterceptRewScale: 4.0
+  dynamicGraspPregraspAlignmentRewScale: 5.0
+  dynamicGraspPregraspHoldRewScale: 5.0
+
+  # Do not make early exploration afraid of contact or small arm motion.
+  dynamicGraspEarlyContactPenaltyScale: 0.5
+  dynamicGraspEarlyContactGraceDistance: 0.12
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 8.0
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 12.0
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.5

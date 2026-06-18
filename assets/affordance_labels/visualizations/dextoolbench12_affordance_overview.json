@@ -1,0 +1,106 @@
+{
+  "manifest_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/asset_manifest.json",
+  "stage": "dextoolbench12",
+  "num_assets": 12,
+  "labeled_count": 12,
+  "unlabeled_count": 0,
+  "image_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/visualizations/dextoolbench12_affordance_overview.png",
+  "assets": [
+    {
+      "asset_id": "dextoolbench/brush/blue_brush",
+      "label": "blue_brush",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/brush/blue_brush/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "dextoolbench/brush/red_brush",
+      "label": "red_brush",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/brush/red_brush/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "dextoolbench/eraser/flat_eraser",
+      "label": "flat_eraser",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/eraser/flat_eraser/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "dextoolbench/eraser/handle_eraser",
+      "label": "handle_eraser",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/eraser/handle_eraser/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "dextoolbench/hammer/claw_hammer",
+      "label": "claw_hammer",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/hammer/claw_hammer/affordance.npz",
+      "num_visualized_points": 2012
+    },
+    {
+      "asset_id": "dextoolbench/hammer/mallet_hammer",
+      "label": "mallet_hammer",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/hammer/mallet_hammer/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "dextoolbench/marker/sharpie_marker",
+      "label": "sharpie_marker",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/affordance.npz",
+      "num_visualized_points": 2134
+    },
+    {
+      "asset_id": "dextoolbench/marker/staples_marker",
+      "label": "staples_marker",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/affordance.npz",
+      "num_visualized_points": 2455
+    },
+    {
+      "asset_id": "dextoolbench/screwdriver/long_screwdriver",
+      "label": "long_screwdriver",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/long_screwdriver/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "dextoolbench/screwdriver/short_screwdriver",
+      "label": "short_screwdriver",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/screwdriver/short_screwdriver/affordance.npz",
+      "num_visualized_points": 2262
+    },
+    {
+      "asset_id": "dextoolbench/spatula/flat_spatula",
+      "label": "flat_spatula",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/spatula/flat_spatula/affordance.npz",
+      "num_visualized_points": 1567
+    },
+    {
+      "asset_id": "dextoolbench/spatula/spoon_spatula",
+      "label": "spoon_spatula",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/spatula/spoon_spatula/affordance.npz",
+      "num_visualized_points": 1524
+    }
+  ]
+}

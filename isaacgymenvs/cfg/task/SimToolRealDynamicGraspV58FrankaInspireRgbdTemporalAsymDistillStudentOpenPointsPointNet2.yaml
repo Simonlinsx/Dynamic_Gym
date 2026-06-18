@@ -1,0 +1,8 @@
+defaults:
+  - SimToolRealDynamicGraspV57FrankaInspireRgbdTemporalAsymDistillStudentPointNet2
+  - _self_
+
+env:
+  # Same environment as V56/V57. V58 only changes the student/critic point
+  # encoder to official OpenPoints PointNet++.
+  objectPointCloudNumPoints: 128

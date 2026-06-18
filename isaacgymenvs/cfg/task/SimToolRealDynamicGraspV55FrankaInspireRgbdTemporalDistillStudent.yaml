@@ -1,0 +1,26 @@
+defaults:
+  - SimToolRealDynamicGraspV54FrankaInspireRgbdTemporalBootstrapStudent
+  - _self_
+
+env:
+  objectPointCloudNumPoints: 128
+  distillationTeacherObsEnabled: True
+  distillationTeacherObsList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "fingertip_pos_rel_palm",
+      "object_pointcloud_rel_palm",
+      "object_pointcloud_centroid_rel_palm",
+      "object_pointcloud_vel_rel_palm",
+      "object_pointcloud_tracking_confidence",
+      "object_vel_rel_palm",
+      "affordance_pos_rel_palm",
+      "future_affordance_pos_rel_palm",
+      "affordance_axis_rel_palm",
+      "affordance_confidence",
+    ]

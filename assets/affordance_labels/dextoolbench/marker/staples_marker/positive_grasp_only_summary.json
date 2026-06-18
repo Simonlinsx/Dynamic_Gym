@@ -1,0 +1,629 @@
+{
+  "asset_id": "dextoolbench/marker/staples_marker",
+  "label": "staples_marker",
+  "mesh_path": "/data1/linsixu/simtoolreal/assets/urdf/dextoolbench/marker/staples_marker/staples_marker.obj",
+  "annotation_dir": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker",
+  "positive_prompt": "staples marker barrel",
+  "positive_prompt_variants": [
+    "staples marker barrel",
+    "barrel"
+  ],
+  "views": [
+    "front",
+    "back",
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "iso1",
+    "iso2",
+    "iso3",
+    "iso4",
+    "front_top",
+    "back_top"
+  ],
+  "render_dir": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views",
+  "render_only": false,
+  "prompt_infos": {
+    "front": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.9539352655410767
+          ],
+          "boxes_xyxy": [
+            [
+              61.07588195800781,
+              340.246826171875,
+              705.7053833007812,
+              427.58453369140625
+            ]
+          ],
+          "mask_pixels": 40134
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "staples marker barrel",
+          "score": 0.9539352655410767,
+          "mask_pixels": 40134,
+          "box_xyxy": [
+            61.07588195800781,
+            340.246826171875,
+            705.7053833007812,
+            427.58453369140625
+          ]
+        }
+      ],
+      "best_score": 0.9539352655410767,
+      "mask_pixels": 40134,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/front_positive_grasp_mask.png",
+      "voted_faces": 1158
+    },
+    "back": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.9344505667686462
+          ],
+          "boxes_xyxy": [
+            [
+              61.820892333984375,
+              340.167236328125,
+              705.897216796875,
+              427.5357666015625
+            ]
+          ],
+          "mask_pixels": 40319
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "staples marker barrel",
+          "score": 0.9344505667686462,
+          "mask_pixels": 40319,
+          "box_xyxy": [
+            61.820892333984375,
+            340.167236328125,
+            705.897216796875,
+            427.5357666015625
+          ]
+        }
+      ],
+      "best_score": 0.9344505667686462,
+      "mask_pixels": 40319,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/back_positive_grasp_mask.png",
+      "voted_faces": 1175
+    },
+    "left": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "selected": [],
+      "best_score": 0.0,
+      "mask_pixels": 0,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/left_positive_grasp_mask.png",
+      "voted_faces": 0
+    },
+    "right": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "selected": [],
+      "best_score": 0.0,
+      "mask_pixels": 0,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/right_positive_grasp_mask.png",
+      "voted_faces": 0
+    },
+    "top": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.9583405256271362
+          ],
+          "boxes_xyxy": [
+            [
+              60.93505096435547,
+              340.21240234375,
+              705.973388671875,
+              428.17218017578125
+            ]
+          ],
+          "mask_pixels": 40484
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "staples marker barrel",
+          "score": 0.9583405256271362,
+          "mask_pixels": 40484,
+          "box_xyxy": [
+            60.93505096435547,
+            340.21240234375,
+            705.973388671875,
+            428.17218017578125
+          ]
+        }
+      ],
+      "best_score": 0.9583405256271362,
+      "mask_pixels": 40484,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/top_positive_grasp_mask.png",
+      "voted_faces": 1221
+    },
+    "bottom": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.9520993828773499
+          ],
+          "boxes_xyxy": [
+            [
+              61.085426330566406,
+              340.38421630859375,
+              705.969482421875,
+              428.25067138671875
+            ]
+          ],
+          "mask_pixels": 40431
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "staples marker barrel",
+          "score": 0.9520993828773499,
+          "mask_pixels": 40431,
+          "box_xyxy": [
+            61.085426330566406,
+            340.38421630859375,
+            705.969482421875,
+            428.25067138671875
+          ]
+        }
+      ],
+      "best_score": 0.9520993828773499,
+      "mask_pixels": 40431,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/bottom_positive_grasp_mask.png",
+      "voted_faces": 1127
+    },
+    "iso1": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.9764194488525391
+          ],
+          "boxes_xyxy": [
+            [
+              63.46666717529297,
+              184.2655792236328,
+              706.770263671875,
+              582.2160034179688
+            ]
+          ],
+          "mask_pixels": 56569
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "staples marker barrel",
+          "score": 0.9764194488525391,
+          "mask_pixels": 56569,
+          "box_xyxy": [
+            63.46666717529297,
+            184.2655792236328,
+            706.770263671875,
+            582.2160034179688
+          ]
+        }
+      ],
+      "best_score": 0.9764194488525391,
+      "mask_pixels": 56569,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/iso1_positive_grasp_mask.png",
+      "voted_faces": 1130
+    },
+    "iso2": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.973242461681366
+          ],
+          "boxes_xyxy": [
+            [
+              61.810089111328125,
+              184.4131622314453,
+              705.9956665039062,
+              583.9310913085938
+            ]
+          ],
+          "mask_pixels": 56836
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "staples marker barrel",
+          "score": 0.973242461681366,
+          "mask_pixels": 56836,
+          "box_xyxy": [
+            61.810089111328125,
+            184.4131622314453,
+            705.9956665039062,
+            583.9310913085938
+          ]
+        }
+      ],
+      "best_score": 0.973242461681366,
+      "mask_pixels": 56836,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/iso2_positive_grasp_mask.png",
+      "voted_faces": 1267
+    },
+    "iso3": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.974593460559845
+          ],
+          "boxes_xyxy": [
+            [
+              63.333343505859375,
+              184.41622924804688,
+              706.6843872070312,
+              581.7347412109375
+            ]
+          ],
+          "mask_pixels": 56748
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "staples marker barrel",
+          "score": 0.974593460559845,
+          "mask_pixels": 56748,
+          "box_xyxy": [
+            63.333343505859375,
+            184.41622924804688,
+            706.6843872070312,
+            581.7347412109375
+          ]
+        }
+      ],
+      "best_score": 0.974593460559845,
+      "mask_pixels": 56748,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/iso3_positive_grasp_mask.png",
+      "voted_faces": 1131
+    },
+    "iso4": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.9492509365081787
+          ],
+          "boxes_xyxy": [
+            [
+              61.937232971191406,
+              184.77154541015625,
+              706.2177734375,
+              584.011474609375
+            ]
+          ],
+          "mask_pixels": 56688
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "staples marker barrel",
+          "score": 0.9492509365081787,
+          "mask_pixels": 56688,
+          "box_xyxy": [
+            61.937232971191406,
+            184.77154541015625,
+            706.2177734375,
+            584.011474609375
+          ]
+        }
+      ],
+      "best_score": 0.9492509365081787,
+      "mask_pixels": 56688,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/iso4_positive_grasp_mask.png",
+      "voted_faces": 1289
+    },
+    "front_top": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.9628024101257324
+          ],
+          "boxes_xyxy": [
+            [
+              61.219505310058594,
+              348.7554626464844,
+              706.1234130859375,
+              419.96539306640625
+            ]
+          ],
+          "mask_pixels": 38001
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "staples marker barrel",
+          "score": 0.9628024101257324,
+          "mask_pixels": 38001,
+          "box_xyxy": [
+            61.219505310058594,
+            348.7554626464844,
+            706.1234130859375,
+            419.96539306640625
+          ]
+        }
+      ],
+      "best_score": 0.9628024101257324,
+      "mask_pixels": 38001,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/front_top_positive_grasp_mask.png",
+      "voted_faces": 1130
+    },
+    "back_top": {
+      "variants": [
+        {
+          "prompt": "staples marker barrel",
+          "num_masks": 1,
+          "kept_masks": 1,
+          "scores": [
+            0.9647560119628906
+          ],
+          "boxes_xyxy": [
+            [
+              61.21037292480469,
+              348.4753723144531,
+              705.7479248046875,
+              419.19134521484375
+            ]
+          ],
+          "mask_pixels": 38158
+        },
+        {
+          "prompt": "barrel",
+          "num_masks": 0,
+          "scores": [],
+          "mask_pixels": 0
+        }
+      ],
+      "selection": "best_per_view",
+      "reject_slender": false,
+      "max_slender_aspect": 10.0,
+      "selected": [
+        {
+          "prompt": "staples marker barrel",
+          "score": 0.9647560119628906,
+          "mask_pixels": 38158,
+          "box_xyxy": [
+            61.21037292480469,
+            348.4753723144531,
+            705.7479248046875,
+            419.19134521484375
+          ]
+        }
+      ],
+      "best_score": 0.9647560119628906,
+      "mask_pixels": 38158,
+      "prompt": "staples marker barrel",
+      "prompt_variants": [
+        "staples marker barrel",
+        "barrel"
+      ],
+      "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_only_views/back_top_positive_grasp_mask.png",
+      "voted_faces": 1130
+    }
+  },
+  "num_vertices": 2455,
+  "raw_positive_vertices": 1956,
+  "connected_positive_vertices": 1709,
+  "filled_positive_vertices": 1756,
+  "kept_component_sizes": [
+    312,
+    303,
+    296,
+    290,
+    82,
+    68,
+    59,
+    56,
+    52,
+    50,
+    48,
+    47,
+    46
+  ],
+  "dilation_steps": 1,
+  "hole_fill_steps": 2,
+  "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/positive_grasp_only.npz",
+  "clean_v2_positive_vertices": 1756,
+  "clean_v2_negative_vertices": 152,
+  "clean_v2_ignore_vertices": 547,
+  "clean_binary_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/staples_marker/grasp_affordance_clean_v2.npz"
+}

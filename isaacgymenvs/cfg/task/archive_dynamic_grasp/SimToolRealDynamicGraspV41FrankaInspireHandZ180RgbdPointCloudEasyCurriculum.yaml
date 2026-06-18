@@ -1,0 +1,77 @@
+defaults:
+  - SimToolRealDynamicGraspV40FrankaInspireHandZ180RgbdPointCloudLowerHome
+  - _self_
+
+env:
+  # V41 keeps V40's lower safe-home pose and RGB-D render+mask pointcloud, but
+  # turns the first from-scratch stage into an easier grasp/lift curriculum.
+
+  # Start with four relatively solid objects and fixed canonical yaw. This lets
+  # the policy discover opposing contact and lift before expanding back to
+  # hollow cups/mugs and thinner tools.
+  dominoObjectVariants:
+    - label: "bottle"
+      asset_modelname: "001_bottle"
+      asset_model_id: 13
+      quat: [0.70710678, 0.0, 0.0, 0.70710678]
+      mass: 0.025
+      random_yaw: False
+    - label: "can"
+      asset_modelname: "071_can"
+      asset_model_id: 0
+      quat: [0.707225, 0.706849, -0.0100455, -0.00982061]
+      mass: 0.020
+      random_yaw: False
+    - label: "drill"
+      asset_modelname: "030_drill"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.035
+      random_yaw: False
+    - label: "dumbbell"
+      asset_modelname: "052_dumbbell"
+      asset_model_id: 0
+      quat: [0.5, 0.5, 0.5, 0.5]
+      mass: 0.035
+      random_yaw: False
+
+  # Reduce initial object placement spread while learning the approach/closure
+  # chain from RGB-D observations.
+  resetPositionNoiseX: 0.04
+  resetPositionNoiseY: 0.03
+  resetPositionNoiseZ: 0.002
+  dynamicGraspWorkspaceX: [-0.16, 0.16]
+  dynamicGraspWorkspaceY: [-0.08, 0.14]
+
+  # Much slower motion curriculum. With RGB-D rendering this should keep the
+  # first tens of millions of frames near-static instead of asking the policy
+  # to solve interception and dexterous closure at the same time.
+  dynamicGraspInitialSpeedRange: [0.02, 0.08]
+  dynamicGraspInitialYawRateRange: [-0.25, 0.25]
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspStartSpeedRange: [0.0, 0.015]
+  dynamicGraspStartYawRateRange: [-0.03, 0.03]
+  dynamicGraspSpeedCurriculumSteps: 12000000
+  dynamicGraspAffordanceMinSpeedForConfidence: 0.005
+
+  # Keep the rendered point cloud partial, but remove most synthetic corruption
+  # for the first stage. Noise/dropout can be restored after lift is reliable.
+  objectPointCloudNoiseStd: 0.001
+  objectPointCloudDepthNoiseStd: 0.0015
+  objectPointCloudDropoutProb: 0.02
+  objectPointCloudOutlierProb: 0.0
+  objectPointCloudOutlierScale: 0.0
+  objectPointCloudRandomizeOrder: True
+  dynamicGraspAffordanceObsNoiseStd: 0.001
+  dynamicGraspAffordanceAxisNoiseStd: 0.005
+  dynamicGraspAffordanceDropoutProb: 0.0
+
+  # Small reward adjustment for the easy stage: make pure contact less of a
+  # local optimum, make opposing/true grasp more salient, and avoid over-
+  # penalizing early exploratory touch before the policy has learned closure.
+  dynamicGraspPregraspReadyDistance: 0.16
+  dynamicGraspControlledContactRewScale: 8.0
+  dynamicGraspTrueGraspQualityRewScale: 12.0
+  dynamicGraspOpposingContactRewScale: 30.0
+  dynamicGraspEnclosureRewScale: 1.0
+  dynamicGraspEarlyContactPenaltyScale: 2.0

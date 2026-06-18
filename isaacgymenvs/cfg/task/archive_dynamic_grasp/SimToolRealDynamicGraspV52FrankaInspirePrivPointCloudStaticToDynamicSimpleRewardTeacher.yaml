@@ -1,0 +1,92 @@
+defaults:
+  - SimToolRealDynamicGraspV51FrankaInspirePrivPointCloudEasy5HoldTeacher
+  - _self_
+
+env:
+  # V52 curriculum: start as static tabletop grasping. Only after the teacher
+  # reliably lifts static objects do we expose it to moving-object speed.
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspSpeedCurriculumMode: "success"
+  dynamicGraspSpeedCurriculumMetric: "success"
+  dynamicGraspSpeedCurriculumStartSuccess: 0.05
+  dynamicGraspSpeedCurriculumFullSuccess: 0.25
+  dynamicGraspSpeedCurriculumEmaAlpha: 0.02
+  dynamicGraspSpeedCurriculumAlphaRise: 0.0005
+  dynamicGraspSpeedCurriculumAllowDecrease: False
+
+  # Alpha=0 is fully static. Alpha=1 is still slower than the previous fast
+  # dynamic runs; the goal is to add motion only after static lift is learned.
+  dynamicGraspStartSpeedRange: [0.0, 0.0]
+  dynamicGraspStartYawRateRange: [0.0, 0.0]
+  dynamicGraspInitialSpeedRange: [0.06, 0.16]
+  dynamicGraspInitialYawRateRange: [-0.6, 0.6]
+
+  # SimToolReal-style objective: reach -> grasp -> lift. Keep dynamic
+  # interception and lifted-hold terms weak while bootstrapping.
+  distanceDeltaRewScale: 50.0
+  dynamicGraspVelocityMatchRewScale: 0.0
+  dynamicGraspInterceptRewScale: 0.0
+  dynamicGraspAffordanceTargetRewScale: 0.0
+  dynamicGraspPregraspAlignmentRewScale: 0.0
+  dynamicGraspPregraspHoldRewScale: 0.0
+  dynamicGraspPreContactSlowRewScale: 0.0
+  dynamicGraspPreContactRelVelPenaltyScale: 0.0
+
+  # Grasp shaping, deliberately smaller than the previous high-contact stacks.
+  dynamicGraspControlledContactRewScale: 3.0
+  dynamicGraspEnclosureRewScale: 3.0
+  dynamicGraspReadyEnclosureRewScale: 0.0
+  dynamicGraspReadyGraspQualityRewScale: 0.0
+  dynamicGraspReadyContactRewScale: 0.0
+  dynamicGraspTrueGraspQualityRewScale: 25.0
+  dynamicGraspOpposingContactRewScale: 20.0
+
+  # Lift dominates once a plausible grasp appears.
+  liftingRewScale: 90.0
+  liftingBonus: 700.0
+  liftingBonusThreshold: 0.12
+  dynamicGraspLiftProgressRewScale: 220.0
+  dynamicGraspQualityLiftProgressRewScale: 650.0
+  dynamicGraspLiftedTrueGraspRewScale: 450.0
+  dynamicGraspLiftedEnclosureRewScale: 10.0
+
+  # Keep only light post-lift stabilizers. Strict lift-and-hold remains logged,
+  # but it is not the main bootstrap signal for this curriculum.
+  dynamicGraspLiftedRelVelRewScale: 20.0
+  dynamicGraspLiftedCenteringRewScale: 20.0
+  dynamicGraspLiftedHeightHoldRewScale: 20.0
+  dynamicGraspLiftedEnclosureVelRewScale: 25.0
+  dynamicGraspHoldHeightRewScale: 0.0
+  dynamicGraspHoldObjectVelRewScale: 0.0
+  dynamicGraspHoldObjectAngVelPenaltyScale: 0.0
+  dynamicGraspHoldPalmUprightRewScale: 0.0
+  dynamicGraspStableHoldRewScale: 150.0
+  dynamicGraspStableProgressRewScale: 150.0
+  dynamicGraspSuccessBonus: 3000.0
+
+  # Easier success definition for the static bootstrap. The strict lift-hold
+  # metrics are still reported via lift_hold_success_ratio.
+  dynamicGraspLiftHoldEnabled: False
+  dynamicGraspSuccessSteps: 4
+  dynamicGraspStableCounterDecay: 0
+  dynamicGraspStableFingertipDistance: 0.16
+  dynamicGraspStableObjectPalmVel: 0.50
+  dynamicGraspRequireTrueGraspForSuccess: False
+  dynamicGraspLegacySuccessSteps: 4
+  dynamicGraspLegacyStableFingertipDistance: 0.16
+  dynamicGraspLegacyStableObjectPalmVel: 0.50
+  dynamicGraspLegacyRequireTrueGraspForSuccess: False
+
+  # Light safety/anti-scoop terms only. Too much safety pressure in V51 made
+  # the policy prefer contact/pressing over converting a grasp into lift.
+  dynamicGraspEarlyContactPenaltyScale: 0.0
+  dynamicGraspImpactPenaltyScale: 4.0
+  dynamicGraspKickPenaltyScale: 4.0
+  dynamicGraspPostContactRelVelPenaltyScale: 1.0
+  dynamicGraspPushAwayPenaltyScale: 3.0
+  dynamicGraspScoopLiftPenaltyScale: 60.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 120.0
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.01
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 12.0
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 25.0
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.4

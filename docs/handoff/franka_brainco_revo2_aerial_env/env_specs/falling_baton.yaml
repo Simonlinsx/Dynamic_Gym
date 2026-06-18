@@ -1,0 +1,83 @@
+name: falling_baton
+display_name: Falling Baton
+status: implemented_reference_environment
+reference_task: SimToolRealFallingBatonV88FrankaBrainCoRevo2PrivPointCloudPhysicalCatch
+
+goal:
+  description: Actively intercept a falling elongated object, grasp its middle or handle region, and hold it stably.
+  success_concept:
+    - hand moves toward the predicted catch point before contact
+    - object remains above the catch height
+    - multiple fingertips contact the object
+    - contacts form a true grasp rather than palm-only support
+    - object-palm relative velocity is small after contact
+    - object angular velocity is bounded
+
+scene:
+  create_table: false
+  create_goal_object: false
+  reset_when_dropped: false
+  episode_length_steps: 200
+  workspace: aerial_front_active_catch
+
+robot:
+  include: franka_brainco_revo2_common.yaml
+  preferred_home:
+    description: Open hand in front of the arm, below the object spawn height, with the catch region in front of the wrist/forearm.
+  collision_notes:
+    - Object-arm collision can be filtered for early catch curriculum.
+    - Revo2 hand-object collision remains active.
+
+objects:
+  asset_root: assets/urdf/dextoolbench
+  variants:
+    - label: marker/sharpie_marker
+      urdf: marker/sharpie_marker/sharpie_marker.urdf
+    - label: marker/staples_marker
+      urdf: marker/staples_marker/staples_marker.urdf
+    - label: screwdriver/long_screwdriver
+      urdf: screwdriver/long_screwdriver/long_screwdriver.urdf
+    - label: screwdriver/short_screwdriver
+      urdf: screwdriver/short_screwdriver/short_screwdriver.urdf
+
+spawn_and_motion:
+  dynamic_source: gravity_drop_with_initial_velocity_and_random_angular_velocity
+  spawn_xy_workspace:
+    x_range: [-0.18, 0.18]
+    y_range: [0.16, 0.38]
+  spawn_z_range: [0.72, 0.84]
+  palm_relative_start_xy:
+    x_range: [-0.010, 0.010]
+    y_range: [0.075, 0.120]
+  palm_relative_curriculum_xy:
+    x_range: [-0.055, 0.055]
+    y_range: [0.060, 0.180]
+  initial_xy_speed_range: [0.00, 0.06]
+  initial_z_speed_range: [0.04, 0.26]
+  initial_angular_velocity_range_rad_per_s: [-1.0, 1.0]
+  notes:
+    - The early curriculum starts nearly vertical and low speed.
+    - The final workspace should remain in front of the arm, not above the forearm.
+
+affordance:
+  label_file: grasp_affordance_clean_v2.npz
+  label_root: assets/affordance_labels
+  dataset: dextoolbench
+  positive_region: middle_or_handle
+  negative_region: object_ends_and_tool_functional_surfaces
+  fallback_geometric_prior:
+    positive_middle_half_fraction: 0.35
+    negative_end_fraction: 0.70
+
+debug_visualization:
+  video_overlay_mode: falling_3d
+  recommended_overlays:
+    - red_arrow_current_object_velocity
+    - blue_history_trajectory
+    - green_future_gravity_prediction
+    - catch_center_marker
+
+preview:
+  command: >
+    TASK=SimToolRealFallingBatonV88FrankaBrainCoRevo2PrivPointCloudPhysicalCatch
+    NUM_ENVS=8 STEPS=160 bash scripts/preview_dg_franka_brainco_revo2_env.sh

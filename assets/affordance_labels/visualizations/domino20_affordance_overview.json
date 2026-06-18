@@ -1,0 +1,170 @@
+{
+  "manifest_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/asset_manifest.json",
+  "stage": "domino20",
+  "num_assets": 20,
+  "labeled_count": 20,
+  "unlabeled_count": 0,
+  "image_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/visualizations/domino20_affordance_overview.png",
+  "assets": [
+    {
+      "asset_id": "domino20/mug",
+      "label": "mug",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/mug/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/cup",
+      "label": "cup",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/cup/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/bottle",
+      "label": "bottle",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/bottle/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/drill",
+      "label": "drill",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/drill/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/pill_bottle",
+      "label": "pill_bottle",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/pill_bottle/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/milk_box",
+      "label": "milk_box",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/milk_box/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/can",
+      "label": "can",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/can/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/milk_tea",
+      "label": "milk_tea",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/milk_tea/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/sauce_can",
+      "label": "sauce_can",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/sauce_can/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/tea_box",
+      "label": "tea_box",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/tea_box/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/bowl",
+      "label": "bowl",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/bowl/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/plate",
+      "label": "plate",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/plate/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/hammer",
+      "label": "hammer",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/hammer/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/screwdriver",
+      "label": "screwdriver",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/screwdriver/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/apple",
+      "label": "apple",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/apple/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/book",
+      "label": "book",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/book/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/mouse",
+      "label": "mouse",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/mouse/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/stapler",
+      "label": "stapler",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/stapler/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/dumbbell",
+      "label": "dumbbell",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/dumbbell/affordance.npz",
+      "num_visualized_points": 5000
+    },
+    {
+      "asset_id": "domino20/kettle",
+      "label": "kettle",
+      "status": "labeled",
+      "label_kind": "affordance_multihot_overlap",
+      "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/domino20/kettle/affordance.npz",
+      "num_visualized_points": 5000
+    }
+  ]
+}

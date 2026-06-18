@@ -1,0 +1,39 @@
+defaults:
+  - SimToolRealDynamicGraspV36FrankaInspireHandZ180SimpleRewardDominoPointNet
+  - _self_
+
+env:
+  # V38 keeps the V36 Franka+Inspire-z180 dynamic grasp setup and only changes
+  # the object point cloud source from synthetic mesh-surface samples to an
+  # Isaac Gym RGB-D render + segmentation mask adapter.
+  objectPointCloudSource: "rgbd_render"
+
+  # Low-res render is enough for a 128-point object crop and keeps the first
+  # version tractable. This path creates one depth/segmentation camera per env,
+  # so start small before attempting large-scale training.
+  objectPointCloudRenderWidth: 128
+  objectPointCloudRenderHeight: 96
+  objectPointCloudRenderHorizontalFov: 60.0
+  objectPointCloudRenderCameraPos: [0.45, -0.75, 0.78]
+  objectPointCloudRenderCameraTarget: [0.0, 0.0, 0.63]
+  objectPointCloudRenderMaxDepth: 2.0
+  objectPointCloudRenderEnvLimit: 1024
+  objectPointCloudRenderAllowLarge: False
+
+  # Segmentation ids used by IMAGE_SEGMENTATION. Only objectSegmentationId is
+  # selected into the point cloud mask.
+  robotSegmentationId: 1
+  objectSegmentationId: 2
+  tableSegmentationId: 3
+  goalObjectSegmentationId: 4
+
+  # The rendered mask is already partial and pixelized; keep extra synthetic
+  # corruption lighter than the old mesh-surface sim2real approximation.
+  objectPointCloudCentroidFromPoints: True
+  objectPointCloudNoiseStd: 0.003
+  objectPointCloudDepthNoiseStd: 0.004
+  objectPointCloudDropoutProb: 0.10
+  objectPointCloudOutlierProb: 0.01
+  objectPointCloudOutlierScale: 0.06
+  objectPointCloudRandomizeOrder: True
+

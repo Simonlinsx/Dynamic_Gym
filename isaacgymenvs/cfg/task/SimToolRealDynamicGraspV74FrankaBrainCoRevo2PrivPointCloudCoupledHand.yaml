@@ -1,0 +1,29 @@
+defaults:
+  - SimToolRealDynamicGraspV73FrankaBrainCoRevo2PrivPointCloudLiftHoldBridge
+  - _self_
+
+env:
+  # V74 is an embodiment/control fix rather than a reward rewrite. Revo2 exposes
+  # 11 simulated non-fixed hand DOFs, but the real hand is normally controlled by
+  # a small set of semantic commands with distal joints coupled to proximal
+  # joints. Let the policy output 6 deployable hand actions and expand them to
+  # the 11 physical DOF targets inside the environment.
+  handActionMode: "revo2_coupled"
+  handActionDofs: 6
+  handActionNames:
+    [
+      "thumb_metacarpal",
+      "thumb_flex",
+      "index_flex",
+      "middle_flex",
+      "ring_flex",
+      "pinky_flex",
+    ]
+
+  # Keep the same low-home, touch-link, legacy arm-control, and lift-hold reward
+  # as V73 so this run isolates the Revo2 action semantics.
+  robotHandStiffness: 110.0
+  robotHandDamping: 10.0
+  robotHandEffort: 45.0
+  robotHandJointFriction: 0.018
+  fingerTipFriction: 4.0

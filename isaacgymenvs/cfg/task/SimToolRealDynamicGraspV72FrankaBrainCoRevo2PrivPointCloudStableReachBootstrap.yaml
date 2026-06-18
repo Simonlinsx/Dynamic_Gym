@@ -1,0 +1,17 @@
+defaults:
+  - SimToolRealDynamicGraspV71FrankaBrainCoRevo2PrivPointCloudReachBootstrap
+  - _self_
+
+env:
+  # V71's stronger reach improved object distance, but the faster arm brought
+  # back hand_far resets. V72 keeps the strong generic reach bootstrap and
+  # returns to V70's stable arm update.
+  dofSpeedScale: 2.4
+  armMovingAverage: 0.34
+  handMovingAverage: 0.45
+
+  # A bit more damping on arm target changes, still much lighter than the old
+  # overly conservative safety rewards.
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 0.8
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 0.7
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.06

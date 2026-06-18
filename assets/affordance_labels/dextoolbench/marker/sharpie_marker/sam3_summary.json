@@ -1,0 +1,1112 @@
+{
+  "asset_id": "dextoolbench/marker/sharpie_marker",
+  "label": "sharpie_marker",
+  "mesh_path": "/data1/linsixu/simtoolreal/assets/urdf/dextoolbench/marker/sharpie_marker/sharpie_marker.obj",
+  "annotation_dir": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker",
+  "prompts": {
+    "positive_grasp": "sharpie marker barrel",
+    "negative_grasp": "sharpie marker tip",
+    "tool_use_surface": "sharpie marker tip"
+  },
+  "views": [
+    "front",
+    "back",
+    "left",
+    "right",
+    "top",
+    "bottom",
+    "iso1",
+    "iso2"
+  ],
+  "render_dir": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views",
+  "render_only": false,
+  "prompt_infos": {
+    "front": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.3099619448184967,
+              0.9376779198646545
+            ],
+            "boxes_xyxy": [
+              [
+                41.86592102050781,
+                233.287353515625,
+                307.03509521484375,
+                296.43304443359375
+              ],
+              [
+                41.009735107421875,
+                214.75634765625,
+                470.7069091796875,
+                297.64935302734375
+              ]
+            ],
+            "prompt": "sharpie marker barrel",
+            "mask_pixels": 27404
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "barrel",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.9376779198646545,
+        "mask_pixels": 27404,
+        "prompt": "sharpie marker barrel",
+        "prompt_variants": [
+          "sharpie marker barrel",
+          "barrel"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/front_positive_grasp_mask.png",
+        "voted_faces": 1317
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.3439632058143616
+            ],
+            "boxes_xyxy": [
+              [
+                41.612548828125,
+                215.0482635498047,
+                470.2827453613281,
+                297.8994140625
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 27342
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.3439632058143616,
+        "mask_pixels": 27342,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/front_negative_grasp_mask.png",
+        "voted_faces": 1339
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.3439632058143616
+            ],
+            "boxes_xyxy": [
+              [
+                41.612548828125,
+                215.0482635498047,
+                470.2827453613281,
+                297.8994140625
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 27342
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.3439632058143616,
+        "mask_pixels": 27342,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/front_tool_use_surface_mask.png",
+        "voted_faces": 1339
+      }
+    },
+    "back": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.9497241377830505,
+              0.25626081228256226
+            ],
+            "boxes_xyxy": [
+              [
+                41.1727294921875,
+                214.78759765625,
+                470.66302490234375,
+                297.4884033203125
+              ],
+              [
+                206.9416046142578,
+                232.5450897216797,
+                470.2142333984375,
+                296.4317932128906
+              ]
+            ],
+            "prompt": "sharpie marker barrel",
+            "mask_pixels": 27502
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "barrel",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.9497241377830505,
+        "mask_pixels": 27502,
+        "prompt": "sharpie marker barrel",
+        "prompt_variants": [
+          "sharpie marker barrel",
+          "barrel"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/back_positive_grasp_mask.png",
+        "voted_faces": 1296
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.28608742356300354
+            ],
+            "boxes_xyxy": [
+              [
+                41.596893310546875,
+                214.95162963867188,
+                470.9751892089844,
+                297.7763366699219
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 27546
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.28608742356300354,
+        "mask_pixels": 27546,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/back_negative_grasp_mask.png",
+        "voted_faces": 1330
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.28608742356300354
+            ],
+            "boxes_xyxy": [
+              [
+                41.596893310546875,
+                214.95162963867188,
+                470.9751892089844,
+                297.7763366699219
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 27546
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.28608742356300354,
+        "mask_pixels": 27546,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/back_tool_use_surface_mask.png",
+        "voted_faces": 1330
+      }
+    },
+    "left": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "sharpie marker barrel",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "barrel",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "sharpie marker barrel",
+        "prompt_variants": [
+          "sharpie marker barrel",
+          "barrel"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/left_positive_grasp_mask.png",
+        "voted_faces": 0
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/left_negative_grasp_mask.png",
+        "voted_faces": 0
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/left_tool_use_surface_mask.png",
+        "voted_faces": 0
+      }
+    },
+    "right": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "sharpie marker barrel",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "barrel",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "sharpie marker barrel",
+        "prompt_variants": [
+          "sharpie marker barrel",
+          "barrel"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/right_positive_grasp_mask.png",
+        "voted_faces": 0
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/right_negative_grasp_mask.png",
+        "voted_faces": 0
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 0
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "tip",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.0,
+        "mask_pixels": 0,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/right_tool_use_surface_mask.png",
+        "voted_faces": 0
+      }
+    },
+    "top": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.9375230669975281
+            ],
+            "boxes_xyxy": [
+              [
+                41.068878173828125,
+                224.394775390625,
+                470.4097900390625,
+                288.38385009765625
+              ]
+            ],
+            "prompt": "sharpie marker barrel",
+            "mask_pixels": 25945
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "barrel",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.9375230669975281,
+        "mask_pixels": 25945,
+        "prompt": "sharpie marker barrel",
+        "prompt_variants": [
+          "sharpie marker barrel",
+          "barrel"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/top_positive_grasp_mask.png",
+        "voted_faces": 1290
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.3032533824443817,
+              0.3185364603996277
+            ],
+            "boxes_xyxy": [
+              [
+                307.7464294433594,
+                224.0086212158203,
+                470.6820373535156,
+                288.4860534667969
+              ],
+              [
+                41.46134948730469,
+                224.46923828125,
+                470.58917236328125,
+                288.48211669921875
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 26030
+          },
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.2560083270072937
+            ],
+            "boxes_xyxy": [
+              [
+                465.7654113769531,
+                230.67803955078125,
+                471.1824035644531,
+                281.97552490234375
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 186
+          }
+        ],
+        "best_score": 0.3185364603996277,
+        "mask_pixels": 26035,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/top_negative_grasp_mask.png",
+        "voted_faces": 1322
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.3032533824443817,
+              0.3185364603996277
+            ],
+            "boxes_xyxy": [
+              [
+                307.7464294433594,
+                224.0086212158203,
+                470.6820373535156,
+                288.4860534667969
+              ],
+              [
+                41.46134948730469,
+                224.46923828125,
+                470.58917236328125,
+                288.48211669921875
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 26030
+          },
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.2560083270072937
+            ],
+            "boxes_xyxy": [
+              [
+                465.7654113769531,
+                230.67803955078125,
+                471.1824035644531,
+                281.97552490234375
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 186
+          }
+        ],
+        "best_score": 0.3185364603996277,
+        "mask_pixels": 26035,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/top_tool_use_surface_mask.png",
+        "voted_faces": 1322
+      }
+    },
+    "bottom": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.9548760056495667
+            ],
+            "boxes_xyxy": [
+              [
+                41.05120849609375,
+                224.32237243652344,
+                470.52178955078125,
+                288.1500549316406
+              ]
+            ],
+            "prompt": "sharpie marker barrel",
+            "mask_pixels": 25794
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "barrel",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.9548760056495667,
+        "mask_pixels": 25794,
+        "prompt": "sharpie marker barrel",
+        "prompt_variants": [
+          "sharpie marker barrel",
+          "barrel"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/bottom_positive_grasp_mask.png",
+        "voted_faces": 1104
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.32822710275650024,
+              0.3978138267993927
+            ],
+            "boxes_xyxy": [
+              [
+                306.8363037109375,
+                223.5931854248047,
+                470.73486328125,
+                288.496337890625
+              ],
+              [
+                41.788421630859375,
+                224.22366333007812,
+                470.5320739746094,
+                288.4353942871094
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 25753
+          },
+          {
+            "num_masks": 4,
+            "kept_masks": 4,
+            "scores": [
+              0.26824867725372314,
+              0.3220663368701935,
+              0.37287044525146484,
+              0.32435089349746704
+            ],
+            "boxes_xyxy": [
+              [
+                307.1991271972656,
+                223.45529174804688,
+                472.1949768066406,
+                288.5012512207031
+              ],
+              [
+                466.41900634765625,
+                230.23495483398438,
+                471.33953857421875,
+                281.5078430175781
+              ],
+              [
+                40.85894775390625,
+                225.3197021484375,
+                57.4569091796875,
+                286.429931640625
+              ],
+              [
+                40.906524658203125,
+                226.049560546875,
+                47.36412048339844,
+                285.5708312988281
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 10651
+          }
+        ],
+        "best_score": 0.3978138267993927,
+        "mask_pixels": 25799,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/bottom_negative_grasp_mask.png",
+        "voted_faces": 1129
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 2,
+            "kept_masks": 2,
+            "scores": [
+              0.32822710275650024,
+              0.3978138267993927
+            ],
+            "boxes_xyxy": [
+              [
+                306.8363037109375,
+                223.5931854248047,
+                470.73486328125,
+                288.496337890625
+              ],
+              [
+                41.788421630859375,
+                224.22366333007812,
+                470.5320739746094,
+                288.4353942871094
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 25753
+          },
+          {
+            "num_masks": 4,
+            "kept_masks": 4,
+            "scores": [
+              0.26824867725372314,
+              0.3220663368701935,
+              0.37287044525146484,
+              0.32435089349746704
+            ],
+            "boxes_xyxy": [
+              [
+                307.1991271972656,
+                223.45529174804688,
+                472.1949768066406,
+                288.5012512207031
+              ],
+              [
+                466.41900634765625,
+                230.23495483398438,
+                471.33953857421875,
+                281.5078430175781
+              ],
+              [
+                40.85894775390625,
+                225.3197021484375,
+                57.4569091796875,
+                286.429931640625
+              ],
+              [
+                40.906524658203125,
+                226.049560546875,
+                47.36412048339844,
+                285.5708312988281
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 10651
+          }
+        ],
+        "best_score": 0.3978138267993927,
+        "mask_pixels": 25799,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/bottom_tool_use_surface_mask.png",
+        "voted_faces": 1129
+      }
+    },
+    "iso1": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.9794238209724426
+            ],
+            "boxes_xyxy": [
+              [
+                41.286590576171875,
+                111.29788208007812,
+                471.1932678222656,
+                400.6329040527344
+              ]
+            ],
+            "prompt": "sharpie marker barrel",
+            "mask_pixels": 37192
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "barrel",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.9794238209724426,
+        "mask_pixels": 37192,
+        "prompt": "sharpie marker barrel",
+        "prompt_variants": [
+          "sharpie marker barrel",
+          "barrel"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/iso1_positive_grasp_mask.png",
+        "voted_faces": 1220
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.3823792338371277,
+              0.4189223051071167,
+              0.5499337315559387
+            ],
+            "boxes_xyxy": [
+              [
+                278.176025390625,
+                111.39321899414062,
+                471.80621337890625,
+                266.2049865722656
+              ],
+              [
+                41.721282958984375,
+                110.65682983398438,
+                471.7791442871094,
+                400.4515380859375
+              ],
+              [
+                428.61053466796875,
+                115.75777435302734,
+                470.53759765625,
+                175.1075439453125
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 37304
+          },
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.5190165042877197
+            ],
+            "boxes_xyxy": [
+              [
+                428.49737548828125,
+                115.54403686523438,
+                470.86279296875,
+                175.50173950195312
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 1739
+          }
+        ],
+        "best_score": 0.5499337315559387,
+        "mask_pixels": 37305,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/iso1_negative_grasp_mask.png",
+        "voted_faces": 1241
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.3823792338371277,
+              0.4189223051071167,
+              0.5499337315559387
+            ],
+            "boxes_xyxy": [
+              [
+                278.176025390625,
+                111.39321899414062,
+                471.80621337890625,
+                266.2049865722656
+              ],
+              [
+                41.721282958984375,
+                110.65682983398438,
+                471.7791442871094,
+                400.4515380859375
+              ],
+              [
+                428.61053466796875,
+                115.75777435302734,
+                470.53759765625,
+                175.1075439453125
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 37304
+          },
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.5190165042877197
+            ],
+            "boxes_xyxy": [
+              [
+                428.49737548828125,
+                115.54403686523438,
+                470.86279296875,
+                175.50173950195312
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 1739
+          }
+        ],
+        "best_score": 0.5499337315559387,
+        "mask_pixels": 37305,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/iso1_tool_use_surface_mask.png",
+        "voted_faces": 1241
+      }
+    },
+    "iso2": {
+      "positive_grasp": {
+        "variants": [
+          {
+            "num_masks": 1,
+            "kept_masks": 1,
+            "scores": [
+              0.9627575278282166
+            ],
+            "boxes_xyxy": [
+              [
+                41.319366455078125,
+                115.77322387695312,
+                471.1044006347656,
+                395.8900146484375
+              ]
+            ],
+            "prompt": "sharpie marker barrel",
+            "mask_pixels": 36794
+          },
+          {
+            "num_masks": 0,
+            "scores": [],
+            "prompt": "barrel",
+            "mask_pixels": 0
+          }
+        ],
+        "best_score": 0.9627575278282166,
+        "mask_pixels": 36794,
+        "prompt": "sharpie marker barrel",
+        "prompt_variants": [
+          "sharpie marker barrel",
+          "barrel"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/iso2_positive_grasp_mask.png",
+        "voted_faces": 1464
+      },
+      "negative_grasp": {
+        "variants": [
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.4158666729927063,
+              0.4864886999130249,
+              0.3261139690876007
+            ],
+            "boxes_xyxy": [
+              [
+                41.01557922363281,
+                242.77627563476562,
+                230.4326934814453,
+                395.9882507324219
+              ],
+              [
+                41.20652770996094,
+                115.26071166992188,
+                470.88946533203125,
+                395.81207275390625
+              ],
+              [
+                407.4105529785156,
+                116.24769592285156,
+                470.4192810058594,
+                184.92811584472656
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 36925
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.2546406090259552,
+              0.2553099989891052,
+              0.30463847517967224
+            ],
+            "boxes_xyxy": [
+              [
+                40.16471862792969,
+                242.08779907226562,
+                231.37852478027344,
+                396.1896667480469
+              ],
+              [
+                404.3215637207031,
+                116.04257202148438,
+                471.3416442871094,
+                192.97732543945312
+              ],
+              [
+                421.0244445800781,
+                116.17841339111328,
+                470.9197692871094,
+                183.41571044921875
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 16977
+          }
+        ],
+        "best_score": 0.4864886999130249,
+        "mask_pixels": 36973,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/iso2_negative_grasp_mask.png",
+        "voted_faces": 1489
+      },
+      "tool_use_surface": {
+        "variants": [
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.4158666729927063,
+              0.4864886999130249,
+              0.3261139690876007
+            ],
+            "boxes_xyxy": [
+              [
+                41.01557922363281,
+                242.77627563476562,
+                230.4326934814453,
+                395.9882507324219
+              ],
+              [
+                41.20652770996094,
+                115.26071166992188,
+                470.88946533203125,
+                395.81207275390625
+              ],
+              [
+                407.4105529785156,
+                116.24769592285156,
+                470.4192810058594,
+                184.92811584472656
+              ]
+            ],
+            "prompt": "sharpie marker tip",
+            "mask_pixels": 36925
+          },
+          {
+            "num_masks": 3,
+            "kept_masks": 3,
+            "scores": [
+              0.2546406090259552,
+              0.2553099989891052,
+              0.30463847517967224
+            ],
+            "boxes_xyxy": [
+              [
+                40.16471862792969,
+                242.08779907226562,
+                231.37852478027344,
+                396.1896667480469
+              ],
+              [
+                404.3215637207031,
+                116.04257202148438,
+                471.3416442871094,
+                192.97732543945312
+              ],
+              [
+                421.0244445800781,
+                116.17841339111328,
+                470.9197692871094,
+                183.41571044921875
+              ]
+            ],
+            "prompt": "tip",
+            "mask_pixels": 16977
+          }
+        ],
+        "best_score": 0.4864886999130249,
+        "mask_pixels": 36973,
+        "prompt": "sharpie marker tip",
+        "prompt_variants": [
+          "sharpie marker tip",
+          "tip"
+        ],
+        "mask_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/sam3_views/iso2_tool_use_surface_mask.png",
+        "voted_faces": 1489
+      }
+    }
+  },
+  "annotation_path": "/data1/linsixu/simtoolreal/assets/affordance_labels/dextoolbench/marker/sharpie_marker/affordance.npz",
+  "num_vertices": 2134,
+  "labeled_vertices": 1776,
+  "class_vertex_counts": {
+    "background": 358,
+    "positive_grasp": 1341,
+    "negative_grasp": 435,
+    "tool_use_surface": 0,
+    "safe_contact": 0
+  },
+  "multi_label_vertex_counts": {
+    "positive_grasp": 1765,
+    "negative_grasp": 1775,
+    "tool_use_surface": 1775,
+    "safe_contact": 0
+  },
+  "overlap_vertices": 1775
+}

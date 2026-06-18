@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dynamic Gym | SimToolReal Dynamic Dexterous Grasping</title>
+    <meta
+      name="description"
+      content="Project page for Dynamic Gym, a SimToolReal extension for dynamic tabletop dexterous grasping with Franka, Inspire, and BrainCo Revo2 hands."
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="project_data.js"></script>
+    <script defer src="main.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Dynamic Gym home">
+        <span class="brand-mark"></span>
+        <span>Dynamic Gym</span>
+      </a>
+      <nav aria-label="Project sections">
+        <a href="#background">Background</a>
+        <a href="#tasks">Tasks</a>
+        <a href="#method">Method</a>
+        <a href="#affordance">Affordance</a>
+        <a href="#experiments">Experiments</a>
+        <a href="#gallery">Gallery</a>
+        <a href="#updates">Updates</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="page-title">
+        <video
+          class="hero-video"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="metadata"
+          poster="assets/images/revo2_aligned_front.png"
+        >
+          <source src="assets/videos/revo2_aligned_front.mp4" type="video/mp4" />
+        </video>
+        <div class="hero-scrim"></div>
+        <div class="hero-content">
+          <p class="eyebrow">SimToolReal extension / dynamic object settings</p>
+          <h1 id="page-title">Dynamic dexterous grasping for sim2real research.</h1>
+          <p class="hero-copy">
+            This page tracks the current Dynamic Gym branch: task design, robot
+            embodiments, affordance labels, teacher-student training, falling-object
+            catch settings, and visual evidence from training runs.
+          </p>
+          <div class="hero-actions" aria-label="Primary links">
+            <a class="button primary" href="#gallery">View videos</a>
+            <a class="button secondary" href="#experiments">Compare runs</a>
+          </div>
+          <dl class="hero-stats" id="hero-stats"></dl>
+        </div>
+      </section>
+
+      <section class="section overview-strip" aria-label="Project summary">
+        <article>
+          <span class="label">Goal</span>
+          <p>Intercept dynamic objects, close a dexterous hand around the graspable region, lift or catch, and hold stably.</p>
+        </article>
+        <article>
+          <span class="label">Current robots</span>
+          <p>Legacy Sharpa, Franka + Inspire, and Franka + BrainCo Revo2 are kept as separate config lines.</p>
+        </article>
+        <article>
+          <span class="label">Deployment direction</span>
+          <p>Train privileged teachers first, then distill to RGB-D temporal point-cloud students with point-flow and affordance heads.</p>
+        </article>
+      </section>
+
+      <section class="section two-column" id="background">
+        <div class="section-heading">
+          <p class="eyebrow">Background</p>
+          <h2>From object-centric tool use to dynamic object grasping.</h2>
+        </div>
+        <div class="prose">
+          <p>
+            The original SimToolReal project learns object-centric policies for
+            dexterous tool manipulation. This fork turns that foundation into a
+            dynamic tabletop grasping track: objects move across a larger table,
+            the policy must approach safely, make useful finger contact, and
+            transition into a lift-and-hold behavior.
+          </p>
+          <p>
+            The project is still a simulation research stack, not a finished
+            real-robot deployment. The most useful result so far is the set of
+            ablations that separate reward design, observation realism, object
+            diversity, and embodiment changes.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="tasks">
+        <div class="section-heading compact">
+          <p class="eyebrow">Task settings</p>
+          <h2>Four final task goals cover aerial and tabletop dynamics.</h2>
+        </div>
+        <div id="task-settings"></div>
+      </section>
+
+      <section class="section" id="method">
+        <div class="section-heading compact">
+          <p class="eyebrow">Method</p>
+          <h2>Current system layout</h2>
+        </div>
+        <div class="pipeline" id="pipeline"></div>
+        <div class="module-stack" id="module-stack"></div>
+      </section>
+
+      <section class="section observation-grid" aria-labelledby="observation-title">
+        <div class="section-heading compact">
+          <p class="eyebrow">Observations</p>
+          <h2 id="observation-title">Teacher and student are intentionally separated.</h2>
+        </div>
+        <article class="feature-card accent-teal">
+          <span class="label">Teacher</span>
+          <h3>Privileged point cloud policy</h3>
+          <p>
+            Uses simulator-side object information and clean object surface
+            points. This branch is the upper-bound policy for reward and
+            embodiment debugging.
+          </p>
+          <ul>
+            <li>Robot joint state and previous action</li>
+            <li>Palm state and fingertip positions relative to palm</li>
+            <li>Privileged object point cloud relative to palm</li>
+            <li>Object velocity, clean-v2 affordance, and task-specific catch signals</li>
+          </ul>
+        </article>
+        <article class="feature-card accent-coral">
+          <span class="label">Student</span>
+          <h3>Deployable RGB-D temporal policy</h3>
+          <p>
+            Uses render-style RGB-D plus an object mask to build partial object
+            point clouds. The branch is designed for sim2real, but still needs
+            stronger training and validation.
+          </p>
+          <ul>
+            <li>8-frame temporal point cloud fusion</li>
+            <li>Centroid velocity proxy and tracking confidence</li>
+            <li>Point-flow and object-local affordance prediction heads</li>
+            <li>No direct simulator object pose in the deployable actor</li>
+            <li>Teacher-student distillation under active development</li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="section affordance-section" id="affordance">
+        <div class="section-heading compact">
+          <p class="eyebrow">Affordance labels</p>
+          <h2>Clean-v2 grasp priors from SAM3 multi-view annotations.</h2>
+        </div>
+        <div id="affordance-root"></div>
+      </section>
+
+      <section class="section media-band" aria-labelledby="embodiment-title">
+        <div class="section-heading compact">
+          <p class="eyebrow">Embodiments</p>
+          <h2 id="embodiment-title">Robot assets are now versioned as experiment choices.</h2>
+        </div>
+        <div class="image-grid">
+          <figure>
+            <img src="assets/images/inspire_reference_side.png" alt="Franka Inspire reference alignment from side view" />
+            <figcaption>Franka + Inspire z180 reference.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/images/revo2_aligned_side.png" alt="BrainCo Revo2 side alignment preview" />
+            <figcaption>Franka + BrainCo Revo2 aligned to the Inspire convention.</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/images/revo2_scripted_touch_sanity.png" alt="BrainCo Revo2 scripted fingertip touch sanity check" />
+            <figcaption>Revo2 scripted fingertip touch sanity check.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="section" id="experiments">
+        <div class="section-heading compact">
+          <p class="eyebrow">Experiments</p>
+          <h2>Version map</h2>
+        </div>
+        <div class="timeline" id="timeline"></div>
+      </section>
+
+      <section class="section" id="gallery">
+        <div class="section-heading compact">
+          <p class="eyebrow">Visual evidence</p>
+          <h2>Training and preview clips</h2>
+        </div>
+        <div class="video-grid" id="video-grid"></div>
+      </section>
+
+      <section class="section two-column">
+        <div class="section-heading">
+          <p class="eyebrow">Current diagnosis</p>
+          <h2>What is still blocking the desired behavior?</h2>
+        </div>
+        <div class="diagnosis-list" id="diagnosis-list"></div>
+      </section>
+
+      <section class="section update-panel" id="updates">
+        <div>
+          <p class="eyebrow">Living page</p>
+          <h2>How to keep this page current</h2>
+          <p>
+            Add new experiment summaries, W&B links, and media cards in
+            <code>docs/project_page/project_data.js</code>. Drop new images or
+            mp4 files into <code>docs/project_page/assets/</code>, then reference
+            them from the data file.
+          </p>
+        </div>
+        <a class="button primary" href="./README.md">Open update notes</a>
+      </section>
+    </main>
+  </body>
+</html>

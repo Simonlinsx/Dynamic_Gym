@@ -1,0 +1,103 @@
+defaults:
+  - SimToolRealDynamicGraspV90FrankaBrainCoRevo2PrivPointCloudCalibratedPalm
+  - _self_
+
+env:
+  # V91 fixes the V90 local optimum where Revo2 learned to press/drag near the
+  # tabletop. Keep the calibrated Revo2 palm center, but restore an
+  # Inspire-like top-down pregrasp style and explicitly keep the wrist/forearm
+  # above the table during the pre-lift phase.
+
+  # Approach from above instead of reaching low from the side.
+  dynamicGraspPregraspAlignmentRewScale: 3.0
+  dynamicGraspPregraspHoldRewScale: 7.0
+  dynamicGraspPregraspReadyDistance: 0.105
+  dynamicGraspPregraspDistanceScale: 0.16
+  dynamicGraspPregraspAheadDistance: 0.015
+  dynamicGraspPregraspTopdownHeightRewScale: 10.0
+  dynamicGraspPregraspTopdownHeightOffset: 0.145
+  dynamicGraspPregraspTopdownHeightScale: 0.045
+  dynamicGraspPregraspLowPalmPenaltyScale: 10.0
+  dynamicGraspPregraspMinPalmHeightOffset: 0.080
+  dynamicGraspPregraspLowPalmHeightScale: 0.040
+  dynamicGraspPregraspLowPalmMaxPenalty: 3.0
+
+  # Penalize only distal arm/wrist/base links near the table. Fingers are
+  # excluded, so normal fingertip-object contact is still allowed.
+  dynamicGraspTableClearancePenaltyScale: 6.0
+  dynamicGraspTableClearanceMargin: 0.035
+  dynamicGraspTableClearanceScale: 0.040
+  dynamicGraspTableClearanceReferenceOffset: 0.055
+  dynamicGraspTableClearanceMaxPenalty: 5.0
+  dynamicGraspTableClearanceBodyNameContains:
+    - "panda_link6"
+    - "panda_link7"
+    - "panda_hand"
+    - "revo2_right_base_link"
+  dynamicGraspTableClearanceBodyNameExcludes:
+    - "thumb"
+    - "index"
+    - "middle"
+    - "ring"
+    - "pinky"
+    - "touch"
+    - "tip"
+
+  # Contact is still useful, but it should be a bridge to lift, not the goal.
+  dynamicGraspContactProgressRewScale: 12.0
+  dynamicGraspClosedContactBonusRewScale: 18.0
+  dynamicGraspTrueGraspQualityRewScale: 12.0
+  dynamicGraspThumbOppositionRewScale: 22.0
+  dynamicGraspOpposingContactRewScale: 40.0
+  dynamicGraspTrueGraspBonusRewScale: 55.0
+  dynamicGraspControlledContactRewScale: 4.0
+  dynamicGraspContactNoLiftPenaltyScale: 100.0
+  dynamicGraspContactNoLiftPenaltyGraceSteps: 20
+  dynamicGraspContactNoLiftPenaltyRampSteps: 50
+  dynamicGraspContactRewardDecayGraceSteps: 20
+  dynamicGraspContactRewardDecaySteps: 70
+  dynamicGraspContactRewardDecayMinFraction: 0.18
+
+  # Make lifted grasp clearly dominate once contact exists.
+  liftingRewScale: 220.0
+  liftingBonus: 1400.0
+  dynamicGraspContactPalmLiftRewScale: 95.0
+  dynamicGraspContactLiftVelocityRewScale: 220.0
+  dynamicGraspContactLiftProgressRewScale: 780.0
+  dynamicGraspLiftProgressRewScale: 280.0
+  dynamicGraspQualityLiftProgressRewScale: 720.0
+  dynamicGraspLiftedTrueGraspRewScale: 900.0
+  dynamicGraspStableHoldRewScale: 320.0
+  dynamicGraspStableProgressRewScale: 320.0
+  dynamicGraspSuccessBonus: 4200.0
+
+  # Slow, smooth, low-impact approach. Stronger than V90, much softer than V89.
+  dofSpeedScale: 2.45
+  armMovingAverage: 0.50
+  handMovingAverage: 0.38
+  dynamicGraspSafeActionDeltaPenaltyScale: 0.004
+  dynamicGraspSafeArmTargetDeltaPenaltyScale: 5.0
+  dynamicGraspSafeArmTargetAccelPenaltyScale: 8.0
+  dynamicGraspSafeArmHomePosturePenaltyScale: 0.8
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.04
+  dynamicGraspEarlyContactPenaltyScale: 3.0
+  dynamicGraspEarlyContactGraceDistance: 0.035
+  dynamicGraspPreContactSlowRewScale: 4.0
+  dynamicGraspPreContactSlowDistance: 0.20
+  dynamicGraspPreContactSlowVelScale: 0.16
+  dynamicGraspPreContactRelVelPenaltyScale: 2.5
+  dynamicGraspPreContactRelVelMargin: 0.16
+  dynamicGraspImpactPenaltyScale: 4.0
+  dynamicGraspKickPenaltyScale: 4.0
+  dynamicGraspPostContactRelVelPenaltyScale: 2.0
+  dynamicGraspPushAwayPenaltyScale: 4.0
+  dynamicGraspScoopLiftPenaltyScale: 120.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 220.0
+
+  # Keep the first part static; motion comes back only after lifted examples
+  # appear, so this run first tests whether the embodied Revo2 can learn the
+  # same top-down grasp style as Inspire.
+  dynamicGraspSpeedCurriculumStartSuccess: 0.08
+  dynamicGraspSpeedCurriculumFullSuccess: 0.45
+  dynamicGraspSpeedCurriculumEmaAlpha: 0.02
+  dynamicGraspSpeedCurriculumAlphaRise: 0.00035

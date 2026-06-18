@@ -1,0 +1,21 @@
+defaults:
+  - SimToolRealDynamicGraspV42FrankaInspireHandZ180RgbdPointCloudBootstrap
+  - _self_
+
+env:
+  # V43 is a diagnostic ablation for V42. Keep the same Franka+Inspire geometry,
+  # lower home pose, DOMINO-8 objects, speed curriculum, and reward. Only swap
+  # the deployable RGB-D partial object point cloud back to the privileged clean
+  # mesh-surface point cloud used by the earlier successful V36-style runs.
+  objectPointCloudSource: "mesh_surface"
+
+  # Make this a strong upper-bound observation: full clean object surface samples
+  # plus the simulator object centroid/velocity in the point-cloud summary.
+  objectPointCloudCentroidFromPoints: False
+  objectPointCloudUsePartialView: False
+  objectPointCloudNoiseStd: 0.0
+  objectPointCloudDepthNoiseStd: 0.0
+  objectPointCloudDropoutProb: 0.0
+  objectPointCloudOutlierProb: 0.0
+  objectPointCloudOutlierScale: 0.0
+  objectPointCloudRandomizeOrder: True

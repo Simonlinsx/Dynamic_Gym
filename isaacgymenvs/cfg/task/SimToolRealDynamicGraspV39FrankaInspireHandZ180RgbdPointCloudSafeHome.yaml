@@ -1,0 +1,25 @@
+defaults:
+  - SimToolRealDynamicGraspV38FrankaInspireHandZ180RgbdPointCloud
+  - _self_
+
+env:
+  # V39 keeps the V38 RGB-D render + mask pointcloud setup, but makes the
+  # Franka+Inspire reset/home pose explicit and conservative.
+  #
+  # The table is 0.65 m wide in Y, centered at y=0, so the robot-side edge is
+  # about y=+0.325. This home pose was measured in simulation with the palm near
+  # y=+0.44, z=+0.88, keeping the open hand outside/above the table edge before
+  # the policy starts moving.
+  defaultArmDofPos:
+    [0.0, -1.20, 0.0, -2.20, 0.0, 1.40, 0.7853981633974483]
+
+  # Inspire DOF order: index, middle, pinky, ring, thumb. Zero is fully open.
+  defaultHandDofPos:
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+  # Keep reset close to the safe home. The old 0.025/0.03 noise can initialize
+  # fingers partially closed or pull the arm inward, which causes occasional
+  # early collisions with moving objects.
+  resetDofPosRandomIntervalArm: 0.005
+  resetDofPosRandomIntervalFingers: 0.0
+  resetDofVelRandomInterval: 0.0

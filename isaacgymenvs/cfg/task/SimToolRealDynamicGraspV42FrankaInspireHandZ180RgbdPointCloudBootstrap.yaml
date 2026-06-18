@@ -1,0 +1,71 @@
+defaults:
+  - SimToolRealDynamicGraspV40FrankaInspireHandZ180RgbdPointCloudLowerHome
+  - _self_
+
+env:
+  # V42 keeps the deployable RGB-D render + segmentation-mask object point cloud
+  # and the lower safe open-hand home from V40, but restores a contact-rich
+  # from-scratch curriculum. V41 made the object almost static and weakened the
+  # early shaping too much; the policy never entered the contact/lift regime.
+
+  # Keep the V36/V40 DOMINO-8 warmup object set inherited from V34. Do not use
+  # V41's four-object/fixed-yaw subset here; diversity plus moderate motion
+  # produced much better bootstrap contacts in the earlier successful run.
+  createGoalObject: False
+
+  # Keep reset spread close to the V36/V40 warmup. V41's tighter placement plus
+  # near-static motion removed useful early contact events.
+  resetPositionNoiseX: 0.07
+  resetPositionNoiseY: 0.055
+  resetPositionNoiseZ: 0.004
+  dynamicGraspWorkspaceX: [-0.22, 0.22]
+  dynamicGraspWorkspaceY: [-0.12, 0.18]
+
+  # Restore the moderate moving-object curriculum from the version family that
+  # learned contact. The first stage is still slow, but not so slow that the
+  # object/hand interaction disappears.
+  dynamicGraspInitialSpeedRange: [0.04, 0.14]
+  dynamicGraspInitialYawRateRange: [-0.6, 0.6]
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspStartSpeedRange: [0.0, 0.05]
+  dynamicGraspStartYawRateRange: [-0.2, 0.2]
+  dynamicGraspSpeedCurriculumSteps: 3000000
+  dynamicGraspAffordanceMinSpeedForConfidence: 0.005
+
+  # Keep the rendered point cloud partial and real-style, but remove most extra
+  # synthetic corruption for this bootstrap stage. Add noise/dropout back only
+  # after stable lift appears.
+  objectPointCloudNoiseStd: 0.001
+  objectPointCloudDepthNoiseStd: 0.0015
+  objectPointCloudDropoutProb: 0.02
+  objectPointCloudOutlierProb: 0.0
+  objectPointCloudOutlierScale: 0.0
+  objectPointCloudRandomizeOrder: True
+  dynamicGraspAffordanceObsNoiseStd: 0.001
+  dynamicGraspAffordanceAxisNoiseStd: 0.005
+  dynamicGraspAffordanceDropoutProb: 0.0
+
+  # Reach/pregrasp shaping: stronger than V36 because RGB-D partial point clouds
+  # and the safe home make the first approach harder, but still below the older
+  # high-contact v34 reward that encouraged touch-without-lift.
+  dynamicGraspAffordanceTargetRewScale: 5.0
+  dynamicGraspInterceptRewScale: 3.0
+  dynamicGraspPregraspAlignmentRewScale: 4.0
+  dynamicGraspVelocityMatchRewScale: 0.10
+  dynamicGraspPregraspAheadDistance: 0.05
+  dynamicGraspPregraspReadyDistance: 0.14
+  dynamicGraspPregraspHoldRewScale: 12.0
+  dynamicGraspPreContactSlowRewScale: 6.0
+  dynamicGraspPreContactRelVelPenaltyScale: 4.0
+  dynamicGraspPreContactRelVelMargin: 0.22
+
+  # Contact/lift shaping: restore a meaningful contact bootstrap without
+  # bringing back the large v34 ready-contact terms.
+  dynamicGraspControlledContactRewScale: 20.0
+  dynamicGraspReadyEnclosureRewScale: 0.0
+  dynamicGraspReadyGraspQualityRewScale: 0.0
+  dynamicGraspReadyContactRewScale: 0.0
+  dynamicGraspTrueGraspQualityRewScale: 10.0
+  dynamicGraspOpposingContactRewScale: 18.0
+  dynamicGraspEnclosureRewScale: 0.8
+  dynamicGraspEarlyContactPenaltyScale: 4.0

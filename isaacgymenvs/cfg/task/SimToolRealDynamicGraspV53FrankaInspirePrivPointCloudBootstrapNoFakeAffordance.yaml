@@ -1,0 +1,82 @@
+defaults:
+  - SimToolRealDynamicGraspV46FrankaInspirePrivPointCloudReleaseMotionTeacher
+  - _self_
+
+env:
+  # V53 returns to the V46/V42 bootstrap recipe that learned grasp-and-lift, but
+  # stops treating the current heuristic "affordance" target as a real object
+  # affordance region. It is only allowed to provide a weak motion-side hint via
+  # the intercept/pregrasp terms.
+
+  # Keep the slow-motion bootstrap. Fully static starts in V52 produced many
+  # contacts but almost no lift exploration.
+  dynamicGraspSpeedCurriculum: True
+  dynamicGraspSpeedCurriculumMode: "steps"
+  dynamicGraspStartSpeedRange: [0.0, 0.04]
+  dynamicGraspStartYawRateRange: [-0.15, 0.15]
+  dynamicGraspInitialSpeedRange: [0.04, 0.14]
+  dynamicGraspInitialYawRateRange: [-0.6, 0.6]
+  dynamicGraspSpeedCurriculumSteps: 3000000
+
+  # The current affordance target is a heuristic future-side point, not a real
+  # object-local grasp affordance. Do not reward it directly.
+  dynamicGraspUseAffordancePrior: True
+  dynamicGraspAffordanceTargetRewScale: 0.0
+  dynamicGraspAffordanceMinSpeedForConfidence: 0.005
+
+  # Keep small trajectory-shaping terms so the hand approaches a moving object
+  # from a useful side and slows near pregrasp, without overpowering grasp/lift.
+  dynamicGraspInterceptRewScale: 1.5
+  dynamicGraspPregraspAlignmentRewScale: 2.0
+  dynamicGraspPregraspHoldRewScale: 4.0
+  dynamicGraspPreContactSlowRewScale: 2.0
+  dynamicGraspPreContactRelVelPenaltyScale: 2.0
+  dynamicGraspPregraspAheadDistance: 0.05
+  dynamicGraspPregraspReadyDistance: 0.14
+
+  # Restore the V46-style grasp-to-lift bridge. V52 over-rewarded contact/quality
+  # without enough pressure to convert the contact into a lifted true grasp.
+  dynamicGraspControlledContactRewScale: 16.0
+  dynamicGraspControlledContactVelScale: 0.22
+  dynamicGraspEnclosureRewScale: 0.8
+  dynamicGraspTrueGraspQualityRewScale: 8.0
+  dynamicGraspOpposingContactRewScale: 20.0
+  dynamicGraspLiftedEnclosureRewScale: 8.0
+
+  liftingRewScale: 120.0
+  liftingBonus: 900.0
+  liftingBonusThreshold: 0.12
+  dynamicGraspLiftProgressRewScale: 160.0
+  dynamicGraspQualityLiftProgressRewScale: 420.0
+  dynamicGraspLiftedTrueGraspRewScale: 700.0
+
+  dynamicGraspRequireTrueGraspForSuccess: True
+  dynamicGraspGateLiftRewardByGraspQuality: True
+  dynamicGraspLiftRewardMinGraspQualityMultiplier: 0.45
+  dynamicGraspSuccessSteps: 8
+  dynamicGraspStableCounterDecay: 1
+  dynamicGraspStableFingertipDistance: 0.17
+  dynamicGraspStableObjectPalmVel: 0.34
+  dynamicGraspStableHoldRewScale: 600.0
+  dynamicGraspStableProgressRewScale: 700.0
+  dynamicGraspSuccessBonus: 7000.0
+
+  # Keep anti-scoop checks strong enough to prefer finger/thumb grasp over palm
+  # scooping, but avoid turning early useful contacts into a dead end.
+  dynamicGraspEarlyContactPenaltyScale: 2.0
+  dynamicGraspImpactPenaltyScale: 6.0
+  dynamicGraspKickPenaltyScale: 6.0
+  dynamicGraspPostContactRelVelPenaltyScale: 2.0
+  dynamicGraspPushAwayPenaltyScale: 5.0
+  dynamicGraspScoopLiftPenaltyScale: 160.0
+  dynamicGraspPalmOnlyLiftPenaltyScale: 320.0
+
+  # Keep the motion overlay in train videos: red velocity arrow, blue history,
+  # green constant-velocity future positions.
+  videoDebugOverlayEnabled: True
+  videoDebugOverlayPointRadius: 2
+  videoDebugOverlayTrajectoryHistory: 36
+  videoDebugOverlayFutureSteps: 3
+  videoDebugOverlayFutureDt: 0.2
+  videoDebugOverlayVelocityArrowLength: 0.10
+  videoDebugOverlayMinVisibleHistorySpan: 0.02

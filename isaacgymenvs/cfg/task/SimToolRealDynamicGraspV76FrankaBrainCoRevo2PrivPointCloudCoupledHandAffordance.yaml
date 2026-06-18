@@ -1,0 +1,29 @@
+defaults:
+  - SimToolRealDynamicGraspV75FrankaBrainCoRevo2PrivPointCloudCoupledHandContactBootstrap
+  - _self_
+
+env:
+  # V76 is the affordance-label ablation on top of V75. The clean-v2 SAM3 binary
+  # labels are used only as a weak contact/lift prior, not as a success gate.
+  dynamicGraspUseBinaryAffordanceLabels: True
+  dynamicGraspBinaryAffordanceLabelRoot: "assets/affordance_labels"
+  dynamicGraspBinaryAffordanceLabelDataset: "domino20"
+  dynamicGraspBinaryAffordanceLabelFile: "grasp_affordance_clean_v2.npz"
+  dynamicGraspBinaryAffordanceFallbackLabelFiles: ["grasp_affordance_binary.npz"]
+  dynamicGraspBinaryAffordanceMapMaxDistance: 0.0
+  dynamicGraspBinaryAffordanceNumSurfaceSamples: 512
+  dynamicGraspBinaryAffordanceContactDistance: 0.065
+
+  # Weak direct contact shaping: prefer positive grasp regions, but do not
+  # over-penalize noisy negative labels.
+  dynamicGraspBinaryAffordancePositiveContactRewScale: 6.0
+  dynamicGraspBinaryAffordanceNegativeContactPenaltyScale: 3.0
+
+  # Post-contact shaping: positive affordance contact makes lift progress and
+  # lifted true-grasp states more valuable; negative contact gets a small lift
+  # penalty. This should reduce dragging/pressing on bad regions without turning
+  # labels into hard ground truth.
+  dynamicGraspBinaryAffordanceLiftGateScale: 2.5
+  dynamicGraspBinaryAffordanceLiftProgressRewScale: 80.0
+  dynamicGraspBinaryAffordanceLiftedTrueGraspRewScale: 160.0
+  dynamicGraspBinaryAffordanceNegativeLiftPenaltyScale: 40.0

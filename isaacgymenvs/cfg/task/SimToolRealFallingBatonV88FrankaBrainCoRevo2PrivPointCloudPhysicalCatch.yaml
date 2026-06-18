@@ -1,0 +1,98 @@
+defaults:
+  - SimToolRealFallingBatonV85FrankaBrainCoRevo2PrivPointCloudEasyCatch
+  - _self_
+
+env:
+  # V88: keep the falling-baton task, but use the same physical Revo2 hand
+  # action interface as the tabletop V87 baseline and add catch-specific dense
+  # guidance. Older falling configs are untouched for comparison.
+  handActionMode: "physical_joint"
+  handActionDofs: 11
+  handActionNames:
+    - revo2_right_index_proximal_joint
+    - revo2_right_index_distal_joint
+    - revo2_right_middle_proximal_joint
+    - revo2_right_middle_distal_joint
+    - revo2_right_pinky_proximal_joint
+    - revo2_right_pinky_distal_joint
+    - revo2_right_ring_proximal_joint
+    - revo2_right_ring_distal_joint
+    - revo2_right_thumb_metacarpal_joint
+    - revo2_right_thumb_proximal_joint
+    - revo2_right_thumb_distal_joint
+
+  handMovingAverage: 0.34
+  dynamicGraspSafeHandTargetDeltaPenaltyScale: 0.035
+
+  # Put the falling line in the front catch workspace, not above the forearm.
+  fallingBatonForwardWorkspaceXRange: [-0.18, 0.18]
+  fallingBatonForwardWorkspaceYRange: [0.16, 0.38]
+  fallingBatonSpawnAvoidArmMinXYDistance: 0.22
+  fallingBatonSpawnAvoidArmIters: 5
+  fallingBatonSpawnAvoidArmFallbackDirection: [0.0, 1.0]
+
+  fallingBatonSpawnZRange: [0.72, 0.84]
+  fallingBatonSpawnAbovePalmRange: [0.12, 0.22]
+  fallingBatonCatchCenterFingerWeight: 1.05
+  fallingBatonCatchCenterForwardOffset: 0.13
+  fallingBatonCatchCenterWorldOffset: [0.0, 0.065, 0.0]
+  fallingBatonPalmRelativeStartXRange: [-0.010, 0.010]
+  fallingBatonPalmRelativeStartYRange: [0.075, 0.120]
+  fallingBatonPalmRelativeXRange: [-0.055, 0.055]
+  fallingBatonPalmRelativeYRange: [0.060, 0.180]
+
+  # Start with almost vertical, low-angular-velocity drops; curriculum expands
+  # toward modest lateral and angular motion after contact becomes reliable.
+  fallingBatonInitialXYSpeedRange: [0.00, 0.06]
+  fallingBatonStartInitialXYSpeedRange: [0.00, 0.002]
+  fallingBatonInitialZSpeedRange: [0.04, 0.26]
+  fallingBatonStartInitialZSpeedRange: [0.00, 0.006]
+  fallingBatonInitialAngVelRange: [-1.0, 1.0]
+  fallingBatonStartInitialAngVelRange: [-0.03, 0.03]
+
+  fallingBatonCatchMinHeight: 0.43
+  fallingBatonStableObjectSpeed: 0.60
+  fallingBatonStableObjectAngSpeed: 7.0
+
+  dynamicGraspSpeedCurriculumMetric: "contact_like"
+  dynamicGraspSpeedCurriculumStartSuccess: 0.18
+  dynamicGraspSpeedCurriculumFullSuccess: 0.62
+  dynamicGraspSpeedCurriculumEmaAlpha: 0.03
+  dynamicGraspSpeedCurriculumAlphaRise: 0.001
+  dynamicGraspSpeedCurriculumSteps: 20_000_000
+
+  # Dense catch guidance: predict where the object crosses the hand catch
+  # center, reward being there early, then damp relative motion after contact.
+  fallingBatonInterceptRewScale: 36.0
+  fallingBatonInterceptDistanceScale: 0.18
+  fallingBatonInterceptMaxTime: 0.36
+  fallingBatonInterceptTargetZOffset: 0.02
+  fallingBatonCatchWindowRewScale: 20.0
+  fallingBatonCatchWindowDistanceScale: 0.12
+  fallingBatonCatchWindowZBand: 0.14
+  fallingBatonPostContactRelVelPenaltyScale: 8.0
+  fallingBatonPostContactAngVelPenaltyScale: 1.0
+
+  dynamicGraspPalmReachRewScale: 18.0
+  dynamicGraspFingertipReachRewScale: 28.0
+  dynamicGraspContactProgressRewScale: 95.0
+  dynamicGraspContactProgressVelScale: 0.48
+  dynamicGraspTrueGraspQualityRewScale: 45.0
+  dynamicGraspOpposingContactRewScale: 80.0
+  dynamicGraspThumbOppositionRewScale: 45.0
+  dynamicGraspTrueGraspBonusRewScale: 220.0
+
+  dynamicGraspBinaryAffordancePositiveContactRewScale: 10.0
+  dynamicGraspBinaryAffordanceNegativeContactPenaltyScale: 2.0
+
+  dynamicGraspRequireTrueGraspForSuccess: True
+  dynamicGraspSuccessSteps: 4
+  dynamicGraspStableCounterDecay: 0
+  dynamicGraspStableFingertipDistance: 0.125
+  dynamicGraspStableObjectPalmVel: 0.42
+  dynamicGraspStableHoldRewScale: 240.0
+  dynamicGraspStableProgressRewScale: 300.0
+  dynamicGraspHoldObjectVelRewScale: 90.0
+  dynamicGraspDroppedPenaltyScale: 70.0
+  dynamicGraspTimeoutPenaltyScale: 3.0
+  dynamicGraspSuccessBonus: 3200.0

@@ -1,0 +1,25 @@
+defaults:
+  - SimToolRealDynamicGraspV65FrankaBrainCoRevo2PrivPointCloudLiftEscape
+  - _self_
+
+env:
+  # V67 fixes the Revo2 contact grounding. The official Revo2 URDF has empty
+  # *_tip_link frames and separate *_touch_link collision pads. Using tip_link
+  # made true-grasp rewards and high fingertip friction miss the actual contact
+  # geometry. Keep the V65 reward/home pose for a clean ablation.
+  fingertipBodyNames:
+    [
+      "revo2_right_thumb_touch_link",
+      "revo2_right_index_touch_link",
+      "revo2_right_middle_touch_link",
+      "revo2_right_ring_touch_link",
+      "revo2_right_pinky_touch_link",
+    ]
+  fingertipOffsets:
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+    ]

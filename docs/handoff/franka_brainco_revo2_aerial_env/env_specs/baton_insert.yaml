@@ -1,0 +1,90 @@
+name: baton_insert
+display_name: Baton Insert
+status: planned_environment_spec
+reference_task: not_implemented_yet
+
+goal:
+  description: Passively receive or catch a rod-like object and stabilize it in the dexterous hand.
+  phases:
+    - wait_with_open_hand_at_receive_pose
+    - absorb_object_motion
+    - close_on_safe_region
+    - stabilize_in_hand
+
+scene:
+  create_table: false
+  fixture: none
+  notes:
+    - This v1 task is a passive receive/catch setting, not an insertion task.
+    - The object trajectory should arrive at a predefined catch volume in front of the open hand.
+    - The robot may make small compliance/stabilization motions, but should not actively chase the object like Falling Baton.
+
+robot:
+  include: franka_brainco_revo2_common.yaml
+  preferred_home:
+    description: Open hand already placed at the receive pose, with palm and fingers forming a safe catch pocket.
+
+objects:
+  type: rod_like
+  suggested_pool:
+    - marker/sharpie_marker
+    - marker/staples_marker
+    - screwdriver/long_screwdriver
+    - screwdriver/short_screwdriver
+  asset_root: assets/urdf/dextoolbench
+
+dynamic_source:
+  modes:
+    - low_speed_handoff
+    - guided_free_fall_into_receive_zone
+  recommended_start:
+    mode: low_speed_handoff
+    reason: Isolates passive receiving and stabilization before adding gravity and angular velocity.
+  later_curriculum:
+    - increase lateral speed
+    - increase angular velocity
+    - randomize receive point within a small catch volume
+    - randomize object orientation
+    - add partial free-fall before handoff/contact
+
+affordance:
+  label_file: grasp_affordance_clean_v2.npz
+  label_root: assets/affordance_labels
+  positive_region: safe_middle_region
+  negative_region: object_ends_and_functional_tips
+  use_as: weak_prior_and_debug_signal
+
+receive_zone_metadata_needed:
+  receive_center_world: [x, y, z]
+  receive_radius_m: 0.08
+  preferred_object_axis_world: optional
+  max_initial_object_speed_mps: 0.35
+  max_initial_object_ang_speed_radps: 2.0
+  allowed_palm_motion_before_contact_m: 0.04
+
+success_metrics_to_add:
+  passive_receive:
+    - object_enters_receive_zone
+    - low_pre_contact_palm_displacement
+    - low_impact_contact
+  stable_catch:
+    - true_grasp_contact_or_enclosure
+    - object_palm_relative_velocity
+    - object_height_or_no_drop
+    - stable_after_catch_steps
+
+debug_visualization:
+  recommended_overlays:
+    - receive_zone_sphere_or_circle
+    - incoming_object_velocity_arrow
+    - object_history_trajectory
+    - rod_axis
+    - safe_grasp_region_points
+
+implementation_notes:
+  - Start from the Falling Baton object pool and reset logic.
+  - Replace active intercept reward with receive-zone and post-contact stabilization checks.
+  - Keep the arm near the receive home pose before contact; penalize large pre-contact palm motion.
+  - Add low-impact contact and stable hold measurements.
+  - Add rod axis extraction from object orientation or object-local keypoints.
+  - Keep the first version environment-only; training rewards can be wired later.

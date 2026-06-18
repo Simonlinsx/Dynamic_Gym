@@ -1,0 +1,74 @@
+defaults:
+  - SimToolRealDynamicGraspV54FrankaInspireRgbdTemporalBootstrapStudent
+  - _self_
+
+env:
+  # Deployable-observation BrainCo Revo2 student baseline. This keeps the V54
+  # RGB-D render + object-mask temporal pointcloud observation, but swaps the
+  # robot embodiment from Franka+Inspire to Franka+BrainCo Revo2.
+  robotEmbodiment: "franka_brainco_revo2_right"
+  armEmbodiment: "franka_panda"
+  handEmbodiment: "brainco_revo2_right"
+  policyActionInterface: "joint_target"
+  robotDofPropertyPreset: "generic_position"
+  robotAssetRoot: "/data1/linsixu/simtoolreal/assets/generated/franka_brainco_revo2_right"
+  assetCollapseFixedJoints: False
+
+  asset:
+    robot: "franka_brainco_revo2_right.urdf"
+    table: "urdf/table_dynamic_grasp.urdf"
+
+  armDofs: 7
+  handDofs: 11
+  numFingertips: 5
+  palmBodyName: "revo2_right_base_link"
+  fingertipBodyNames:
+    [
+      "revo2_right_thumb_tip_link",
+      "revo2_right_index_tip_link",
+      "revo2_right_middle_tip_link",
+      "revo2_right_ring_tip_link",
+      "revo2_right_pinky_tip_link",
+    ]
+  palmOffset: [0.0, 0.0, 0.02]
+  fingertipOffsets:
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+    ]
+
+  defaultArmDofPos:
+    [0.0, -1.20, 0.0, -2.20, 0.0, 1.40, 0.7853981633974483]
+  defaultHandDofPos:
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+  robotArmStiffness: 1000.0
+  robotArmDamping: 200.0
+  robotArmEffort: [87.0, 87.0, 87.0, 87.0, 12.0, 12.0, 12.0]
+  robotHandStiffness: 60.0
+  robotHandDamping: 6.0
+  robotHandEffort: 20.0
+  robotHandJointFriction: 0.01
+  robotHandBodyColor: [0.03, 0.08, 0.18]
+  robotHandTouchBodyColor: [0.12, 0.12, 0.14]
+  robotHandColorBodyNameContains: ["revo2_right_"]
+  robotHandTouchColorBodyNameContains: ["touch"]
+
+  resetDofPosRandomIntervalArm: 0.005
+  resetDofPosRandomIntervalFingers: 0.0
+  resetDofVelRandomInterval: 0.0
+
+  # Keep this branch from silently using an Inspire teacher checkpoint. A real
+  # BrainCo distillation run should first train V59, then point a BrainCo-only
+  # distillation config at that checkpoint.
+  teacherTask: "SimToolRealDynamicGraspV59FrankaBrainCoRevo2PrivPointCloudBootstrapNoFakeAffordance"
+  teacherCheckpoint: ""
+  distillationEnabled: False
+  distillationTeacherObsEnabled: False
+  distillationTeacherObsList: []
+  distillationActionLossScale: 0.0
+  distillationValueLossScale: 0.0
+  distillationAuxObsLossScale: 0.0

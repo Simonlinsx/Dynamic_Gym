@@ -1,0 +1,59 @@
+name: franka_brainco_revo2_right_common
+status: current_stable_embodiment_reference
+
+robot:
+  arm: franka_panda
+  hand: brainco_revo2_right
+  handedness: right
+  combined_urdf: assets/generated/franka_brainco_revo2_right/franka_brainco_revo2_right.urdf
+  asset_root: assets/generated/franka_brainco_revo2_right
+  mount:
+    parent_link: panda_hand
+    child_root: revo2_right_base_link
+    xyz: [0.0, 0.0, 0.0584]
+    rpy: [0.0, 0.0, 3.14159265359]
+  notes:
+    - The Revo2 hand is yawed by pi around local z to match the tuned Inspire-right convention.
+    - Franka hand and wrist-camera geometry are stripped in the generated combined URDF.
+    - Visual colors are dark blue and dark grey for the hand/touch links.
+
+control:
+  default_action_interface: physical_joint
+  arm_dofs: 7
+  hand_dofs: 11
+  hand_action_names:
+    - revo2_right_index_proximal_joint
+    - revo2_right_index_distal_joint
+    - revo2_right_middle_proximal_joint
+    - revo2_right_middle_distal_joint
+    - revo2_right_pinky_proximal_joint
+    - revo2_right_pinky_distal_joint
+    - revo2_right_ring_proximal_joint
+    - revo2_right_ring_distal_joint
+    - revo2_right_thumb_metacarpal_joint
+    - revo2_right_thumb_proximal_joint
+    - revo2_right_thumb_distal_joint
+  open_hand_target: all_hand_joints_near_zero
+  smooth_action_defaults:
+    arm_moving_average: 0.50
+    hand_moving_average: 0.34
+
+important_links:
+  palm_link: revo2_right_base_link
+  fingertip_or_touch_link_tokens:
+    - index
+    - middle
+    - ring
+    - pinky
+    - thumb
+    - touch
+
+asset_generation:
+  script: scripts/prepare_franka_brainco_revo2_asset.sh
+  default_source_urdf: assets/generated/revo2_description/urdf/revo2_right_hand.urdf
+  output_dir: assets/generated/franka_brainco_revo2_right
+  output_urdf: franka_brainco_revo2_right.urdf
+
+preview:
+  script: scripts/preview_dg_franka_brainco_revo2_env.sh
+  example_task: SimToolRealFallingBatonV88FrankaBrainCoRevo2PrivPointCloudPhysicalCatch

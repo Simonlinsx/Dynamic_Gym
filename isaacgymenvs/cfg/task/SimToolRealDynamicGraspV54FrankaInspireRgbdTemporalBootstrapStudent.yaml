@@ -1,0 +1,98 @@
+defaults:
+  - SimToolRealDynamicGraspV53FrankaInspirePrivPointCloudBootstrapNoFakeAffordance
+  - _self_
+
+env:
+  # V54 is the deployable-observation student baseline for the V53 bootstrap
+  # recipe. It keeps the same reward/dynamics as V53, but the actor sees only
+  # robot state plus RGB-D-rendered object-mask point clouds with temporal
+  # fusion. The asymmetric critic can still use privileged simulator state.
+
+  objectPointCloudSource: "rgbd_render"
+  objectPointCloudNumPoints: 256
+  objectPointCloudRenderWidth: 128
+  objectPointCloudRenderHeight: 96
+  objectPointCloudRenderHorizontalFov: 60.0
+  objectPointCloudRenderCameraPos: [0.45, -0.75, 0.78]
+  objectPointCloudRenderCameraTarget: [0.0, 0.0, 0.63]
+  objectPointCloudRenderMaxDepth: 2.0
+  objectPointCloudRenderEnvLimit: 1024
+  objectPointCloudRenderAllowLarge: False
+
+  robotSegmentationId: 1
+  objectSegmentationId: 2
+  tableSegmentationId: 3
+  goalObjectSegmentationId: 4
+
+  objectPointCloudTemporalFusion: True
+  objectPointCloudTemporalHistoryFrames: 8
+  objectPointCloudTemporalRandomSample: True
+  objectPointCloudCentroidFromPoints: True
+  objectPointCloudVelocityFromCentroid: True
+  objectPointCloudVelocityNoiseStd: 0.01
+  objectPointCloudVelocityClip: 1.2
+
+  objectPointCloudNoiseStd: 0.001
+  objectPointCloudDepthNoiseStd: 0.0015
+  objectPointCloudDropoutProb: 0.01
+  objectPointCloudOutlierProb: 0.0
+  objectPointCloudOutlierScale: 0.0
+  objectPointCloudRandomizeOrder: True
+
+  studentBranch: True
+  teacherTask: "SimToolRealDynamicGraspV53FrankaInspirePrivPointCloudBootstrapNoFakeAffordance"
+  teacherCheckpoint: ""
+  distillationEnabled: False
+  distillationActionLossScale: 0.0
+  distillationValueLossScale: 0.0
+  distillationAuxObsLossScale: 0.0
+
+  # Actor/deployable observation. No simulator object pose, object velocity,
+  # object_vel_rel_palm, object rotation, keypoints, success/reward/progress, or
+  # future affordance targets.
+  obsList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "fingertip_pos_rel_palm",
+      "object_pointcloud_rel_palm",
+      "object_pointcloud_centroid_rel_palm",
+      "object_pointcloud_vel_rel_palm",
+      "object_pointcloud_tracking_confidence",
+    ]
+
+  # Critic/training-only state keeps privileged simulator terms. The point cloud
+  # slice still starts at index 85, matching the PointNet config.
+  stateList:
+    [
+      "joint_pos",
+      "joint_vel",
+      "prev_action_targets",
+      "palm_pos",
+      "palm_rot",
+      "palm_vel",
+      "fingertip_pos_rel_palm",
+      "object_pointcloud_rel_palm",
+      "object_pointcloud_centroid_rel_palm",
+      "object_pointcloud_vel_rel_palm",
+      "object_pointcloud_tracking_confidence",
+      "object_rot",
+      "object_vel",
+      "object_vel_rel_palm",
+      "affordance_pos_rel_palm",
+      "future_affordance_pos_rel_palm",
+      "affordance_axis_rel_palm",
+      "affordance_confidence",
+      "keypoints_rel_palm",
+      "predicted_keypoints_rel_palm",
+      "object_scales",
+      "closest_fingertip_dist",
+      "lifted_object",
+      "progress",
+      "successes",
+      "reward",
+    ]
