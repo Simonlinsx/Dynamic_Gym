@@ -24,8 +24,8 @@ Not included:
 - Training launchers and train YAMLs.
 - RL checkpoints.
 - `train_dir`, videos, W&B run state, or tensorboard logs.
-- A complete Baton Insert implementation. That task is currently a passive
-  receive/catch design spec and integration target.
+- A complete Aerial Object Catch implementation. That task is currently a
+  passive airborne receive/catch design spec and integration target.
 
 ## Task Status
 
@@ -44,6 +44,8 @@ Behavior:
 - No table.
 - One elongated object is spawned above and in front of the hand.
 - The robot actively moves toward the predicted catch point.
+- The task intuition is a stick-catching game: predict the falling baton,
+  intercept near the middle/handle affordance, close the hand, and hold.
 - Object falls under gravity with configurable initial linear velocity and
   random angular velocity.
 - Spawn XY is constrained to the front catch workspace and can be constrained
@@ -57,20 +59,25 @@ Behavior:
   - `screwdriver/short_screwdriver`
 - Affordance labels use `grasp_affordance_clean_v2.npz`; the middle/handle is
   treated as graspable and the ends/tool regions as non-preferred.
+- Illustration: `docs/project_page/assets/images/falling_baton_game_schematic.svg`.
 
-### Baton Insert
+### Aerial Object Catch
 
 Status: environment spec/template only.
 
 Target behavior:
 
 - No table and no slot fixture in this v1 setting.
-- A rod-like object is passively received from a low-speed handoff or guided
-  free-fall into a receive zone.
+- A rod-like object is passively received from an airborne toss/drop, a
+  low-speed handoff, or guided free-fall into a receive zone.
 - The hand starts open near the receive pose, absorbs object motion, closes on
   the safe middle region, and stabilizes the object.
 - Unlike Falling Baton, this task should not require large active chasing or
   interception before contact.
+- This task is named Aerial Object Catch to avoid the earlier misleading
+  "Baton Insert" wording. The reference setting is
+  [Catch It! Learning to Catch in Flight with Mobile Dexterous Hands](https://arxiv.org/pdf/2409.10319),
+  adapted here to fixed-base Franka + BrainCo Revo2 instead of a mobile base.
 
 Implementation work still needed:
 
@@ -177,7 +184,7 @@ bash scripts/prepare_franka_brainco_revo2_asset.sh
 
 - `env_specs/franka_brainco_revo2_common.yaml`
 - `env_specs/falling_baton.yaml`
-- `env_specs/baton_insert.yaml`
+- `env_specs/aerial_object_catch.yaml`
 - `scripts/preview_franka_brainco_revo2_aerial_envs.sh`
 - `scripts/prepare_franka_brainco_revo2_asset.sh`
 - `scripts/preview_dg_franka_brainco_revo2_env.sh`

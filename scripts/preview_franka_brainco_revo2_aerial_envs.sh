@@ -13,10 +13,11 @@ bash scripts/preview_dg_franka_brainco_revo2_env.sh
 
 cat <<'MSG'
 
-[preview] Baton Insert is currently a passive receive/catch task specification,
-not a runnable Isaac Gym task. It is no longer a slot-insertion target in this
-handoff version.
+[preview] Aerial Object Catch is currently a passive airborne receive/catch
+task specification, not a runnable Isaac Gym task. It replaces the earlier
+misleading Baton Insert name and is not a slot-insertion target in this handoff
+version.
 See:
-  docs/handoff/franka_brainco_revo2_aerial_env/env_specs/baton_insert.yaml
+  docs/handoff/franka_brainco_revo2_aerial_env/env_specs/aerial_object_catch.yaml
 
 MSG

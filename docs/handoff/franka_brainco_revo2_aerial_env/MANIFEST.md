@@ -18,8 +18,8 @@ overlay.
 - `assets/urdf/dextoolbench/screwdriver/`
 
 The two aerial handoff tasks do not require a table. Falling Baton is the
-active catch setting; Baton Insert is currently treated as a passive
-receive/catch setting, not a slot-insertion setting.
+active stick-catching setting; Aerial Object Catch is currently treated as a
+passive airborne receive/catch setting, not a slot-insertion setting.
 
 ## Affordance Labels
 

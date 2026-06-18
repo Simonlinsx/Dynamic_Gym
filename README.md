@@ -24,7 +24,7 @@ sim-env/franka-revo2-aerial-v1
 - Franka + BrainCo Revo2 右手仿真资产。
 - Revo2 右手 mounting、对齐、预览和 sanity check 脚本。
 - 已经可以预览和继续开发的 Falling Baton 环境。
-- Baton Insert / 被动承接任务的环境规格说明。
+- Aerial Object Catch / 空中抛落物接住任务的环境规格说明。
 - marker / screwdriver 等棒状物体资产。
 - clean v2 grasp affordance labels。
 - benchmark 网页，用于展示背景、任务设置、pipeline 和 affordance 标注。
@@ -43,12 +43,19 @@ sim-env/franka-revo2-aerial-v1
 
 | 任务 | 动态来源 | Affordance 设计 | 最终目标 |
 | --- | --- | --- | --- |
-| Falling Baton 主动抓取 | 自由下落 + 随机角速度 | 中部 / handle 可抓，两端不可抓 | 主动预测并拦截下落物，抓住后稳定保持 |
-| Baton Insert 被动接住 | 低速 handoff 或引导式下落到接收区域 | 指定 safe grasp region | 手在接收区域等待，被动承接物体，吸收冲击并稳定抓住 |
+| Falling Baton 主动抓取 | 自由下落 + 随机角速度 | 中部 / handle 可抓，两端不可抓 | 类似抓棒子游戏：主动预测落点、拦截下落棒状物，并稳定抓住 |
+| Aerial Object Catch 空中抛落物接住 | 空中抛落 / 低速 handoff / 引导式下落到接收区域 | 指定 safe grasp region | 手在接收区域等待或小幅顺应，接住空中来物、吸收冲击并稳定抓住 |
 
-这里的 `Baton Insert` 目前不是插入 slot 的任务，而是先定义为被动接住 /
-被动承接任务。后续如果要扩展成插入任务，可以在此基础上继续加入 slot actor、
-轴向对齐、插入深度和插入成功判定。
+`Aerial Object Catch` 用来替代早期的 `Baton Insert` 命名。它强调的是接住
+空中抛落或低速 handoff 进入接收区域的物体，而不是插入 slot。这个 setting
+可以参考 [Catch It! Learning to Catch in Flight with Mobile Dexterous Hands](https://arxiv.org/pdf/2409.10319)
+里的 thrown-object catching 问题；区别是当前 benchmark 先固定在 Franka +
+BrainCo Revo2 右手平台上，不引入移动底盘。
+
+`Falling Baton` 更接近抓棒子游戏：棒状物从上方下落，机器人需要主动预测未来
+位置，移动到合适的预抓取区域，并在中部 / handle affordance 上闭合抓取。
+
+![Falling Baton 抓棒子游戏示意图](docs/project_page/assets/images/falling_baton_game_schematic.svg)
 
 ### 桌面任务
 

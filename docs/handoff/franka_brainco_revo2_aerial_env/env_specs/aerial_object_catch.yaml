@@ -1,15 +1,22 @@
-name: baton_insert
-display_name: Baton Insert
+name: aerial_object_catch
+display_name: Aerial Object Catch
 status: planned_environment_spec
 reference_task: not_implemented_yet
 
 goal:
-  description: Passively receive or catch a rod-like object and stabilize it in the dexterous hand.
+  description: Passively receive or catch an airborne tossed or dropped rod-like object and stabilize it in the dexterous hand.
   phases:
     - wait_with_open_hand_at_receive_pose
     - absorb_object_motion
     - close_on_safe_region
     - stabilize_in_hand
+
+motivation:
+  short_name: 空中抛落物接住
+  reference:
+    title: "Catch It! Learning to Catch in Flight with Mobile Dexterous Hands"
+    url: https://arxiv.org/pdf/2409.10319
+    note: Reference setting for catching objects thrown in flight. Dynamic Gym keeps the airborne catching idea but uses a fixed Franka + BrainCo Revo2 platform first.
 
 scene:
   create_table: false
@@ -35,6 +42,7 @@ objects:
 
 dynamic_source:
   modes:
+    - airborne_toss_or_drop
     - low_speed_handoff
     - guided_free_fall_into_receive_zone
   recommended_start:

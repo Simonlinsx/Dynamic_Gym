@@ -85,6 +85,33 @@ function renderTaskSettings() {
   table.append(tbody);
   wrap.append(table);
   root.append(wrap);
+
+  if (data.taskSettings.references) {
+    const referenceGrid = el("div", "task-reference-grid");
+    data.taskSettings.references.forEach((item) => {
+      const figure = document.createElement("figure");
+      figure.className = "task-reference-card";
+
+      const image = document.createElement("img");
+      image.src = item.src;
+      image.alt = item.title;
+
+      const caption = document.createElement("figcaption");
+      caption.append(el("strong", null, item.title), el("span", null, item.caption));
+      if (item.href) {
+        const link = document.createElement("a");
+        link.href = item.href;
+        link.target = "_blank";
+        link.rel = "noreferrer";
+        link.textContent = "Reference paper";
+        caption.append(link);
+      }
+
+      figure.append(image, caption);
+      referenceGrid.append(figure);
+    });
+    root.append(referenceGrid);
+  }
 }
 
 function renderModules() {

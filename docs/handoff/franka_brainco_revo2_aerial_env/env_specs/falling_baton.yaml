@@ -5,6 +5,8 @@ reference_task: SimToolRealFallingBatonV88FrankaBrainCoRevo2PrivPointCloudPhysic
 
 goal:
   description: Actively intercept a falling elongated object, grasp its middle or handle region, and hold it stably.
+  intuition: Stick-catching game. A baton drops from above with randomized spin, and the robot must predict the future catch point before closing the hand.
+  illustration: docs/project_page/assets/images/falling_baton_game_schematic.svg
   success_concept:
     - hand moves toward the predicted catch point before contact
     - object remains above the catch height

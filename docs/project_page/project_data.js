@@ -37,16 +37,16 @@ window.projectData = {
         objects: "baton / marker / toy screwdriver",
         dynamics: "Free fall with random angular velocity",
         affordance: "Middle or handle is graspable; both ends are negative",
-        objective: "Actively intercept, grasp the falling object, and hold it stably in hand",
+        objective: "Stick-catching game setting: actively predict, intercept, grasp, and hold the falling baton",
       },
       {
         setting: "Aerial",
         settingTone: "aerial",
-        task: "Baton Insert (被动接住)",
+        task: "Aerial Object Catch (空中抛落物接住)",
         objects: "rod-like object",
-        dynamics: "Free fall or low-speed handoff",
+        dynamics: "Airborne toss/drop, guided free fall, or low-speed handoff",
         affordance: "Specified safe grasp region",
-        objective: "Passively receive the object, absorb impact, close on the safe region, and stabilize it",
+        objective: "Wait near the receive zone, absorb impact, close on the safe region, and stabilize the airborne object",
       },
       {
         setting: "Tabletop",
@@ -65,6 +65,21 @@ window.projectData = {
         dynamics: "Conveyor belt or moving cart",
         affordance: "Handle graspable; functional end negative",
         objective: "Grasp the functional tool by the handle and correct its pose for downstream use",
+      },
+    ],
+    references: [
+      {
+        title: "Falling Baton as a stick-catching game",
+        src: "assets/images/falling_baton_game_schematic.svg",
+        caption:
+          "The active aerial task is framed like a stick-catching game: the robot predicts the future baton position, intercepts the safe middle or handle region, and holds the object after contact.",
+      },
+      {
+        title: "Aerial Object Catch reference setting",
+        src: "assets/images/v88_falling_baton_screwdriver.jpg",
+        caption:
+          "Aerial Object Catch replaces the earlier Baton Insert wording. It follows the thrown-object catching spirit of Catch It! while using a fixed Franka + BrainCo Revo2 platform.",
+        href: "https://arxiv.org/pdf/2409.10319",
       },
     ],
   },
