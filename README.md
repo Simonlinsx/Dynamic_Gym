@@ -52,6 +52,8 @@ sim-env/franka-revo2-aerial-v1
 里的 thrown-object catching 问题；区别是当前 benchmark 先固定在 Franka +
 BrainCo Revo2 右手平台上，不引入移动底盘。
 
+![Aerial Object Catch 空中抛落物接住参考图](docs/project_page/assets/images/aerial_object_catch_reference.png)
+
 `Falling Baton` 更接近抓棒子游戏：棒状物从上方下落，机器人需要主动预测未来
 位置，移动到合适的预抓取区域，并在中部 / handle affordance 上闭合抓取。
 
