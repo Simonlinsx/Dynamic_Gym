@@ -37,6 +37,8 @@ copy_glob() {
 
 copy_path "docs/handoff/franka_brainco_revo2_aerial_env"
 copy_path "docs/brainco_revo2_embodiment.md"
+copy_path "docs/project_page/assets/images/falling_baton_game_schematic.png"
+copy_path "docs/project_page/assets/images/aerial_object_catch_reference.png"
 
 copy_path "scripts/build_franka_hand_asset.py"
 copy_path "scripts/prepare_franka_brainco_revo2_asset.sh"

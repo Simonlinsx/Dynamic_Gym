@@ -70,15 +70,15 @@ window.projectData = {
     references: [
       {
         title: "Falling Baton as a stick-catching game",
-        src: "assets/images/falling_baton_game_schematic.svg",
+        src: "assets/images/falling_baton_game_schematic.png",
         caption:
           "The active aerial task is framed like a stick-catching game: the robot predicts the future baton position, intercepts the safe middle or handle region, and holds the object after contact.",
       },
       {
         title: "Aerial Object Catch reference setting",
-        src: "assets/images/v88_falling_baton_screwdriver.jpg",
+        src: "assets/images/aerial_object_catch_reference.png",
         caption:
-          "Aerial Object Catch replaces the earlier Baton Insert wording. It follows the thrown-object catching spirit of Catch It! while using a fixed Franka + BrainCo Revo2 platform.",
+          "Aerial Object Catch replaces the earlier Baton Insert wording. It follows the thrown-object catching spirit of Catch It!: an airborne object is tossed toward the robot, which receives and stabilizes it with the dexterous hand.",
         href: "https://arxiv.org/pdf/2409.10319",
       },
     ],

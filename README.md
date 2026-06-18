@@ -55,7 +55,7 @@ BrainCo Revo2 右手平台上，不引入移动底盘。
 `Falling Baton` 更接近抓棒子游戏：棒状物从上方下落，机器人需要主动预测未来
 位置，移动到合适的预抓取区域，并在中部 / handle affordance 上闭合抓取。
 
-![Falling Baton 抓棒子游戏示意图](docs/project_page/assets/images/falling_baton_game_schematic.svg)
+![Falling Baton 抓棒子游戏示意图](docs/project_page/assets/images/falling_baton_game_schematic.png)
 
 ### 桌面任务
 

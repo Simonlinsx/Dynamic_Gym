@@ -59,7 +59,7 @@ Behavior:
   - `screwdriver/short_screwdriver`
 - Affordance labels use `grasp_affordance_clean_v2.npz`; the middle/handle is
   treated as graspable and the ends/tool regions as non-preferred.
-- Illustration: `docs/project_page/assets/images/falling_baton_game_schematic.svg`.
+- Illustration: `docs/project_page/assets/images/falling_baton_game_schematic.png`.
 
 ### Aerial Object Catch
 

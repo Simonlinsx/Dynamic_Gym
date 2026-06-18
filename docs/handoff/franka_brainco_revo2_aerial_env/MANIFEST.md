@@ -57,3 +57,5 @@ left out.
 - `docs/brainco_revo2_embodiment.md`
 - `docs/handoff/franka_brainco_revo2_aerial_env/README.md`
 - `docs/handoff/franka_brainco_revo2_aerial_env/env_specs/*.yaml`
+- `docs/project_page/assets/images/falling_baton_game_schematic.png`
+- `docs/project_page/assets/images/aerial_object_catch_reference.png`
